@@ -25,11 +25,13 @@ let distSum = 0;
 let lastX = sim.physics.biped.hipX();
 let walkTicks = 0;
 let daAbs = 0;
+let stepSum = 0;
 for (let m = 0; m < minutes; m++) {
   for (let i = 0; i < 60000; i++) {
     sim.tick();
     if (sim.life.state === 'walking') walkTicks++;
     daAbs += Math.abs(sim.brain.reward.level);
+    stepSum += sim.brain.spinal.stepLevel;
   }
   const falls = sim.life.falls - lastFalls;
   lastFalls = sim.life.falls;
@@ -42,8 +44,9 @@ for (let m = 0; m < minutes; m++) {
   sp.pathProj.forEach((leg, l) => leg.forEach((p, k) => { drift += Math.abs(Math.log(p.meanWeight() / w0[l][k])); cnt++; }));
   console.log(
     `min ${m + 1}: falls ${falls}, distance ${distSum.toFixed(1)} m, walking ${(walkTicks / 1000).toFixed(0)} s (${(walkTicks / 1000 / Math.max(1, falls)).toFixed(1)} s/attempt), best ${sim.life.bestAttempt.toFixed(1)} m, ` +
-      `|DA| ${(daAbs / 60000).toFixed(2)}, drift ${(drift / cnt).toFixed(3)}, tone ${sp.tone.map((t) => t.gain.toFixed(2)).join(' ')}, rpeSd ${Math.sqrt(sim.brain.hormones.rpeVar).toFixed(2)} fokin ${sim.brain.hormones.level.fokin.toFixed(2)} lrx ${sim.brain.hormones.effects.learningRate.toFixed(2)}, exp ${sim.brain.reward.expected.map((v) => v.toFixed(2)).join('/')} (${((Date.now() - t0) / 1000).toFixed(0)} s)`,
+      `step ${(stepSum / 60000).toFixed(2)}, |DA| ${(daAbs / 60000).toFixed(2)}, drift ${(drift / cnt).toFixed(3)}, tone ${sp.tone.map((t) => t.gain.toFixed(2)).join(' ')}, rpeSd ${Math.sqrt(sim.brain.hormones.rpeVar).toFixed(2)} fokin ${sim.brain.hormones.level.fokin.toFixed(2)} lrx ${sim.brain.hormones.effects.learningRate.toFixed(2)}, exp ${sim.brain.reward.expected.map((v) => v.toFixed(2)).join('/')} (${((Date.now() - t0) / 1000).toFixed(0)} s)`,
   );
   walkTicks = 0;
   daAbs = 0;
+  stepSum = 0;
 }

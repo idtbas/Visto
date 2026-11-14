@@ -31,6 +31,11 @@ export interface Frame {
   hormones: number[];
   energy: number;
   cookies: Cookie[];
+  /** distance to the obstacle the eye is looking at (-1 = none) and how strongly the feet are being lifted */
+  seen: number;
+  highStep: number;
+  /** learned drive from each visual distance pool onto the striatum */
+  decision: number[];
   /** learned gain of the brainstem tone nuclei (1 = mature) */
   tone: number[];
   /** number of finished walking attempts; the list itself is sent separately when this changes */
@@ -78,6 +83,7 @@ export interface SimOptions {
   newborn?: number;
   newbornTone?: number;
   granules?: number;
+  decisionLr?: number;
   mult?: number[];
   /** reflex blueprint; defaults to the built-in genome */
   params?: number[];
@@ -135,7 +141,49 @@ export class Sim {
         this.giveCookie(c.size);
       } else if (c.x < x - 6) this.cookies.splice(i, 1);
     }
-    if (this.autoCookies && !this.cookies.some((c) => c.x > x)) this.cookies.push({ x: x + 4 + 3 * this.brain.net.rng(), size: 1 });
+    if (this.autoCookies && !this.obstaclesOn && !this.cookies.some((c) => c.x > x)) this.cookies.push({ x: x + 4 + 3 * this.brain.net.rng(), size: 1 });
+  }
+
+  /** blocks appear on the path every few metres */
+  obstaclesOn = false;
+  private nextObstacleX = 12;
+
+  private obstacleTick(): void {
+    const b = this.physics.biped;
+    const terrain = this.physics.terrain;
+    const x = b.hipX();
+    if (this.obstaclesOn) {
+      if (this.nextObstacleX < x + 3) this.nextObstacleX = x + 3;
+      if (x > this.nextObstacleX - 6) {
+        const rng = this.brain.net.rng;
+        const ox = this.nextObstacleX;
+        terrain.addBlock(ox, 0.15, 0.04 + 0.03 * rng());
+        // a cookie waits behind every obstacle
+        this.cookies.push({ x: ox + 0.9, size: 1 });
+        this.nextObstacleX = ox + 7 + 5 * rng();
+      }
+    }
+    // obstacles far behind are cleared away; after a fall the hand also removes the one it tripped over
+    const fallen = this.life.state === 'fallen';
+    const keep = terrain.obstacles.filter((o) => o.x > x - 5 && !(fallen && Math.abs(o.x - x) < 1.6));
+    if (keep.length !== terrain.obstacles.length) {
+      const copy = keep.map((o) => ({ ...o }));
+      terrain.clearObstacles();
+      for (const o of copy) terrain.addBlock(o.x, o.w, o.h);
+    }
+    // the eye looks ahead
+    let best = Infinity;
+    let h = 0;
+    for (const o of terrain.obstacles) {
+      const d = o.x - x;
+      if (d > -0.1 && d < best) {
+        best = d;
+        h = o.h;
+      }
+    }
+    const dec = this.brain.decision;
+    dec.seenDistance = best < 3.2 ? Math.max(0, best) : Infinity;
+    dec.seenHeight = h;
   }
 
   /** reward for progress without the user handing out cookies */
@@ -153,9 +201,11 @@ export class Sim {
     this.brain = new Brain(
       this.physics.biped,
       { params: this.reflexParams, mult: opt.mult ?? SPINAL_MULT },
-      { scale: opt.brainScale ?? 1, seed: opt.seed ?? 1, learn: opt.learn ?? true, learningRate: opt.learningRate, exploreW: opt.exploreW, newborn: opt.newborn ?? 0, newbornTone: opt.newbornTone, granules: opt.granules },
+      { scale: opt.brainScale ?? 1, seed: opt.seed ?? 1, learn: opt.learn ?? true, learningRate: opt.learningRate, exploreW: opt.exploreW, newborn: opt.newborn ?? 0, newbornTone: opt.newbornTone, granules: opt.granules, decisionLr: opt.decisionLr },
     );
     this.place();
+    // at birth the nervous system needs a little longer to settle before the hand lets go
+    if (this.frozenUntil > 0) this.frozenUntil = this.time + 0.6;
   }
 
   /** automatic reward: staying upright and making progress feels good */
@@ -327,6 +377,7 @@ export class Sim {
       if (jolt > this.lastImpact) bs.surprise = 1;
       this.lastImpact = jolt;
       if ((this.physics.time * 1000) % 50 < 1) this.cookieTick();
+      if ((this.physics.time * 1000) % 20 < 1) this.obstacleTick();
       // still on its feet at a moment when it usually falls: better than expected
       const relief = st === 'walking' && this.time >= this.frozenUntil ? FALL_COST * this.fallExpectation.hazard(this.time - this.stateSince) : 0;
       this.brain.tick(this.autoRewardOn ? this.autoReward() : 0, st === 'standing' ? 0 : st === 'walking' ? 1 : 2, relief);
@@ -368,6 +419,9 @@ export class Sim {
       energy: this.brain.hormones.energy,
       cookies: this.cookies.map((c) => ({ ...c })),
       cookiesEaten: this.cookiesEaten,
+      seen: Number.isFinite(this.brain.decision.seenDistance) ? this.brain.decision.seenDistance : -1,
+      highStep: this.brain.spinal.stepLevel,
+      decision: this.brain.decision.weights(),
       tone: this.brain.spinal.tone.map((t) => t.gain),
       attemptCount: this.attemptCount,
     };

@@ -98,8 +98,8 @@ function updatePanels(f: Frame): void {
   $('lifeState').textContent =
     f.mode !== 'brain' ? (f.mode === 'manual' ? 'Handsteuerung' : 'Referenz-Reflexe (ohne Gehirn)') : life.state === 'fallen' ? 'gestürzt – wird gleich aufgehoben' : life.inHand ? 'in der helfenden Hand' : life.state === 'standing' ? 'steht' : 'läuft';
   $('stFalls').textContent = String(life.falls);
-  $('stAttempt').textContent = `${de(life.attempt)} m`;
-  $('stBest').textContent = `${de(life.bestAttempt)} m`;
+  $('stAttempt').textContent = life.attempt >= 100 ? `${Math.round(life.attempt)} m` : `${de(life.attempt)} m`;
+  $('stBest').textContent = life.bestAttempt >= 100 ? `${Math.round(life.bestAttempt)} m` : `${de(life.bestAttempt)} m`;
   hormoneView.update(f.hormones, f.time);
   f.tone.forEach((v, i) => {
     toneBars[i].fill.style.width = `${Math.min(100, v * 50)}%`;
@@ -123,6 +123,7 @@ window.addEventListener('keydown', (e) => {
   if (e.key === 'c' || e.key === 'C') send({ type: 'cookie' });
 });
 $<HTMLInputElement>('chkAuto').addEventListener('change', (e) => send({ type: 'autoReward', on: (e.target as HTMLInputElement).checked }));
+$<HTMLInputElement>('chkObst').addEventListener('change', (e) => send({ type: 'obstacles', on: (e.target as HTMLInputElement).checked }));
 $('world').addEventListener('click', (e) => {
   const x = bodyView.worldX(e.offsetX);
   send({ type: 'placeCookie', x });
@@ -185,7 +186,9 @@ const SAVE_KEY = 'life-1';
 const query = new URLSearchParams(location.search);
 void (async () => {
   const state = query.has('fresh') ? undefined : await loadLife<SimState>(SAVE_KEY);
-  send({ type: 'start', state });
+  // a newborn starts with weak descending tone; "?tone=1" starts with a mature one instead
+  const newbornTone = query.has('tone') ? Number(query.get('tone')) : 0.6;
+  send({ type: 'start', state, options: { newbornTone } });
   setInterval(() => send({ type: 'save' }), 30000);
 })();
 window.addEventListener('pagehide', () => send({ type: 'save' }));

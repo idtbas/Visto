@@ -50,12 +50,17 @@ const TONE_EX_W = Number((globalThis as { process?: { env: Record<string, string
 // A variation of the tone is tried out for about as long as a walking attempt lasts, and the
 // synapses remember it for equally long, so that the outcome of the attempt can be credited to it.
 const TONE_EX_TAU = 4000; // ms
+/** the modulator released by a tone nucleus acts with a time constant of 300 ms */
+const TONE_SMOOTH = 1 / 300;
 const TONE_TAU_E = 3000; // ms
 /** individual reflex pathways learn much more slowly than the tone nuclei */
 const FINE_LR = 0.1;
 const GOSLOW_W = 0.1;
 /** smoothing of the motoneuron pool rate before it reaches the muscle [ms] */
 const STIM_TAU = 5;
+/** extra stimulation of the swing-leg muscles at full high-step command */
+const env = (globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env ?? {};
+const HIGH_STEP = { hfl: Number(env.HS_HFL ?? 0), ta: Number(env.HS_TA ?? 0.4), ham: Number(env.HS_HAM ?? 0), swing: Number(env.HS_SWING ?? 0.5) };
 /** depth (in units of input current) by which unloaded legs are cut off from the trunk balance reflex */
 const LOAD_GATE = 6;
 const VEST_TAU = 6;
@@ -186,6 +191,10 @@ export class SpinalCord {
   private toneCtx!: Pop;
   /** locomotor command 0 (stand) .. 1 (walk), set by the brain */
   go = 0;
+  /** "lift the feet higher" command 0..1, set by the brain */
+  highStep = 0;
+  readonly stepCmd: Pop;
+  stepLevel = 0;
   private goLevel = 0;
   private dthetaF = 0;
   private readonly stimTrace = new Float32Array(2 * NM);
@@ -350,6 +359,20 @@ export class SpinalCord {
       I(liftI, mnOf('VAS'), g.initSolOff * K_INH_UNITY, 2);
     }
 
+    // ---- high step: a descending command that adds flexion to the swinging leg ----
+    this.stepCmd = net.addPop({ name: 'STEP', n: nI, type: NT.RELAY, region: 'brainstem', bias: AFF_BIAS, biasJitter: 0.6, noise: 2 });
+    for (let leg = 0; leg < 2; leg++) {
+      const L = `_${leg}`;
+      const mnOf = (m: MuscleName): Pop => this.mn[leg * NM + M[m]];
+      const hs = exc('HS' + L, nI);
+      E(this.stepCmd, hs, K_UNITY, 1);
+      // only while the leg is in the air
+      I(net.pop('STi' + L), hs, K_GATE, 1);
+      E(hs, mnOf('HFL'), HIGH_STEP.hfl * K_UNITY, 1);
+      E(hs, mnOf('TA'), HIGH_STEP.ta * K_UNITY, 1);
+      E(hs, mnOf('HAM'), HIGH_STEP.ham * K_UNITY, 1);
+    }
+
     // ---- swing initiation: the trailing leg in double support is unloaded and flexed ----
     for (let leg = 0; leg < 2; leg++) {
       const L = `_${leg}`;
@@ -372,6 +395,8 @@ export class SpinalCord {
 
   /** tone nuclei: explore, then translate their firing into the gain of their reflex groups */
   private stepTone(): void {
+    // how strongly the high-step command is currently being given (from the command neurons)
+    this.stepLevel += (Math.min(1, this.stepCmd.rate / R_AFF) - this.stepLevel) * 0.05;
     const iext = this.net.iext;
     const rng = this.net.rng;
     const k = 1 / TONE_EX_TAU;
@@ -385,8 +410,10 @@ export class SpinalCord {
       for (let i = tn.ex.start; i < tn.ex.end; i++) iext[i] = cur;
       // the modulator released by the nucleus acts with a time constant of 50 ms
       const g = Math.min(2.2, tn.pop.rate / TONE_RATE);
-      tn.gain += (g - tn.gain) * 0.02;
-      for (const pr of tn.targets) pr.gain = tn.gain;
+      tn.gain += (g - tn.gain) * TONE_SMOOTH;
+      // the high-step command invigorates the swing reflexes
+      const boost = tn === this.tone[2] ? 1 + HIGH_STEP.swing * this.stepLevel : 1;
+      for (const pr of tn.targets) pr.gain = tn.gain * boost;
     }
   }
 
@@ -459,6 +486,8 @@ export class SpinalCord {
     }
     const cmd = currentForRate(R_AFF * this.go);
     for (let i = this.mlr.start; i < this.mlr.end; i++) iext[i] = cmd;
+    const stepCur = currentForRate(R_AFF * this.highStep);
+    for (let i = this.stepCmd.start; i < this.stepCmd.end; i++) iext[i] = stepCur;
     if (this.explorers.length > 0) this.stepExplorers();
     this.stepTone();
   }

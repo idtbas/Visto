@@ -136,6 +136,19 @@ export class BodyView {
       c.stroke();
     }
     for (const ck of f.cookies) this.drawCookie(ck.x, ck.size);
+    if (f.seen >= 0) {
+      // line of sight from the eye to the obstacle it is looking at
+      const eye = this.pt(f, 0, 0.065, GEOM.trunkLen - 0.08);
+      const tx = this.sx(f.body[0] + f.seen);
+      c.strokeStyle = `rgba(159,232,255,${0.25 + 0.5 * Math.min(1, f.highStep)})`;
+      c.setLineDash([2, 6]);
+      c.lineWidth = 1.5;
+      c.beginPath();
+      c.moveTo(eye[0], eye[1]);
+      c.lineTo(tx, this.groundY - 4);
+      c.stroke();
+      c.setLineDash([]);
+    }
     this.drawLeg(f, 0, 0.5);
     this.drawTrunk(f);
     this.drawLeg(f, 1, 1);

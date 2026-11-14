@@ -107,7 +107,7 @@ export class Hormones {
     relax('ergin', 1 - this.energy, 5);
 
     // --- dopamine: taken from the dopamine neurons (phasic part), shown on a 0..1 scale ---
-    L.dopamin = Math.min(1, Math.max(0, 0.3 + 0.35 * inp.dopamine));
+    L.dopamin += (Math.min(1, Math.max(0, 0.3 + 0.22 * inp.dopamine)) - L.dopamin) * 0.02;
 
     // --- vigilin: surprise and pain, cleared within seconds; sleep pressure dampens it ---
     const unsigned = Math.min(1, Math.abs(inp.rpe) * 0.6);

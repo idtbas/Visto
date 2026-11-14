@@ -17,16 +17,22 @@ interface RegionDef {
 const INH: [number, number, number] = [110, 170, 255];
 
 const REGIONS: RegionDef[] = [
-  { key: 'explore', title: 'Erkundungs-Kern', x: 0.0, y: 0.0, w: 0.32, h: 0.13, color: [200, 160, 255] },
-  { key: 'brainstem', title: 'Hirnstamm', x: 0.34, y: 0.0, w: 0.32, h: 0.13, color: [255, 214, 130] },
-  { key: 'vta', title: 'Dopamin-Kern', x: 0.68, y: 0.0, w: 0.32, h: 0.13, color: [255, 180, 84] },
-  { key: 'afferent', title: 'Gleichgewichtssinn', x: 0.4, y: 0.16, w: 0.2, h: 0.07, color: [150, 235, 170] },
-  { key: 'afferent_0', title: 'Sinnesnerven links', x: 0.0, y: 0.16, w: 0.38, h: 0.2, color: [150, 235, 170] },
-  { key: 'afferent_1', title: 'Sinnesnerven rechts', x: 0.62, y: 0.16, w: 0.38, h: 0.2, color: [150, 235, 170] },
-  { key: 'spinal_0', title: 'Rückenmark links', x: 0.0, y: 0.4, w: 0.49, h: 0.34, color: [255, 190, 110] },
-  { key: 'spinal_1', title: 'Rückenmark rechts', x: 0.51, y: 0.4, w: 0.49, h: 0.34, color: [255, 190, 110] },
-  { key: 'motor_0', title: 'Motoneuronen links', x: 0.0, y: 0.78, w: 0.49, h: 0.22, color: [255, 120, 100] },
-  { key: 'motor_1', title: 'Motoneuronen rechts', x: 0.51, y: 0.78, w: 0.49, h: 0.22, color: [255, 120, 100] },
+  // --- brain ---
+  { key: 'visual', title: 'Sehrinde', x: 0.0, y: 0.0, w: 0.3, h: 0.1, color: [120, 220, 255] },
+  { key: 'basal', title: 'Basalganglien', x: 0.32, y: 0.0, w: 0.3, h: 0.1, color: [255, 150, 200] },
+  { key: 'vta', title: 'Dopamin-Kern', x: 0.64, y: 0.0, w: 0.36, h: 0.1, color: [255, 180, 84] },
+  { key: 'cerebellum_granule', title: 'Kleinhirn · Körnerzellen', x: 0.0, y: 0.115, w: 0.7, h: 0.2, color: [170, 200, 255] },
+  { key: 'cerebellum', title: 'Kleinhirn · Purkinje, Kerne, Olive', x: 0.72, y: 0.115, w: 0.28, h: 0.2, color: [200, 170, 255] },
+  { key: 'explore', title: 'Erkundungs-Kern', x: 0.0, y: 0.33, w: 0.4, h: 0.1, color: [200, 160, 255] },
+  { key: 'brainstem', title: 'Hirnstamm', x: 0.42, y: 0.33, w: 0.58, h: 0.1, color: [255, 214, 130] },
+  // --- body side ---
+  { key: 'afferent', title: 'Gleichgewicht', x: 0.42, y: 0.445, w: 0.16, h: 0.14, color: [150, 235, 170] },
+  { key: 'afferent_0', title: 'Sinnesnerven links', x: 0.0, y: 0.445, w: 0.4, h: 0.14, color: [150, 235, 170] },
+  { key: 'afferent_1', title: 'Sinnesnerven rechts', x: 0.6, y: 0.445, w: 0.4, h: 0.14, color: [150, 235, 170] },
+  { key: 'spinal_0', title: 'Rückenmark links', x: 0.0, y: 0.6, w: 0.49, h: 0.22, color: [255, 190, 110] },
+  { key: 'spinal_1', title: 'Rückenmark rechts', x: 0.51, y: 0.6, w: 0.49, h: 0.22, color: [255, 190, 110] },
+  { key: 'motor_0', title: 'Motoneuronen links', x: 0.0, y: 0.835, w: 0.49, h: 0.165, color: [255, 120, 100] },
+  { key: 'motor_1', title: 'Motoneuronen rechts', x: 0.51, y: 0.835, w: 0.49, h: 0.165, color: [255, 120, 100] },
 ];
 
 const SPLIT_BY_LEG = new Set(['afferent', 'spinal', 'motor']);
@@ -111,13 +117,17 @@ export class BrainView {
       if (!byRegion.has(k)) byRegion.set(k, []);
       byRegion.get(k)!.push(p);
     }
+    // without a cerebellum its row is closed up and the rest of the map is stretched
+    const hasCb = byRegion.has('cerebellum_granule');
+    const mapY = (y: number): number => (hasCb ? y : y < 0.11 ? y / 0.785 : (y - 0.215) / 0.785);
+    const mapH = (hh: number): number => (hasCb ? hh : hh / 0.785);
     for (const def of REGIONS) {
       const pops = byRegion.get(def.key);
       if (!pops) continue;
       const rx = Math.round(pad + def.x * (w - 2 * pad));
-      const ry = Math.round(pad + def.y * (h - 2 * pad));
+      const ry = Math.round(pad + mapY(def.y) * (h - 2 * pad));
       const rw = Math.round(def.w * (w - 2 * pad));
-      const rh = Math.round(def.h * (h - 2 * pad));
+      const rh = Math.round(mapH(def.h) * (h - 2 * pad));
       this.regionRects.push({ def, x: rx, y: ry, w: rw, h: rh });
       const ix = rx + 5 * dpr;
       const iy = ry + title;

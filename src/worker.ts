@@ -92,6 +92,9 @@ self.onmessage = (e: MessageEvent<ToWorker>): void => {
     case 'wantsToWalk':
       sim.setWantsToWalk(m.on);
       break;
+    case 'obstacles':
+      sim.obstaclesOn = m.on;
+      break;
     case 'autoReward':
       sim.autoRewardOn = m.on;
       sim.autoCookies = m.on;

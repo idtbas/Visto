@@ -3,6 +3,7 @@ import { Network } from './network';
 import { SpinalCord } from './spinal';
 import { RewardSystem } from './reward';
 import { Cerebellum } from './cerebellum';
+import { Decision } from './decision';
 import { Hormones, HORMONES, type HormoneInputs } from './hormones';
 import type { Biped } from '../body/biped';
 
@@ -43,6 +44,8 @@ export interface BrainOptions {
   exploreW?: number;
   /** how far the newborn's reflexes deviate from the innate blueprint (0 = perfectly tuned) */
   newborn?: number;
+  /** learning rate of the visual → striatum synapses */
+  decisionLr?: number;
   /** number of cerebellar granule cells; 0 = no cerebellum */
   granules?: number;
   /** descending tone of the newborn relative to mature (1 = mature) */
@@ -54,6 +57,7 @@ export class Brain {
   readonly spinal: SpinalCord;
   readonly reward: RewardSystem;
   readonly cerebellum: Cerebellum | null;
+  readonly decision: Decision;
   readonly hormones = new Hormones();
   /** set by the simulation before every tick */
   readonly bodyState: HormoneInputs = { rpe: 0, dopamine: 0, pain: 0, surprise: 0, power: 0, intake: 0, asleep: false, activity: 0 };
@@ -71,6 +75,7 @@ export class Brain {
       newbornTone: opt.newbornTone,
     });
     this.reward = new RewardSystem(this.net);
+    this.decision = new Decision(this.net, this.spinal, { learn: !!opt.learn, lr: opt.decisionLr ?? 3e-6, n: Math.round(32 * (opt.scale ?? 1)) });
     this.cerebellum = opt.granules && opt.granules > 0 ? new Cerebellum(this.net, this.spinal, { granules: opt.granules }) : null;
     this.net.build();
     this.net.learning = !!opt.learn;
@@ -93,9 +98,11 @@ export class Brain {
     if ((this.net.t & 31) === 0) {
       const fx = this.hormones.effects;
       this.spinal.exploreGain = fx.exploration;
+      this.decision.exploreGain = Math.max(0.6, fx.exploration);
       for (const pr of this.net.projs) if (pr.plastic) pr.lrGain = fx.learningRate;
     }
     this.spinal.sense();
+    this.decision.step();
     this.cerebellum?.step();
     this.net.step();
     this.spinal.act();

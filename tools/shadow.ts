@@ -21,7 +21,7 @@ const scale = Number(process.argv[5] ?? 1);
 let mult: number[] | null = j.mult ?? null;
 for (let it = 0; it < iterations; it++) {
   const rows: string[] = [];
-  for (const standMode of [true, false]) {
+  for (const standMode of process.argv[6] === 'standonly' ? [true] : [true, false]) {
     const ph = new Physics();
     const b = ph.biped;
     b.setPose(standMode ? staggeredStandPose() : initialPose(p));

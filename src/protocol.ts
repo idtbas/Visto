@@ -11,7 +11,8 @@ export type ToWorker =
   | { type: 'cookie' }
   | { type: 'placeCookie'; x: number }
   | { type: 'autoReward'; on: boolean }
-  | { type: 'wantsToWalk'; on: boolean };
+  | { type: 'wantsToWalk'; on: boolean }
+  | { type: 'obstacles'; on: boolean };
 
 export type FromWorker = { type: 'frame'; frame: Frame } | { type: 'ready'; brain: BrainInfo; restored: boolean } | { type: 'state'; state: SimState }
   | { type: 'attempts'; list: number[] };

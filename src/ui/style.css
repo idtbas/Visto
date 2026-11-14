@@ -315,10 +315,16 @@ body.manual .mbar .knob {
   flex-direction: column;
   min-width: 0;
 }
-.learnChart canvas {
+.learnWrap {
+  position: relative;
   flex: 1;
-  width: 100%;
   min-height: 0;
+}
+.learnWrap canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
 }
 .toneBox {
   padding: 10px 16px 8px;

@@ -45,7 +45,7 @@
           <section class="learn">
             <div class="learnChart">
               <h2>Lernkurve <span class="meta">Strecke pro Versuch · orange = Schnitt der letzten 15</span></h2>
-              <canvas id="learn"></canvas>
+              <div class="learnWrap"><canvas id="learn"></canvas></div>
             </div>
             <div class="toneBox">
               <h2>Tonus-Kerne <span class="meta">gelernt</span></h2>
@@ -56,6 +56,7 @@
             <div class="stat cookieBox">
               <button id="btnCookie" title="Belohnung geben (Taste C)">🍪 Cookie geben</button>
               <label class="toggle" title="Belohnt Fortschritt automatisch und legt Cookies auf den Weg"><input type="checkbox" id="chkAuto" checked /> Auto-Belohnung</label>
+              <label class="toggle" title="Legt kleine Stufen in den Weg. Hinter jeder wartet ein Cookie."><input type="checkbox" id="chkObst" /> Hindernisse</label>
             </div>
             <div class="stat"><span class="k">Energie</span><span class="v"><span class="ebar"><span id="energyFill"></span></span></span></div>
             <div class="stat"><span class="k">Cookies</span><span class="v" id="stCookies">0</span></div>
