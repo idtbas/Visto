@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Visto – ein Gehirn lernt laufen</title>
+    <link rel="stylesheet" href="/src/ui/style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header>
+        <div class="brand">
+          <span class="logo">◍</span>
+          <h1>Visto</h1>
+          <span class="tagline">ein simuliertes Gehirn lernt laufen</span>
+        </div>
+        <div class="clock">
+          <span id="simTime">0:00</span>
+          <span class="dim" id="simSpeed">×1.0</span>
+        </div>
+        <div class="controls">
+          <button id="btnPause" title="Pause / Weiter">❚❚</button>
+          <div class="seg" id="speedSeg">
+            <button data-speed="0.25">¼×</button>
+            <button data-speed="1" class="on">1×</button>
+            <button data-speed="4">4×</button>
+            <button data-speed="0">max</button>
+          </div>
+          <button id="btnReset" title="Wieder aufstellen">Aufstellen</button>
+        </div>
+      </header>
+      <main>
+        <section class="world">
+          <canvas id="world"></canvas>
+          <div class="hud" id="hud"></div>
+        </section>
+        <aside id="side">
+          <section class="panel" id="musclePanel">
+            <h2>Muskeln</h2>
+            <p class="hint" id="muscleHint"></p>
+            <div id="muscleRows"></div>
+          </section>
+        </aside>
+      </main>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
