@@ -67,6 +67,7 @@ const BASAL_POWER = 40; // W, cost of being alive
 // range above it that counts as fully unpredictable
 const UNCERTAINTY_FLOOR = Number((globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env.UFLOOR ?? 0.45);
 const UNCERTAINTY_SPAN = 0.6;
+const EXPLORE_SPAN = Number((globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env.EXPLORE_SPAN ?? 1.5);
 
 export class Hormones {
   readonly level: Record<HormoneName, number> = {
@@ -151,7 +152,10 @@ export class Hormones {
     // fokin gates plasticity: when everything goes as expected there is little reason to change
     e.learningRate = (0.4 + 1.2 * L.plastin) * (0.7 + 0.5 * arousalU) * (1 - 0.4 * Math.max(0, L.stressin - 0.6) * 2.5) * (0.1 + 1.6 * L.fokin);
     if (e.learningRate < 0.05) e.learningRate = 0.05;
-    e.exploration = Math.max(0.15, (0.15 + 1.5 * L.fokin) * (1 - 0.3 * L.serenin) * (1 - 0.5 * L.somnin));
+    // Even at full uncertainty the variation must stay small enough that a creature which
+    // can already walk is not knocked over by its own experiments; otherwise falls raise the
+    // uncertainty, which raises the exploration, which causes more falls.
+    e.exploration = Math.max(0.15, (0.15 + EXPLORE_SPAN * L.fokin) * (1 - 0.3 * L.serenin) * (1 - 0.5 * L.somnin));
     e.arousal = 1.5 * (L.vigilin - 0.2) - 1.5 * L.somnin;
     e.vigor = Math.min(1.15, Math.max(0.5, 1 + 0.25 * (L.ergin - 0.3) - 0.5 * L.stressin - 0.3 * L.somnin));
     e.appetite = 0.3 + 1.7 * L.ergin;

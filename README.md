@@ -163,6 +163,67 @@ lernten laufen (nach etwa 17 und 23 Minuten, danach 0–5 Stürze pro Minute und
 Stück), zwei stürzten nach 24 bzw. 30 Minuten immer noch 15–18-mal pro Minute. Ein früherer
 Lauf im Browser war schon nach etwa 10 Minuten so weit.
 
+Mit dem fertigen Stand (Gedächtnis, Schlaf mit Replay, Vorhersage; 6.392 Neuronen) noch einmal
+vier Leben, Stürze pro Minute:
+
+| Leben | Minute 1–22 |
+|---|---|
+| 1 | 21 19 20 19 10 13 17 18 17 13 10 17 17 16 17 4 18 18 17 18 12 |
+| 2 | 23 22 19 19 6 13 7 5 1 0 0 0 0 0 0 0 2 0 0 2 1 0 |
+| 3 | 19 20 20 17 16 5 16 15 14 17 6 14 12 13 16 16 3 0 17 15 15 18 |
+| 4 | 25 24 22 21 10 17 20 19 19 5 18 18 18 17 4 18 17 18 16 6 16 14 |
+
+Eines von vier hat es in dieser Zeit gelernt (ab Minute 9 fast sturzfrei). Vorsicht beim
+Lesen: Die einzelnen niedrigen Zahlen der anderen (10, 6, 4 …) sind fast alle Minuten, in
+denen das Wesen 30 bis 45 Sekunden geschlafen hat und deshalb gar nicht fallen konnte. Das
+gilt genauso für die Replay-Tabelle weiter unten. Eine echte Ausnahme gab es: Leben 3 lief in
+Minute 18, direkt nach dem Aufwachen, eine volle Minute ohne Sturz und fiel danach wieder
+15-mal pro Minute. Nach dem Schlaf ist die Erkundung niedrig; das deutet darauf hin, dass
+starkes Ausprobieren selbst Stürze verursacht, die wiederum die Unsicherheit und damit das
+Ausprobieren hochhalten.
+
+Die Erkundung pauschal zu dämpfen (`EXPLORE_SPAN=0.8` statt 1,5; vier Leben, 26 Minuten) hat
+das aber nicht gelöst. In wachen Minuten gingen zwei Leben langsam von 20–25 auf 8–14 Stürze
+zurück, eines von 25 auf 16–18, und eines stürzte durchgehend 18-mal pro Minute auf dieselbe
+Weise, ohne dass sich seine Grundspannung bewegte. Keines wurde sturzfrei, auch nicht das
+Leben, das mit 1,5 schon nach 9 Minuten lief. Mit 0,5 (zwei Leben) war es nicht besser. Die
+Einstellung steht deshalb wieder auf 1,5. Bei vier Leben je Einstellung ist das alles nur ein
+Hinweis, kein Beweis.
+
+**Gedächtnis und Replay** (`tools/memory-test.ts`): Was im Schlaf abgespielt wird, stimmt mit
+dem überein, was im Versuch ausprobiert wurde (Korrelation 0,89 bis 0,95 über 85–100 Werte),
+und das Dopamin im Traum hat in 12 von 12 bzw. 16 von 17 Fällen das Vorzeichen des damaligen
+Ausgangs.
+
+Lernen mit und ohne Replay (je zwei Leben, gleiche Startbedingungen, Stürze pro Minute):
+
+| | Minute 6–10 | Minute 11–15 | Minute 16–18 |
+|---|---|---|---|
+| Replay stark, Leben 1 | 6 14 14 17 14 | 15 4 9 8 4 | 4 1 0 |
+| ohne Replay, Leben 1 | 6 15 10 14 16 | 13 5 10 11 9 | 15 3 2 |
+| Replay stark, Leben 2 | 1 12 15 14 16 | 16 7 11 5 12 | 13 12 6 |
+| ohne Replay, Leben 2 | 1 6 12 3 1 | 4 3 1 1 7 | 0 6 1 |
+
+(In Minute 6 schlafen alle zum ersten Mal, bis dahin sind die Paare identisch.)
+
+Eine zweite Reihe mit halber Stärke und nur den Erlebnissen seit dem letzten Schlaf ergab
+dasselbe Bild: Leben 1 gleichauf (beide nach 17 Minuten noch nicht so weit), Leben 2 ohne
+Replay ab Minute 9 fast sturzfrei, mit Replay erst ab etwa Minute 14. Replay verdoppelt hier im Grunde nur Lernschritte, die im Wachen schon
+gemacht wurden.
+
+**Vorhersage** (`tools/predict-test.ts`): Der mittlere Vorhersagefehler fällt in 6 Minuten von
+0,28 auf 0,13. In der halben Sekunde vor einem Sturz liegt seine Spitze bei 0,22 ± 0,04 (5
+Stürze), sonst bei 0,20 ± 0,02 (430 Messungen); nach einem sanften Stoß bei 0,20 gegenüber
+0,20 ohne. Das reicht nicht für einen brauchbaren Alarm.
+
+**Inneres Durchspielen** (`tools/obstacle-learn.ts` mit `PRE=14`, je zwei eingelaufene Wesen,
+8 Minuten mit Stufen): Mit Erinnerungsabruf sinkt das Anheben der Füße vor Stufen in 2 bis 4
+Minuten von halber Stärke auf null; ohne Abruf liegt es nach 8 Minuten noch bei 0,8. Geschafft
+wurden mit Abruf 75–79 % der Stufen (ohne: 62–67 %) in einem Paar und 42–64 % (ohne: 55–67 %)
+im anderen. Die Entscheidung fällt also schnell, der Nutzen ist nicht gesichert.
+
+Die folgenden älteren Zahlen stammen aus der Zeit vor dem Gedächtnis:
+
 Hindernisse (5–10 cm hohe Stufen, `tools/obstacle-learn.ts`, gereiftes Wesen, je 2 Minuten):
 
 | | geschafft / gestolpert | sonstige Stürze |
@@ -176,9 +237,14 @@ das Maximum und sank erst danach.
 
 ## Was noch nicht geht
 
+- **Laufen lernt nicht jedes Leben.** In den Messungen schafften es je nach Reihe eines bis zwei
+  von vier Leben innerhalb von 20 bis 30 Minuten; die anderen bleiben in einer Schleife aus
+  Stürzen und Ausprobieren hängen (Zahlen unter „Gemessen"). Wenn ein Leben nach 20 Minuten
+  noch ständig fällt, hilft derzeit nur „Neues Leben". Was fehlt, ist eine Erkundung, die sich
+  danach richtet, ob Ausprobieren gerade etwas bringt.
 - **Replay bringt bisher keinen Lernvorteil.** Es funktioniert wie beschrieben, aber in zwei
   Messreihen lernten die Leben mit Replay nicht schneller laufen als ohne, bei stärkerer
-  Einstellung eher langsamer (Zahlen unten). Es ist deshalb schwach eingestellt.
+  Einstellung eher langsamer (Zahlen unter „Gemessen"). Es ist deshalb schwach eingestellt.
 - **Der Vorhersagefehler taugt noch nicht als Alarm.** Das Vorwärtsmodell lernt den Gang, aber
   vor einem Sturz steigt sein Fehler nur wenig und einen sanften Stoß erkennt er nicht.
   Entsprechend selten meldet es eine Überraschung. „Vorsichtiger werden" ist nicht eingebaut.
@@ -205,7 +271,8 @@ das Maximum und sank erst danach.
 |---|---|
 | `npx tsx tools/learn-test.ts <min> 0 1` mit `TONE=0.6` | ein Leben ohne Browser, druckt den Fortschritt je Minute (`SHAM=1` für die Kontrolle) |
 | `npx tsx tools/spinal-test.ts out/x.json 0 20` | prüft die angeborene Verschaltung |
-| `npx tsx tools/obstacle-learn.ts <min> 1` | Hindernisse: lernt es, wann es die Füße hebt? |
+| `npx tsx tools/obstacle-learn.ts <min> 1` | Hindernisse: lernt es, wann es die Füße hebt? (`NORECALL=1` ohne Erinnerungsabruf) |
+| `npx tsx tools/memory-test.ts`, `tools/predict-test.ts` | Gedächtnis und Replay, Vorwärtsmodell |
 | `npx tsx tools/tune-reflex.ts`, `tools/shadow.ts`, `tools/tune-spinal.ts` | die „Evolution": Referenzregler optimieren, Rückenmark dagegen kalibrieren, im geschlossenen Kreis feinabstimmen |
 | `node tools/shot.cjs out.png`, `node tools/shot-series.cjs` | Screenshots der laufenden Seite |
 
