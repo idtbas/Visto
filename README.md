@@ -19,8 +19,9 @@ sich überall hosten oder direkt öffnen lässt.
   Hirnstamm und Rückenmark mit linker und rechter Hälfte, außen die Sinnes- und Bewegungsnerven
   der Beine. Jeder Punkt ist ein Neuron und blitzt bei jedem seiner Spikes auf (blau = hemmend).
   Die Linien sind Nervenbahnen; sie werden mit der Feuerrate ihrer Quellneuronen heller, und die
-  Lichtpunkte darauf sind eine Zufallsstichprobe der Spikes, die gerade hindurchlaufen (etwa
-  jeder 250.). Nichts davon ist Dekoration. Mit der Maus über eine Zellgruppe fahren zeigt Name
+  Lichtpunkte darauf sind eine Zufallsstichprobe der Spikes, die gerade hindurchlaufen
+  (höchstens etwa jeder 250.; wie schnell sie wandern, ist frei gewählt). Der blasse Umriss von
+  Gehirn und Rückenmark dahinter ist reine Orientierungshilfe. Mit der Maus über eine Zellgruppe fahren zeigt Name
   und Feuerrate.
 - **Botenstoffe**: die Pegel der acht Hormone mit ihrem Verlauf der letzten Minute.
 - **Lernkurve**: wie weit jeder Laufversuch kam. **Tonus-Kerne**: was das Wesen bisher gelernt hat.
