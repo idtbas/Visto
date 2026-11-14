@@ -19,7 +19,7 @@ export class Physics {
 
   step(): void {
     this.biped.preStep(DT);
-    this.world.step(DT, 8, 3);
+    this.world.step(DT, 4, 2);
     this.biped.postStep(DT);
     this.time += DT;
   }

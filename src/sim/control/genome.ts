@@ -1,2 +1,5 @@
-// Reflex gains found by offline optimisation (tools/tune-reflex.ts). Do not edit by hand.
-export const REFLEX_GENOME: number[] = [1.25753,1.20062,0.67486,0.39394,1.19212,1.53752,0.18913,2.07033,0.38633,0.07441,1.04543,0.50463,0.36777,1.94271,0.78354,0.47484,0.51392,0.47294,3.14051,0.73781,1.42202,0.13414,0.01001,1.34833,0.12142,161.8458,193.53195,181.51025,167.68599,96.19299,94.39762];
+// Innate wiring found by offline optimisation ("evolution"), see tools/tune-reflex.ts and tools/tune-spinal.ts.
+// Do not edit by hand.
+export const REFLEX_GENOME: number[] = [1.25753,1.20062,0.67486,0.39394,1.19212,1.53752,0.18913,2.07033,0.38633,0.07441,1.04543,0.50463,0.36777,1.94271,0.78354,0.47484,0.51392,0.47294,3.14051,0.73781,1.42202,0.13414,0.01001,1.34833,0.12142,161.8458,193.53195,181.51025,167.68599,96.19299,94.39762,2,0.3,0.03,2,0.9,0.5,2,0.8,0.5,2,0.9,0.05,0.05,0.03];
+/** strength multipliers of the spinal pathways, order: wSolF, wSolTa, wGasF, wVasF, wKneeVas, wVestHam, wVestGlu, wVestHfl, wTaL, wHamF, wGluF, wHflL, wHamHfl, wLeanHfl, sSolL, sSolCop, sGasCop, sTaL, sTaCop, sVasL, sVestHam, sVestGlu, sVestHfl, tVasStance, tHipStance, trVas, trGlu, trHfl, tVasStand, tSolStand, tHipStand */
+export const SPINAL_MULT: number[] = [0.58011,0.77601,1.07733,1.77045,0.31341,3.60816,1.15737,0.91188,2.05381,0.62403,0.74739,0.85042,6.12966,0.69253,1,1,1,1,1,1,1,1,1,3.28674,4.83384,2.79006,5.97474,3.95606,2.5,2.5,2.5];

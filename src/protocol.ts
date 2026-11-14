@@ -1,4 +1,4 @@
-import type { ControlMode, Frame } from './sim/sim';
+import type { BrainInfo, ControlMode, Frame } from './sim/sim';
 
 export type ToWorker =
   | { type: 'start' }
@@ -8,4 +8,4 @@ export type ToWorker =
   | { type: 'manualStim'; values: number[] }
   | { type: 'reset' };
 
-export type FromWorker = { type: 'frame'; frame: Frame } | { type: 'ready' };
+export type FromWorker = { type: 'frame'; frame: Frame } | { type: 'ready'; brain: BrainInfo };

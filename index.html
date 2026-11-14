@@ -30,17 +30,34 @@
         </div>
       </header>
       <main>
-        <section class="world">
-          <canvas id="world"></canvas>
-          <div class="hud" id="hud"></div>
-        </section>
-        <aside id="side">
+        <div class="col left">
+          <section class="world">
+            <canvas id="world"></canvas>
+            <div class="hud" id="hud"></div>
+            <div class="state" id="lifeState"></div>
+          </section>
+          <section class="strip" id="lifeStrip">
+            <div class="stat"><span class="k">Stürze</span><span class="v" id="stFalls">0</span></div>
+            <div class="stat"><span class="k">Dieser Versuch</span><span class="v" id="stAttempt">0,0 m</span></div>
+            <div class="stat"><span class="k">Rekord</span><span class="v" id="stBest">0,0 m</span></div>
+            <div class="stat"><span class="k">Tempo</span><span class="v" id="stSpeed">0,0 m/s</span></div>
+            <div class="stat"><span class="k">Leistung</span><span class="v" id="stPower">0 W</span></div>
+          </section>
+        </div>
+        <div class="col right">
+          <section class="panel brain">
+            <h2>Nervensystem <span class="meta" id="brainMeta"></span></h2>
+            <div class="brainWrap">
+              <canvas id="brain"></canvas>
+              <div class="tip" id="brainTip"></div>
+            </div>
+          </section>
           <section class="panel" id="musclePanel">
             <h2>Muskeln</h2>
             <p class="hint" id="muscleHint"></p>
             <div id="muscleRows"></div>
           </section>
-        </aside>
+        </div>
       </main>
     </div>
     <script type="module" src="/src/main.ts"></script>

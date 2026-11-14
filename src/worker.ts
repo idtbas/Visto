@@ -53,7 +53,7 @@ self.onmessage = (e: MessageEvent<ToWorker>): void => {
   const m = e.data;
   switch (m.type) {
     case 'start':
-      post({ type: 'ready' });
+      post({ type: 'ready', brain: sim.brainInfo() });
       loop();
       break;
     case 'pause':

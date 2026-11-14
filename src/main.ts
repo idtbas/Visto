@@ -1,4 +1,5 @@
 import { BodyView } from './ui/bodyView';
+import { BrainView } from './ui/brainView';
 import { MUSCLE_NAMES, MUSCLE_LABELS, NM } from './sim/body/biped';
 import type { FromWorker, ToWorker } from './protocol';
 import type { Frame } from './sim/sim';
@@ -10,6 +11,11 @@ const send = (m: ToWorker): void => worker.postMessage(m);
 worker.onerror = (e) => console.error('worker error:', e.message, e.filename, e.lineno);
 
 const bodyView = new BodyView($<HTMLCanvasElement>('world'));
+const brainView = new BrainView($<HTMLCanvasElement>('brain'), $('brainTip'));
+const nf = new Intl.NumberFormat('de-DE');
+const de = (v: number, digits = 1): string => v.toFixed(digits).replace('.', ',');
+let lastFrameTime = 0;
+let spikeRate = 0;
 let latest: Frame | null = null;
 
 // ---------- muscle panel ----------
@@ -75,11 +81,16 @@ function updatePanels(f: Frame): void {
   const ss = t % 60;
   $('simTime').textContent = (hh ? `${hh}:${String(mm).padStart(2, '0')}` : `${mm}`) + `:${String(ss).padStart(2, '0')}`;
   $('simSpeed').textContent = `×${f.speed.toFixed(f.speed < 10 ? 1 : 0)}`;
-  $('hud').textContent =
-    `Strecke   ${f.body[0].toFixed(2)} m\n` +
-    `Tempo     ${f.velX.toFixed(2)} m/s\n` +
-    `Neigung   ${((f.lean * 180) / Math.PI).toFixed(0)}°\n` +
-    `Leistung  ${f.power.toFixed(0)} W`;
+  $('hud').textContent = `Strecke ${de(f.body[0], 2)} m   Neigung ${((f.lean * 180) / Math.PI).toFixed(0)}°`;
+  const life = f.life;
+  $('lifeState').textContent =
+    f.mode !== 'brain' ? (f.mode === 'manual' ? 'Handsteuerung' : 'Referenz-Reflexe (ohne Gehirn)') : life.state === 'fallen' ? 'gestürzt – wird gleich aufgestellt' : life.state === 'standing' ? 'steht' : 'läuft';
+  $('stFalls').textContent = String(life.falls);
+  $('stAttempt').textContent = `${de(life.attempt)} m`;
+  $('stBest').textContent = `${de(life.bestAttempt)} m`;
+  $('stSpeed').textContent = `${de(f.velX)} m/s`;
+  $('stPower').textContent = `${f.power.toFixed(0)} W`;
+  if (brainMeta) $('brainMeta').textContent = `${brainMeta} · ${nf.format(Math.round(spikeRate))} Spikes/s`;
 }
 
 // ---------- controls ----------
@@ -98,16 +109,33 @@ for (const b of Array.from($('speedSeg').querySelectorAll('button'))) {
   });
 }
 
+let brainMeta = '';
 worker.onmessage = (e: MessageEvent<FromWorker>): void => {
-  if (e.data.type === 'frame') {
-    latest = e.data.frame;
-    bodyView.setFrame(latest);
+  const m = e.data;
+  if (m.type === 'frame') {
+    const f = m.frame;
+    const dt = Math.max(0, f.time - lastFrameTime);
+    lastFrameTime = f.time;
+    latest = f;
+    bodyView.setFrame(f);
+    if (f.activity) {
+      brainView.addActivity(f.activity, dt);
+      if (dt > 0) {
+        let n = 0;
+        for (let i = 0; i < f.activity.length; i++) n += f.activity[i];
+        spikeRate += (n / dt - spikeRate) * 0.1;
+      }
+    }
+  } else if (m.type === 'ready') {
+    brainView.setInfo(m.brain);
+    brainMeta = `${nf.format(m.brain.neurons)} Neuronen · ${nf.format(m.brain.synapses)} Synapsen`;
   }
 };
 
 function raf(): void {
   if (latest) {
     bodyView.draw();
+    brainView.draw();
     updatePanels(latest);
   }
   requestAnimationFrame(raf);

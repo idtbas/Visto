@@ -25,8 +25,10 @@ export const NT = {
   FS: { a: 0.1, b: 0.2, c: -65, d: 2 },
   /** low-threshold spiking (inhibitory) */
   LTS: { a: 0.02, b: 0.25, c: -65, d: 2 },
-  /** tonic relay cell with little adaptation: sensory afferents, motoneurons */
+  /** tonic cell with little adaptation */
   TONIC: { a: 0.02, b: 0.2, c: -65, d: 2 },
+  /** fast-recovering relay cell: fires regularly and follows its input rate (afferents, motoneurons) */
+  RELAY: { a: 0.1, b: 0.2, c: -65, d: 2 },
 } satisfies Record<string, NeuronType>;
 
 export type Channel = 'E' | 'I' | 'S' | 'X' | 'C';
