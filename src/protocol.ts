@@ -13,4 +13,5 @@ export type ToWorker =
   | { type: 'autoReward'; on: boolean }
   | { type: 'wantsToWalk'; on: boolean };
 
-export type FromWorker = { type: 'frame'; frame: Frame } | { type: 'ready'; brain: BrainInfo; restored: boolean } | { type: 'state'; state: SimState };
+export type FromWorker = { type: 'frame'; frame: Frame } | { type: 'ready'; brain: BrainInfo; restored: boolean } | { type: 'state'; state: SimState }
+  | { type: 'attempts'; list: number[] };

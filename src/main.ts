@@ -1,6 +1,8 @@
 import { BodyView } from './ui/bodyView';
 import { BrainView } from './ui/brainView';
 import { HormoneView } from './ui/hormoneView';
+import { LearnView } from './ui/learnView';
+import { TONE_GROUPS } from './sim/brain/spinal';
 import { MUSCLE_NAMES, MUSCLE_LABELS, NM } from './sim/body/biped';
 import type { FromWorker, ToWorker } from './protocol';
 import type { Frame, SimState } from './sim/sim';
@@ -15,6 +17,16 @@ worker.onerror = (e) => console.error('worker error:', e.message, e.filename, e.
 const bodyView = new BodyView($<HTMLCanvasElement>('world'));
 const brainView = new BrainView($<HTMLCanvasElement>('brain'), $('brainTip'));
 const hormoneView = new HormoneView($('hormoneRows'));
+const learnView = new LearnView($<HTMLCanvasElement>('learn'));
+const toneBars: { fill: HTMLElement; val: HTMLElement }[] = [];
+for (const g of TONE_GROUPS) {
+  const row = document.createElement('div');
+  row.className = 'trow';
+  row.title = `${g.label}: ${g.text}. Der Strich markiert die ausgereifte Stärke.`;
+  row.innerHTML = `<span>${g.label}</span><span class="tbar"><span></span><i></i></span><span class="tv">0</span>`;
+  $('toneRows').appendChild(row);
+  toneBars.push({ fill: row.querySelector('.tbar span')!, val: row.querySelector('.tv')! });
+}
 const nf = new Intl.NumberFormat('de-DE');
 const de = (v: number, digits = 1): string => v.toFixed(digits).replace('.', ',');
 let lastFrameTime = 0;
@@ -89,6 +101,10 @@ function updatePanels(f: Frame): void {
   $('stAttempt').textContent = `${de(life.attempt)} m`;
   $('stBest').textContent = `${de(life.bestAttempt)} m`;
   hormoneView.update(f.hormones, f.time);
+  f.tone.forEach((v, i) => {
+    toneBars[i].fill.style.width = `${Math.min(100, v * 50)}%`;
+    toneBars[i].val.textContent = `${Math.round(v * 100)}`;
+  });
   $('energyFill').style.width = `${Math.round(f.energy * 100)}%`;
   $('stCookies').textContent = String(f.cookiesEaten);
   if (brainMeta) $('brainMeta').textContent = `${brainMeta} · ${nf.format(Math.round(spikeRate))} Spikes/s`;
@@ -146,6 +162,8 @@ worker.onmessage = (e: MessageEvent<FromWorker>): void => {
   } else if (m.type === 'ready') {
     brainView.setInfo(m.brain);
     brainMeta = `${nf.format(m.brain.neurons)} Neuronen · ${nf.format(m.brain.synapses)} Synapsen`;
+  } else if (m.type === 'attempts') {
+    learnView.setAttempts(m.list);
   } else if (m.type === 'state') {
     void saveLife(SAVE_KEY, m.state);
     $('saveNote').textContent = `gespeichert ${new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`;

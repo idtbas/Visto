@@ -42,6 +42,17 @@ const N_EX = 8;
 const EX_RATE = 30; // mean firing rate [Hz]
 const EX_TAU = 300; // correlation time of the random variation [ms]
 const EX_W = 0.05;
+/** firing rate of a tone nucleus that corresponds to the mature reflex strength [Hz] */
+const TONE_RATE = 50;
+/** n·p·w from the context pool onto a mature tone nucleus (context fires at about 63 Hz) */
+const TONE_K = 0.78;
+const TONE_EX_W = Number((globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env.TONE_EX_W ?? 0.07);
+// A variation of the tone is tried out for about as long as a walking attempt lasts, and the
+// synapses remember it for equally long, so that the outcome of the attempt can be credited to it.
+const TONE_EX_TAU = 4000; // ms
+const TONE_TAU_E = 3000; // ms
+/** individual reflex pathways learn much more slowly than the tone nuclei */
+const FINE_LR = 0.1;
 const GOSLOW_W = 0.1;
 /** smoothing of the motoneuron pool rate before it reaches the muscle [ms] */
 const STIM_TAU = 5;
@@ -66,7 +77,25 @@ interface PathDef {
   delay: 'S' | 'M' | 'L';
   /** the pathway only passes signals in proportion to the weight the leg carries */
   loadGated?: boolean;
+  /** index of the brainstem tone nucleus that scales this pathway */
+  group: number;
 }
+
+/** Brainstem nuclei that set the overall strength of whole groups of reflexes (descending tone).
+ *  Their drive is learned; a newborn starts with weak tone. */
+export const TONE_GROUPS = [
+  { key: 'extensor', label: 'Streck-Tonus', text: 'trägt das Körpergewicht in der Standphase' },
+  { key: 'trunk', label: 'Rumpf-Balance', text: 'hält den Oberkörper aufrecht' },
+  { key: 'swing', label: 'Schwung', text: 'führt das Bein nach vorn' },
+  { key: 'ankle', label: 'Fußheber', text: 'hebt die Fußspitze und bremst die Wade' },
+  { key: 'posture', label: 'Haltung', text: 'Gleichgewicht im ruhigen Stand' },
+] as const;
+const GROUP_OF: Record<string, number> = {
+  wSolF: 0, wGasF: 0, wVasF: 0, wKneeVas: 0,
+  wVestHam: 1, wVestGlu: 1, wVestHfl: 1,
+  wHamF: 2, wGluF: 2, wHflL: 2, wHamHfl: 2, wLeanHfl: 2,
+  wTaL: 3, wSolTa: 3,
+};
 
 export interface SpinalOptions {
   /** multiplies all pool sizes */
@@ -75,6 +104,8 @@ export interface SpinalOptions {
   mult?: ArrayLike<number>;
   /** make the afferent → interneuron synapses plastic and add the exploration nucleus */
   learn?: { lr: number; tauE: number; exploreW?: number };
+  /** descending tone of a newborn relative to the mature value (1 = mature) */
+  newbornTone?: number;
   /** spread (std of log strength) of random deviations from the innate blueprint: an untrained newborn */
   newborn?: number;
 }
@@ -90,10 +121,10 @@ const SC = { len: 0.4, knee: 10 * DEG, vest: 0.25, cop: 0.5, vel: 1.5 };
 
 export function pathDefs(g: Record<string, number>): PathDef[] {
   const w = (name: string, aff: string, muscle: MuscleName, sign: 1 | -1, gain: number, phase: Phase, delay: 'S' | 'M' | 'L', global = false): PathDef => ({
-    name, aff, muscle, sign, gain, phase, mode: 'walk', delay, global,
+    name, aff, muscle, sign, gain, phase, mode: 'walk', delay, global, group: GROUP_OF[name],
   });
   const s = (name: string, aff: string, muscle: MuscleName, gain: number, delay: 'S' | 'M' | 'L', global = false): PathDef => ({
-    name, aff, muscle, sign: 1, gain, phase: 'any', mode: 'stand', delay, global,
+    name, aff, muscle, sign: 1, gain, phase: 'any', mode: 'stand', delay, global, group: 4,
   });
   const pdW = g.kp * SC.vest * g.kbw * 0.6;
   return [
@@ -149,7 +180,10 @@ export class SpinalCord {
   readonly pathProj: Proj[][] = [[], []];
   readonly pathIn: Pop[][] = [[], []];
   readonly mlr: Pop;
-  private readonly explorers: { pop: Pop; x: number }[] = [];
+  readonly explorers: { pop: Pop; x: number }[] = [];
+  /** tone nuclei: learned drive -> firing rate -> gain of a reflex group */
+  readonly tone: { pop: Pop; proj: Proj; ex: Pop; x: number; gain: number; targets: Proj[] }[] = [];
+  private toneCtx!: Pop;
   /** locomotor command 0 (stand) .. 1 (walk), set by the brain */
   go = 0;
   private goLevel = 0;
@@ -181,7 +215,7 @@ export class SpinalCord {
     const E = (pre: Pop, post: Pop, K: number, delay: number, learnable = false): Proj => {
       const w = K / (pre.n * P_CONN);
       const plastic: Plasticity | undefined =
-        learnable && opt.learn ? { rule: 'perturb', lr: opt.learn.lr * w, tauE: opt.learn.tauE, wMin: 0, wMax: 4 * w } : undefined;
+        learnable && opt.learn ? { rule: 'perturb', lr: opt.learn.lr * FINE_LR * w, tauE: opt.learn.tauE, wMin: 0, wMax: 4 * w } : undefined;
       return net.connect({ pre, post, channel: 'E', p: P_CONN, w, wJitter: 0.5, delay: [delay, delay + 2], plastic });
     };
     const nb = opt.newborn ?? 0;
@@ -199,6 +233,22 @@ export class SpinalCord {
     I(goI, restI, K_GATE, 1);
     I(goI, post, K_GATE, 1);
 
+    // ---- tone nuclei: a tonically active context pool drives one nucleus per reflex group
+    // through plastic synapses; the nucleus' firing rate sets the gain of its reflexes ----
+    this.toneCtx = exc('TONctx', nI, 8);
+    for (const grp of TONE_GROUPS) {
+      const pop = net.addPop({ name: `TONE_${grp.key}`, n: nI, type: NT.RELAY, region: 'brainstem', bias: 1.0, biasJitter: 1.5, noise: 2.5 });
+      const w = (K_UNITY * TONE_K * (opt.newbornTone ?? 1)) / (this.toneCtx.n * P_CONN);
+      const wMature = (K_UNITY * TONE_K) / (this.toneCtx.n * P_CONN);
+      const proj = net.connect({
+        pre: this.toneCtx, post: pop, channel: 'E', p: P_CONN, w, wJitter: 0.3, delay: [1, 3],
+        plastic: opt.learn ? { rule: 'perturb', lr: opt.learn.lr * wMature, tauE: TONE_TAU_E, wMin: 0, wMax: 2.5 * wMature } : undefined,
+      });
+      const ex = net.addPop({ name: `EXT_${grp.key}`, n: N_EX, type: NT.RELAY, region: 'explore', bias: AFF_BIAS, biasJitter: 0.6, noise: 2 });
+      if (opt.learn) net.connect({ pre: ex, post: pop, channel: 'X', p: 1, w: TONE_EX_W, wJitter: 0.2, delay: [1, 3] });
+      this.tone.push({ pop, proj, ex, x: 0, gain: 1, targets: [] });
+    }
+
     // ---- gait initiation: a burst at the onset of the walk command. The slowly charging
     // inhibitory pool GOslow ends it after a few hundred milliseconds. ----
     const goSlow = inh('GOslow', nI, -1.0);
@@ -214,6 +264,7 @@ export class SpinalCord {
     affPop('VestB');
 
     const st: Pop[] = [];
+    const nbFactors: number[] = [];
     for (let leg = 0; leg < 2; leg++) {
       const L = `_${leg}`;
       for (const a of ['IbSOL', 'IbGAS', 'IbVAS', 'IbHAM', 'IbGLU', 'IITA', 'IITAst', 'IIHFL', 'IIHAM', 'IISOL', 'IIVAS', 'IaSOL', 'IaTA', 'IaVAS', 'KneeExt', 'Load', 'LoadG', 'CopF', 'CopB', 'HipExt']) affPop(a + L);
@@ -234,7 +285,9 @@ export class SpinalCord {
       for (const d of defs) {
         const aff = this.aff.get(d.global ? d.aff : d.aff + L)!.pop;
         const [dA, dM] = DELAYS[d.delay];
-        const gain = d.gain * mult(d.name) * nbFactor();
+        // both legs of a newborn deviate from the blueprint in the same way
+        if (leg === 0) nbFactors.push(nbFactor());
+        const gain = d.gain * mult(d.name) * nbFactors[this.pathIn[leg].length];
         let inPop: Pop;
         let proj: Proj;
         if (d.sign > 0) {
@@ -253,11 +306,16 @@ export class SpinalCord {
         I(d.mode === 'walk' ? restI : goI, inPop, K_GATE, 1);
         this.pathIn[leg].push(inPop);
         this.pathProj[leg].push(proj);
+        this.tone[d.group].targets.push(proj);
         if (opt.learn) {
-          // exploration: a small group of cells that randomly nudges this pathway up and down
-          const ex = net.addPop({ name: `EX_${d.name}${L}`, n: N_EX, type: NT.RELAY, region: 'explore', bias: AFF_BIAS, biasJitter: 0.6, noise: 2 });
-          net.connect({ pre: ex, post: inPop, channel: 'X', p: 1, w: opt.learn.exploreW ?? EX_W, wJitter: 0.2, delay: [1, 3] });
-          this.explorers.push({ pop: ex, x: 0 });
+          // exploration: a small group of cells that randomly nudges this pathway up and down,
+          // in both legs alike
+          const k = this.pathIn[leg].length - 1;
+          if (leg === 0) {
+            const ex = net.addPop({ name: `EX_${d.name}`, n: N_EX, type: NT.RELAY, region: 'explore', bias: AFF_BIAS, biasJitter: 0.6, noise: 2 });
+            this.explorers.push({ pop: ex, x: 0 });
+          }
+          net.connect({ pre: this.explorers[k].pop, post: inPop, channel: 'X', p: 1, w: opt.learn.exploreW ?? EX_W, wJitter: 0.2, delay: [1, 3] });
         }
       }
 
@@ -311,6 +369,26 @@ export class SpinalCord {
 
   /** amplitude of the exploratory variation (neuromodulated) */
   exploreGain = 1;
+
+  /** tone nuclei: explore, then translate their firing into the gain of their reflex groups */
+  private stepTone(): void {
+    const iext = this.net.iext;
+    const rng = this.net.rng;
+    const k = 1 / TONE_EX_TAU;
+    const sd = Math.sqrt(2 * k);
+    for (const tn of this.tone) {
+      tn.x += -tn.x * k + sd * gaussian(rng);
+      let rate = EX_RATE * (1 + this.exploreGain * tn.x);
+      if (rate < 0) rate = 0;
+      else if (rate > 2.5 * EX_RATE) rate = 2.5 * EX_RATE;
+      const cur = currentForRate(rate);
+      for (let i = tn.ex.start; i < tn.ex.end; i++) iext[i] = cur;
+      // the modulator released by the nucleus acts with a time constant of 50 ms
+      const g = Math.min(2.2, tn.pop.rate / TONE_RATE);
+      tn.gain += (g - tn.gain) * 0.02;
+      for (const pr of tn.targets) pr.gain = tn.gain;
+    }
+  }
 
   private stepExplorers(): void {
     const iext = this.net.iext;
@@ -382,6 +460,7 @@ export class SpinalCord {
     const cmd = currentForRate(R_AFF * this.go);
     for (let i = this.mlr.start; i < this.mlr.end; i++) iext[i] = cmd;
     if (this.explorers.length > 0) this.stepExplorers();
+    this.stepTone();
   }
 
   /** motoneuron firing drives the muscles */

@@ -12,6 +12,7 @@ let lastFrame = 0;
 let measured = 0;
 let measSim = 0;
 let measWall = performance.now();
+let sentAttempts = -1;
 
 const post = (m: FromWorker): void => (self as unknown as Worker).postMessage(m);
 
@@ -45,6 +46,10 @@ function loop(): void {
   if (now - lastFrame >= 15) {
     lastFrame = now;
     post({ type: 'frame', frame: sim.frame(measured) });
+    if (sim.attemptCount !== sentAttempts) {
+      sentAttempts = sim.attemptCount;
+      post({ type: 'attempts', list: sim.attempts.slice() });
+    }
   }
   setTimeout(loop, 0);
 }

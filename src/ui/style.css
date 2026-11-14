@@ -288,6 +288,75 @@ main {
 body.manual .mbar .knob {
   display: block;
 }
+.learn {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 230px;
+  border-top: 1px solid var(--line);
+  background: var(--panel);
+  height: 132px;
+}
+.learn h2 {
+  margin: 0 0 6px;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--dim);
+  font-weight: 600;
+}
+.learn h2 .meta {
+  float: right;
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 400;
+}
+.learnChart {
+  padding: 10px 16px 8px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.learnChart canvas {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+}
+.toneBox {
+  padding: 10px 16px 8px;
+  border-left: 1px solid var(--line);
+}
+.trow {
+  display: grid;
+  grid-template-columns: 92px 1fr 30px;
+  gap: 8px;
+  align-items: center;
+  height: 19px;
+  font-size: 12px;
+}
+.tbar {
+  position: relative;
+  height: 7px;
+  background: #1a2230;
+  border-radius: 4px;
+}
+.tbar span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 4px;
+  background: #ffd682;
+}
+.tbar i {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  left: 50%;
+  width: 1px;
+  background: #5d6d88;
+}
+.trow .tv {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--dim);
+  text-align: right;
+}
 .cookieBox {
   flex: none;
   flex-direction: row;

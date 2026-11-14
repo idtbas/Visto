@@ -2,6 +2,7 @@
 import { Network } from './network';
 import { SpinalCord } from './spinal';
 import { RewardSystem } from './reward';
+import { Cerebellum } from './cerebellum';
 import { Hormones, HORMONES, type HormoneInputs } from './hormones';
 import type { Biped } from '../body/biped';
 
@@ -42,12 +43,17 @@ export interface BrainOptions {
   exploreW?: number;
   /** how far the newborn's reflexes deviate from the innate blueprint (0 = perfectly tuned) */
   newborn?: number;
+  /** number of cerebellar granule cells; 0 = no cerebellum */
+  granules?: number;
+  /** descending tone of the newborn relative to mature (1 = mature) */
+  newbornTone?: number;
 }
 
 export class Brain {
   readonly net: Network;
   readonly spinal: SpinalCord;
   readonly reward: RewardSystem;
+  readonly cerebellum: Cerebellum | null;
   readonly hormones = new Hormones();
   /** set by the simulation before every tick */
   readonly bodyState: HormoneInputs = { rpe: 0, dopamine: 0, pain: 0, surprise: 0, power: 0, intake: 0, asleep: false, activity: 0 };
@@ -60,18 +66,20 @@ export class Brain {
     this.spinal = new SpinalCord(this.net, biped, genome.params, {
       scale: opt.scale ?? 1,
       mult: genome.mult,
-      learn: opt.learn ? { lr: opt.learningRate ?? 2e-7, tauE: 400, exploreW: opt.exploreW } : undefined,
+      learn: opt.learn ? { lr: opt.learningRate ?? 1e-6, tauE: 500, exploreW: opt.exploreW } : undefined,
       newborn: opt.newborn,
+      newbornTone: opt.newbornTone,
     });
     this.reward = new RewardSystem(this.net);
+    this.cerebellum = opt.granules && opt.granules > 0 ? new Cerebellum(this.net, this.spinal, { granules: opt.granules }) : null;
     this.net.build();
     this.net.learning = !!opt.learn;
     this.activity = new Uint8Array(this.net.n);
   }
 
   /** @param reward continuous reward rate, @param context behavioural context for the reward expectation */
-  tick(reward = 0, context = 0): void {
-    this.reward.step(reward, context);
+  tick(reward = 0, context = 0, surprise = 0): void {
+    this.reward.step(reward, context, surprise);
     // hormones: read the state of body and reward system, then modulate the network
     const bs = this.bodyState;
     bs.rpe = this.reward.rpe;
@@ -88,6 +96,7 @@ export class Brain {
       for (const pr of this.net.projs) if (pr.plastic) pr.lrGain = fx.learningRate;
     }
     this.spinal.sense();
+    this.cerebellum?.step();
     this.net.step();
     this.spinal.act();
     const { spikes, nSpikes } = this.net;

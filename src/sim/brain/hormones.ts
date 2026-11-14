@@ -63,6 +63,10 @@ const DT = 0.001;
 /** full energy store in joules: enough for roughly ten minutes of walking */
 export const ENERGY_CAPACITY = 250_000;
 const BASAL_POWER = 40; // W, cost of being alive
+// standard deviation of the (smoothed) reward prediction error during smooth walking, and the
+// range above it that counts as fully unpredictable
+const UNCERTAINTY_FLOOR = Number((globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env.UFLOOR ?? 0.45);
+const UNCERTAINTY_SPAN = 0.6;
 
 export class Hormones {
   readonly level: Record<HormoneName, number> = {
@@ -75,10 +79,14 @@ export class Hormones {
     somnin: 0,
     plastin: 0.4,
   };
+  /** sleep pressure only builds up when the creature is able to sleep */
+  sleepEnabled = false;
   /** energy store 0..1 */
   energy = 0.8;
   /** running variance of the reward prediction error: how unpredictable is the world right now? */
-  private rpeVar = 0.05;
+  rpeVar = 0.05;
+  /** 0 = rewards arrive as expected, 1 = very unpredictable */
+  uncertainty = 0.5;
   private rpeFast = 0;
   readonly effects: HormoneEffects = { learningRate: 1, exploration: 1, arousal: 0, vigor: 1, appetite: 1, caution: 0, strength: 1, wantsSleep: false };
 
@@ -104,17 +112,19 @@ export class Hormones {
     // --- vigilin: surprise and pain, cleared within seconds; sleep pressure dampens it ---
     const unsigned = Math.min(1, Math.abs(inp.rpe) * 0.6);
     const vigTarget = Math.min(1, 0.15 + 0.2 * L.ergin) * (1 - 0.6 * L.somnin);
-    L.vigilin += (Math.max(inp.surprise, inp.pain) * 0.5 + unsigned * 0.004) * (1 - 0.5 * L.somnin);
+    L.vigilin += (Math.max(inp.surprise, inp.pain) * 0.35 + unsigned * 0.0003) * (1 - 0.5 * L.somnin);
     relax('vigilin', inp.asleep ? 0.02 : vigTarget, 2.5);
 
     // --- fokin: tracks how unpredictable rewards currently are ---
     this.rpeFast += (inp.rpe - this.rpeFast) * (DT / 0.3);
     this.rpeVar += (this.rpeFast * this.rpeFast - this.rpeVar) * (DT / 20);
-    const uncertainty = Math.min(1, Math.sqrt(this.rpeVar) * 1.6);
-    relax('fokin', inp.asleep ? 0.05 : 0.15 + 0.85 * uncertainty, 8);
+    this.uncertainty = Math.min(1, Math.max(0, (Math.sqrt(this.rpeVar) - UNCERTAINTY_FLOOR) / UNCERTAINTY_SPAN));
+    const uncertainty = this.uncertainty;
+    relax('fokin', inp.asleep ? 0.05 : 0.08 + 0.92 * uncertainty, 8);
 
     // --- stressin: pain and sustained failure push it up, it decays slowly; serenin protects ---
-    L.stressin += inp.pain * 0.12 * (1 - 0.5 * L.serenin);
+    // repeated pain adds less and less: the system habituates
+    L.stressin += inp.pain * 0.08 * (1 - L.stressin) * (1 - 0.5 * L.serenin);
     if (inp.rpe < -0.5) L.stressin += 0.00002 * -inp.rpe;
     relax('stressin', inp.asleep ? 0 : 0.05 + 0.3 * Math.max(0, L.ergin - 0.7), inp.asleep ? 30 : 90);
 
@@ -124,12 +134,12 @@ export class Hormones {
 
     // --- somnin: sleep pressure builds with time awake and neural activity ---
     if (inp.asleep) relax('somnin', 0, 25);
-    else L.somnin += DT * (1 / 900) * (0.6 + 0.4 * Math.min(2, inp.activity / 20));
+    else if (this.sleepEnabled) L.somnin += DT * (1 / 900) * (0.6 + 0.4 * Math.min(2, inp.activity / 20));
 
     // --- plastin: released by rewarding activity, suppressed by stress ---
     const success = inp.rpe > 0 ? Math.min(1, inp.rpe) : 0;
     relax('plastin', Math.min(1, 0.35 + 0.5 * success + (inp.asleep ? 0.3 : 0)) * (1 - 0.7 * Math.max(0, L.stressin - 0.3) / 0.7), 30);
-    L.plastin += success * 0.0002;
+    L.plastin += success * 0.00003;
 
     for (const h of HORMONES) clamp01(h);
 
@@ -137,9 +147,10 @@ export class Hormones {
     const e = this.effects;
     // moderate arousal helps learning, both drowsiness and panic hurt it (inverted U)
     const arousalU = 1 - Math.min(1, Math.abs(L.vigilin - 0.4) * 1.2);
-    e.learningRate = (0.4 + 1.2 * L.plastin) * (0.6 + 0.6 * arousalU) * (1 - 0.6 * Math.max(0, L.stressin - 0.5) * 2);
+    // fokin gates plasticity: when everything goes as expected there is little reason to change
+    e.learningRate = (0.4 + 1.2 * L.plastin) * (0.7 + 0.5 * arousalU) * (1 - 0.4 * Math.max(0, L.stressin - 0.6) * 2.5) * (0.1 + 1.6 * L.fokin);
     if (e.learningRate < 0.05) e.learningRate = 0.05;
-    e.exploration = Math.max(0.2, (0.4 + 1.2 * L.fokin) * (1 - 0.4 * L.serenin) * (1 - 0.5 * L.somnin));
+    e.exploration = Math.max(0.15, (0.15 + 1.5 * L.fokin) * (1 - 0.3 * L.serenin) * (1 - 0.5 * L.somnin));
     e.arousal = 1.5 * (L.vigilin - 0.2) - 1.5 * L.somnin;
     e.vigor = Math.min(1.15, Math.max(0.5, 1 + 0.25 * (L.ergin - 0.3) - 0.5 * L.stressin - 0.3 * L.somnin));
     e.appetite = 0.3 + 1.7 * L.ergin;

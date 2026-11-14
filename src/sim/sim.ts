@@ -3,6 +3,7 @@ import { Vec2 } from 'planck';
 import { Physics, DT } from './world/physics';
 import { NM, STAND_POSE, staggeredStandPose, type Pose } from './body/biped';
 import { Brain, type PopInfo, type BrainState } from './brain/brain';
+import { FallExpectation } from './brain/expectation';
 import { ReflexController, initialPose, REFLEX_DEFAULTS } from './control/reflex';
 import { REFLEX_GENOME, SPINAL_MULT } from './control/genome';
 
@@ -30,6 +31,10 @@ export interface Frame {
   hormones: number[];
   energy: number;
   cookies: Cookie[];
+  /** learned gain of the brainstem tone nuclei (1 = mature) */
+  tone: number[];
+  /** number of finished walking attempts; the list itself is sent separately when this changes */
+  attemptCount: number;
   /** counts cookies eaten so far (to trigger effects in the display) */
   cookiesEaten: number;
 }
@@ -51,12 +56,17 @@ export interface LifeStats {
   inHand: boolean;
 }
 
+/** how much a fall hurts, in units of reward */
+const FALL_COST = 1.5;
+
 export interface SimState {
   brain: BrainState;
   time: number;
   life: LifeStats;
   cookiesEaten: number;
   x: number;
+  attempts?: number[];
+  durations?: number[];
 }
 
 export interface SimOptions {
@@ -66,6 +76,8 @@ export interface SimOptions {
   learningRate?: number;
   exploreW?: number;
   newborn?: number;
+  newbornTone?: number;
+  granules?: number;
   mult?: number[];
   /** reflex blueprint; defaults to the built-in genome */
   params?: number[];
@@ -92,6 +104,10 @@ export class Sim {
   /** how long the helping hand steadies the creature after putting it down [s] */
   holdTime = 0.5;
   private attemptX0 = 0;
+  readonly fallExpectation = new FallExpectation();
+  /** distance of every finished walking attempt [m] (most recent last) */
+  readonly attempts: number[] = [];
+  attemptCount = 0;
   readonly cookies: Cookie[] = [];
   cookiesEaten = 0;
   /** keep one cookie waiting ahead of the creature */
@@ -137,7 +153,7 @@ export class Sim {
     this.brain = new Brain(
       this.physics.biped,
       { params: this.reflexParams, mult: opt.mult ?? SPINAL_MULT },
-      { scale: opt.brainScale ?? 1, seed: opt.seed ?? 1, learn: opt.learn ?? true, learningRate: opt.learningRate, exploreW: opt.exploreW, newborn: opt.newborn ?? 0 },
+      { scale: opt.brainScale ?? 1, seed: opt.seed ?? 1, learn: opt.learn ?? true, learningRate: opt.learningRate, exploreW: opt.exploreW, newborn: opt.newborn ?? 0, newbornTone: opt.newbornTone, granules: opt.granules },
     );
     this.place();
   }
@@ -156,7 +172,7 @@ export class Sim {
   }
 
   saveState(): SimState {
-    return { brain: this.brain.saveState(), time: this.physics.time, life: { ...this.life }, cookiesEaten: this.cookiesEaten, x: this.physics.biped.hipX() };
+    return { brain: this.brain.saveState(), time: this.physics.time, life: { ...this.life }, cookiesEaten: this.cookiesEaten, x: this.physics.biped.hipX(), attempts: this.attempts.slice(), durations: this.fallExpectation.save() };
   }
 
   loadState(st: SimState): boolean {
@@ -164,6 +180,10 @@ export class Sim {
     this.physics.time = st.time;
     Object.assign(this.life, st.life);
     this.cookiesEaten = st.cookiesEaten;
+    this.attempts.length = 0;
+    this.attempts.push(...(st.attempts ?? []));
+    this.attemptCount = this.attempts.length;
+    this.fallExpectation.load(st.durations ?? []);
     this.physics.biped.setPose(staggeredStandPose(undefined, st.x));
     this.place();
     return true;
@@ -243,10 +263,16 @@ export class Sim {
       life.attempt = b.hipX() - this.attemptX0;
       if (life.attempt > life.bestAttempt) life.bestAttempt = life.attempt;
       if (b.hipY() < 0.6 || Math.abs(b.theta) > 1.2 || b.impact > 0.05) {
+        if (life.state === 'walking') {
+          this.fallExpectation.record(this.time - this.stateSince);
+          this.attempts.push(Math.max(0, life.attempt));
+          if (this.attempts.length > 3000) this.attempts.shift();
+          this.attemptCount++;
+        }
         life.state = 'fallen';
         life.falls++;
         this.stateSince = this.time;
-        this.brain.reward.give(-1.5); // falling hurts
+        this.brain.reward.give(-FALL_COST); // falling hurts
         this.brain.bodyState.pain = 1;
       }
     } else {
@@ -301,7 +327,9 @@ export class Sim {
       if (jolt > this.lastImpact) bs.surprise = 1;
       this.lastImpact = jolt;
       if ((this.physics.time * 1000) % 50 < 1) this.cookieTick();
-      this.brain.tick(this.autoRewardOn ? this.autoReward() : 0, st === 'standing' ? 0 : st === 'walking' ? 1 : 2);
+      // still on its feet at a moment when it usually falls: better than expected
+      const relief = st === 'walking' && this.time >= this.frozenUntil ? FALL_COST * this.fallExpectation.hazard(this.time - this.stateSince) : 0;
+      this.brain.tick(this.autoRewardOn ? this.autoReward() : 0, st === 'standing' ? 0 : st === 'walking' ? 1 : 2, relief);
     }
     if (this.time < this.frozenUntil) {
       // still in the hand: the stance leg already feels the ground
@@ -340,6 +368,8 @@ export class Sim {
       energy: this.brain.hormones.energy,
       cookies: this.cookies.map((c) => ({ ...c })),
       cookiesEaten: this.cookiesEaten,
+      tone: this.brain.spinal.tone.map((t) => t.gain),
+      attemptCount: this.attemptCount,
     };
   }
 }

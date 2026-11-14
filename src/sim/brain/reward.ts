@@ -29,15 +29,16 @@ export class RewardSystem {
     this.pulse += amount;
   }
 
-  /** @param reward continuous reward rate; @param context index of the current behavioural context */
-  step(reward: number, context: number): void {
+  /** @param reward continuous reward rate; @param context index of the current behavioural context;
+   *  @param surprise reward that is already relative to expectation (bypasses the baseline) */
+  step(reward: number, context: number, surprise = 0): void {
     // pulses are paid out with a time constant of 150 ms
     const pay = this.pulse / 150;
     this.pulse -= pay;
     const r = reward + pay * 1000;
     // context 2 (lying on the ground) carries no expectation: pain is always worse than expected
     const exp = context === 2 ? 0 : this.expected[context];
-    this.rpe = r - exp;
+    this.rpe = r - exp + surprise;
     if (context !== 2) this.expected[context] = exp + (r - exp) / 20000;
     let cur = DA_GAIN * this.rpe;
     if (cur > 40) cur = 40;
@@ -47,6 +48,17 @@ export class RewardSystem {
     this.conc += this.vta.count / N_DA - this.conc / TAU_DA;
     this.tonic += (this.conc - this.tonic) / 30000;
     this.level = (this.conc - this.tonic) / this.tonic;
-    this.net.dopamine = this.level;
+    if (this.shamDelay > 0) {
+      // control experiment: the synapses receive the dopamine signal of `shamDelay` ticks ago.
+      // It has the same statistics but no longer says anything about what was just done.
+      if (!this.shamBuf) this.shamBuf = new Float32Array(this.shamDelay);
+      const k = this.shamIdx++ % this.shamDelay;
+      this.net.dopamine = this.shamBuf[k];
+      this.shamBuf[k] = this.level;
+    } else this.net.dopamine = this.level;
   }
+
+  shamDelay = 0;
+  private shamBuf: Float32Array | null = null;
+  private shamIdx = 0;
 }

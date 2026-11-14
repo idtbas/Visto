@@ -152,6 +152,9 @@ export class Proj {
   daAcc = 0;
   /** multiplies the learning rate (neuromodulation) */
   lrGain = 1;
+  /** multiplies the effect of every spike travelling through this projection (neuromodulatory
+   *  control of synaptic efficacy) */
+  gain = 1;
   readonly w0: number;
 
   constructor(spec: ProjSpec, rng: () => number) {
@@ -370,6 +373,8 @@ export class Network {
     const base = slot * n;
     const { v, u, bias, iext, gE, gI, gS, gX, xbar, cf, ringE, ringI, ringS, ringX, ringC, spikes, noiseTab } = this;
     const noiseOff = (this.rng() * NOISE_N) | 0;
+    // early in life the mean exploration input is a plain running average, so it is unbiased from the start
+    const kx = t < 4000 ? 1 / (t + 1) : K_XBAR;
     let ns = 0;
 
     for (let pi = 0; pi < this.pops.length; pi++) {
@@ -414,7 +419,7 @@ export class Network {
             if (g < 1e-4) g = 0;
             ringX[r] = 0;
             gX[i] = g;
-            xbar[i] += (g - xbar[i]) * K_XBAR;
+            xbar[i] += (g - xbar[i]) * kx;
             cur += g - xbar[i];
           }
           if (p.hasC) {
@@ -454,7 +459,9 @@ export class Network {
         const a1 = pr.rowPtr[local + 1];
         const { target, w, delay } = pr;
         const ring = pr.channel === 'E' ? ringE : pr.channel === 'I' ? ringI : pr.channel === 'S' ? ringS : pr.channel === 'X' ? ringX : ringC;
-        for (let s = a0; s < a1; s++) ring[((t + delay[s]) & RING_MASK) * n + target[s]] += w[s];
+        const gn = pr.gain;
+        if (gn === 1) for (let s = a0; s < a1; s++) ring[((t + delay[s]) & RING_MASK) * n + target[s]] += w[s];
+        else for (let s = a0; s < a1; s++) ring[((t + delay[s]) & RING_MASK) * n + target[s]] += w[s] * gn;
         const pl = pr.plastic;
         if (pl && learning) {
           if (pl.rule === 'perturb') {

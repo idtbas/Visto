@@ -11,8 +11,11 @@ const multFile = process.argv[6];
 const seed = Number(process.argv[7] ?? 1);
 const mult = multFile && existsSync(multFile) ? (JSON.parse(readFileSync(multFile, 'utf8')).mult as number[]) : undefined;
 const exploreW = process.env.EXW ? Number(process.env.EXW) : undefined;
-const sim = new Sim({ learn, newborn, learningRate: lr, mult, seed, exploreW });
+const newbornTone = process.env.TONE ? Number(process.env.TONE) : undefined;
+const granules = process.env.GRANULES ? Number(process.env.GRANULES) : 0;
+const sim = new Sim({ learn, newborn, learningRate: lr, mult, seed, exploreW, newbornTone, granules });
 sim.autoCookies = !process.env.NOCOOKIES;
+if (process.env.SHAM) sim.brain.reward.shamDelay = 17000;
 const sp = sim.brain.spinal;
 const w0 = sp.pathProj.map((leg) => leg.map((p) => p.meanWeight()));
 console.log(`neurons ${sim.brain.net.n}, synapses ${sim.brain.net.nSynapses}, learn=${learn}, newborn=${newborn}`);
@@ -39,7 +42,7 @@ for (let m = 0; m < minutes; m++) {
   sp.pathProj.forEach((leg, l) => leg.forEach((p, k) => { drift += Math.abs(Math.log(p.meanWeight() / w0[l][k])); cnt++; }));
   console.log(
     `min ${m + 1}: falls ${falls}, distance ${distSum.toFixed(1)} m, walking ${(walkTicks / 1000).toFixed(0)} s (${(walkTicks / 1000 / Math.max(1, falls)).toFixed(1)} s/attempt), best ${sim.life.bestAttempt.toFixed(1)} m, ` +
-      `|DA| ${(daAbs / 60000).toFixed(2)}, drift ${(drift / cnt).toFixed(3)}, exp ${sim.brain.reward.expected.map((v) => v.toFixed(2)).join('/')} (${((Date.now() - t0) / 1000).toFixed(0)} s)`,
+      `|DA| ${(daAbs / 60000).toFixed(2)}, drift ${(drift / cnt).toFixed(3)}, tone ${sp.tone.map((t) => t.gain.toFixed(2)).join(' ')}, rpeSd ${Math.sqrt(sim.brain.hormones.rpeVar).toFixed(2)} fokin ${sim.brain.hormones.level.fokin.toFixed(2)} lrx ${sim.brain.hormones.effects.learningRate.toFixed(2)}, exp ${sim.brain.reward.expected.map((v) => v.toFixed(2)).join('/')} (${((Date.now() - t0) / 1000).toFixed(0)} s)`,
   );
   walkTicks = 0;
   daAbs = 0;
