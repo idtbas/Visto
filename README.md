@@ -118,8 +118,13 @@ Neuronen und 190.720 Synapsen, vor dem Einbau von Sehrinde und Basalganglien):
 | Kontrolle (Dopamin um 17 s verzögert) | 69 · 70 · 70 · 75 · 74 · 72 · 71 | 73 m → 62 m |
 
 Die Kontrolle bekommt dasselbe Dopaminsignal, nur zeitlich verschoben, sodass es nichts mehr
-über das eben Getane aussagt. Sie lernt nichts. Wie schnell ein einzelnes Leben lernt, schwankt:
-Im Browser war ein Lauf nach etwa 10 Minuten so weit, andere brauchen über 20.
+über das eben Getane aussagt. Sie lernt nichts.
+
+Wie schnell ein einzelnes Leben lernt, schwankt stark. Mit dem aktuellen Stand (mit Sehrinde
+und Basalganglien, 5.520 Neuronen) habe ich vier Leben je 24–30 Minuten laufen lassen: Zwei
+lernten laufen (nach etwa 17 und 23 Minuten, danach 0–5 Stürze pro Minute und über 100 m am
+Stück), zwei stürzten nach 24 bzw. 30 Minuten immer noch 15–18-mal pro Minute. Ein früherer
+Lauf im Browser war schon nach etwa 10 Minuten so weit.
 
 Hindernisse (5–10 cm hohe Stufen, `tools/obstacle-learn.ts`, gereiftes Wesen, je 2 Minuten):
 
