@@ -72,5 +72,15 @@ self.onmessage = (e: MessageEvent<ToWorker>): void => {
     case 'reset':
       sim.reset();
       break;
+    case 'cookie':
+      sim.giveCookie();
+      break;
+    case 'placeCookie':
+      sim.placeCookie(m.x);
+      break;
+    case 'autoReward':
+      sim.autoRewardOn = m.on;
+      sim.autoCookies = m.on;
+      break;
   }
 };

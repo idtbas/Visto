@@ -22,5 +22,6 @@ for (const a of process.argv.slice(6)) {
   });
 }
 const t0 = performance.now();
-const r = evaluateSpinal(p, { T: Number(process.argv[4] ?? 12), standFor, push: Number(process.argv[5] ?? 0), log: true, mult });
+const scale = Number(process.env.SCALE ?? 1);
+const r = evaluateSpinal(p, { T: Number(process.argv[4] ?? 12), standFor, push: Number(process.argv[5] ?? 0), log: !process.env.QUIET, mult, scale, seed: Number(process.env.SEED ?? 1) });
 console.log(r, `${(performance.now() - t0).toFixed(0)} ms`);

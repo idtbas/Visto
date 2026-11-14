@@ -232,7 +232,7 @@ const TRACE_T = 256;
 
 const DECAY_E = Math.exp(-1 / 5);
 const DECAY_I = Math.exp(-1 / 10);
-const DECAY_S = Math.exp(-1 / 80);
+const DECAY_S = Math.exp(-1 / 150);
 const DECAY_X = Math.exp(-1 / 30);
 const DECAY_C = Math.exp(-1 / 60);
 const K_XBAR = 1 / 4000;
@@ -393,7 +393,11 @@ export class Network {
         gI[i] = gi;
         let vv = v[i];
         let uu = u[i];
-        let cur = bias[i] + drive + iext[i] + ge * (0 - vv) * 0.0153846 + gi * (-80 - vv) * 0.0666667;
+        // synaptic conductances are integrated implicitly so that strong inhibition stays stable:
+        // dv/dt = f(v) + cur - gsyn * v   with   cur including the reversal-potential terms
+        const gsyn = ge * 0.0153846 + gi * 0.0666667;
+        const inv = 1 / (1 + 0.5 * gsyn);
+        let cur = bias[i] + drive + iext[i] - gi * 5.333333;
         if (noise !== 0) cur += noise * noiseTab[(i * 7 + noiseOff) & NOISE_MASK];
         if (slow) {
           if (p.hasS) {
@@ -420,8 +424,8 @@ export class Network {
             cf[i] = g;
           }
         }
-        vv += 0.5 * (0.04 * vv * vv + 5 * vv + 140 - uu + cur);
-        if (vv < 30) vv += 0.5 * (0.04 * vv * vv + 5 * vv + 140 - uu + cur);
+        vv = (vv + 0.5 * (0.04 * vv * vv + 5 * vv + 140 - uu + cur)) * inv;
+        if (vv < 30) vv = (vv + 0.5 * (0.04 * vv * vv + 5 * vv + 140 - uu + cur)) * inv;
         uu += a * (b * vv - uu);
         if (vv >= 30) {
           vv = c;

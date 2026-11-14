@@ -9,6 +9,7 @@
 import { Network, NT, Pop, Proj, type Plasticity } from './network';
 import { Biped, NM, M, MUSCLE_NAMES, MUSCLE_PARAMS, type MuscleName } from '../body/biped';
 import { REFLEX_PARAM_NAMES } from '../control/reflex';
+import { mulberry32, gaussian } from '../util/rng';
 
 const DEG = Math.PI / 180;
 /** afferent firing rate at signal = 1 [Hz] */
@@ -24,6 +25,27 @@ const K_GATE = 40;
 /** connection probability between pools; sparse so that neurons do not all see the same input */
 const P_CONN = 0.5;
 const AFF_BIAS = 2.0;
+
+// transduction curve of the relay cells (measured): input current needed for a given firing rate
+const FI_RATE = [0, 8, 22, 36, 46, 63, 79, 124, 170];
+const FI_CUR = [2.3, 3, 4, 5, 6, 8, 10, 15, 20];
+/** external current that makes a relay cell with bias AFF_BIAS fire at `rate` Hz */
+export function currentForRate(rate: number): number {
+  if (rate <= 0) return -2;
+  let k = 1;
+  while (k < FI_RATE.length - 1 && FI_RATE[k] < rate) k++;
+  const t = (rate - FI_RATE[k - 1]) / (FI_RATE[k] - FI_RATE[k - 1]);
+  return FI_CUR[k - 1] + t * (FI_CUR[k] - FI_CUR[k - 1]) - AFF_BIAS;
+}
+// exploration nucleus
+const N_EX = 8;
+const EX_RATE = 30; // mean firing rate [Hz]
+const EX_TAU = 300; // correlation time of the random variation [ms]
+const EX_W = 0.35;
+const GOSLOW_W = 0.1;
+/** smoothing of the motoneuron pool rate before it reaches the muscle [ms] */
+const STIM_TAU = 5;
+const VEST_TAU = 6;
 
 export type Phase = 'stance' | 'swing' | 'any';
 export type Mode = 'walk' | 'stand';
@@ -47,8 +69,10 @@ export interface SpinalOptions {
   scale?: number;
   /** per-pathway multipliers on the innate gains (same order as SpinalCord.pathNames) */
   mult?: ArrayLike<number>;
-  /** make the afferent → interneuron synapses plastic */
-  plastic?: Plasticity;
+  /** make the afferent → interneuron synapses plastic and add the exploration nucleus */
+  learn?: { lr: number; tauE: number };
+  /** spread (std of log strength) of random deviations from the innate blueprint: an untrained newborn */
+  newborn?: number;
 }
 
 function paramsByName(p: ArrayLike<number>): Record<string, number> {
@@ -88,10 +112,11 @@ export function pathDefs(g: Record<string, number>): PathDef[] {
     w('wLeanHfl', 'VestF', 'HFL', 1, g.kLean * SC.vest, 'swing', 'S', true),
     // ---- standing ----
     s('sSolL', 'IISOL', 'SOL', g.stSolL * SC.len, 'L'),
-    s('sSolCop', 'CopF', 'SOL', g.stSolCop * SC.cop, 'L'),
-    s('sGasCop', 'CopF', 'GAS', 0.5 * g.stSolCop * SC.cop, 'L'),
+    // pressure under the forefoot (CopF) or heel (CopB); the sign of the evolved gain decides which one is used
+    s('sSolCop', g.stSolCop >= 0 ? 'CopF' : 'CopB', 'SOL', Math.abs(g.stSolCop) * SC.cop, 'L'),
+    s('sGasCop', g.stSolCop >= 0 ? 'CopF' : 'CopB', 'GAS', 0.5 * Math.abs(g.stSolCop) * SC.cop, 'L'),
     s('sTaL', 'IITAst', 'TA', g.stTaL * SC.len, 'L'),
-    s('sTaCop', 'CopB', 'TA', g.stTaCop * SC.cop, 'L'),
+    s('sTaCop', g.stTaCop >= 0 ? 'CopB' : 'CopF', 'TA', Math.abs(g.stTaCop) * SC.cop, 'L'),
     s('sVasL', 'IIVAS', 'VAS', g.stVasL * SC.len, 'M'),
     s('sVestHam', 'VestF', 'HAM', g.stKp * SC.vest, 'S', true),
     s('sVestGlu', 'VestF', 'GLU', 0.7 * g.stKp * SC.vest, 'S', true),
@@ -100,7 +125,7 @@ export function pathDefs(g: Record<string, number>): PathDef[] {
 }
 
 /** tonic drives and the swing-initiation circuit also have tunable strengths */
-export const EXTRA_NAMES = ['tVasStance', 'tHipStance', 'trVas', 'trGlu', 'trHfl', 'tVasStand', 'tSolStand', 'tHipStand'] as const;
+export const EXTRA_NAMES = ['tVasStance', 'tHipStance', 'trVas', 'trGlu', 'trHfl', 'tVasStand', 'tSolStand', 'tHipStand', 'iTa', 'iSol', 'iHfl'] as const;
 
 const DELAYS: Record<'S' | 'M' | 'L', [number, number]> = { S: [1, 1], M: [3, 2], L: [6, 4] };
 
@@ -117,9 +142,11 @@ export class SpinalCord {
   readonly pathProj: Proj[][] = [[], []];
   readonly pathIn: Pop[][] = [[], []];
   readonly mlr: Pop;
+  private readonly explorers: { pop: Pop; x: number }[] = [];
   /** locomotor command 0 (stand) .. 1 (walk), set by the brain */
   go = 0;
   private goLevel = 0;
+  private dthetaF = 0;
   private readonly stimTrace = new Float32Array(2 * NM);
   readonly nA: number;
   readonly nI: number;
@@ -137,26 +164,43 @@ export class SpinalCord {
     this.pathNames = [...defs.map((d) => d.name), ...EXTRA_NAMES];
     const mult = (name: string): number => opt.mult?.[this.pathNames.indexOf(name)] ?? 1;
 
-    const exc = (name: string, n: number, bias = 1.5): Pop => net.addPop({ name, n, type: NT.RELAY, region: 'spinal', bias, biasJitter: 1.5, noise: 2.5 });
+    const exc = (name: string, n: number, bias = 1.0): Pop => net.addPop({ name, n, type: NT.RELAY, region: 'spinal', bias, biasJitter: 1.5, noise: 2.5 });
     const inh = (name: string, n: number, bias = 0.5): Pop => net.addPop({ name, n, type: NT.FS, region: 'spinal', bias, biasJitter: 1.5, noise: 2.5, inhibitory: true });
     const affPop = (name: string): Pop => {
       const pop = net.addPop({ name, n: nA, type: NT.RELAY, region: 'afferent', bias: AFF_BIAS, biasJitter: 0.6, noise: 2 });
       this.aff.set(name, { pop, value: 0 });
       return pop;
     };
-    const E = (pre: Pop, post: Pop, K: number, delay: number, plastic?: Plasticity): Proj =>
-      net.connect({ pre, post, channel: 'E', p: P_CONN, w: K / (pre.n * P_CONN), wJitter: 0.5, delay: [delay, delay + 2], plastic });
+    const E = (pre: Pop, post: Pop, K: number, delay: number, learnable = false): Proj => {
+      const w = K / (pre.n * P_CONN);
+      const plastic: Plasticity | undefined =
+        learnable && opt.learn ? { rule: 'perturb', lr: opt.learn.lr * w, tauE: opt.learn.tauE, wMin: 0, wMax: 4 * w } : undefined;
+      return net.connect({ pre, post, channel: 'E', p: P_CONN, w, wJitter: 0.5, delay: [delay, delay + 2], plastic });
+    };
+    const nb = opt.newborn ?? 0;
+    const nbRng = mulberry32(977);
+    const nbFactor = (): number => (nb > 0 ? Math.exp(nb * gaussian(nbRng)) : 1);
     const I = (pre: Pop, post: Pop, K: number, delay: number): Proj =>
       net.connect({ pre, post, channel: 'I', p: P_CONN, w: K / (pre.n * P_CONN), wJitter: 0.5, delay: [delay, delay + 2] });
 
     // ---- brainstem: locomotor command and the mode gates ----
     this.mlr = net.addPop({ name: 'MLR', n: nI, type: NT.RELAY, region: 'brainstem', bias: AFF_BIAS, biasJitter: 0.6, noise: 2 });
-    const goI = inh('GOi', nI);
+    const goI = inh('GOi', nI, -1.5);
     const restI = inh('RESTi', nI, 8);
     const post = exc('POST', nI, 8);
     E(this.mlr, goI, K_UNITY_FS * 1.5, 1);
     I(goI, restI, K_GATE, 1);
     I(goI, post, K_GATE, 1);
+
+    // ---- gait initiation: a burst at the onset of the walk command. The slowly charging
+    // inhibitory pool GOslow ends it after a few hundred milliseconds. ----
+    const goSlow = inh('GOslow', nI, -1.0);
+    net.connect({ pre: this.mlr, post: goSlow, channel: 'S', p: P_CONN, w: GOSLOW_W, wJitter: 0.5, delay: [1, 3] });
+    const init = exc('INIT', nI);
+    const initI = inh('INITi', nI, -1.0);
+    E(this.mlr, init, K_UNITY, 1);
+    I(goSlow, init, 34, 1);
+    E(init, initI, K_UNITY_FS, 1);
 
     // ---- vestibular afferents are shared by both legs ----
     affPop('VestF');
@@ -167,12 +211,12 @@ export class SpinalCord {
       const L = `_${leg}`;
       for (const a of ['IbSOL', 'IbGAS', 'IbVAS', 'IbHAM', 'IbGLU', 'IITA', 'IITAst', 'IIHFL', 'IIHAM', 'IISOL', 'IIVAS', 'KneeExt', 'Load', 'CopF', 'CopB', 'HipExt']) affPop(a + L);
       for (let m = 0; m < NM; m++) {
-        this.mn.push(net.addPop({ name: `MN_${MUSCLE_NAMES[m]}${L}`, n: nM, type: NT.RELAY, region: 'motor', bias: 1.5, biasJitter: 1.5, noise: 2.5 }));
+        this.mn.push(net.addPop({ name: `MN_${MUSCLE_NAMES[m]}${L}`, n: nM, type: NT.RELAY, region: 'motor', bias: 1.0, biasJitter: 1.5, noise: 2.5 }));
       }
       // phase of the step, from the load on the sole
       const load = this.aff.get('Load' + L)!.pop;
       const stE = exc('ST' + L, nI);
-      const stI = inh('STi' + L, nI);
+      const stI = inh('STi' + L, nI, -1.5);
       const swI = inh('SWi' + L, nI, 8);
       E(load, stE, K_UNITY, 2);
       E(load, stI, K_UNITY_FS * 2, 2);
@@ -183,16 +227,16 @@ export class SpinalCord {
       for (const d of defs) {
         const aff = this.aff.get(d.global ? d.aff : d.aff + L)!.pop;
         const [dA, dM] = DELAYS[d.delay];
-        const gain = d.gain * mult(d.name);
+        const gain = d.gain * mult(d.name) * nbFactor();
         let inPop: Pop;
         let proj: Proj;
         if (d.sign > 0) {
           inPop = exc(`IN_${d.name}${L}`, nI);
-          proj = E(aff, inPop, K_UNITY * gain, dA, opt.plastic);
+          proj = E(aff, inPop, K_UNITY * gain, dA, true);
           E(inPop, mnOf(d.muscle), K_UNITY, dM);
         } else {
           inPop = inh(`IN_${d.name}${L}`, nI);
-          proj = E(aff, inPop, K_UNITY_FS * gain, dA, opt.plastic);
+          proj = E(aff, inPop, K_UNITY_FS * gain, dA, true);
           I(inPop, mnOf(d.muscle), K_INH_UNITY, dM);
         }
         if (d.phase === 'stance') I(swI, inPop, K_GATE, 1);
@@ -200,6 +244,12 @@ export class SpinalCord {
         I(d.mode === 'walk' ? restI : goI, inPop, K_GATE, 1);
         this.pathIn[leg].push(inPop);
         this.pathProj[leg].push(proj);
+        if (opt.learn) {
+          // exploration: a small group of cells that randomly nudges this pathway up and down
+          const ex = net.addPop({ name: `EX_${d.name}${L}`, n: N_EX, type: NT.RELAY, region: 'explore', bias: AFF_BIAS, biasJitter: 0.6, noise: 2 });
+          net.connect({ pre: ex, post: inPop, channel: 'X', p: 1, w: EX_W, wJitter: 0.2, delay: [1, 3] });
+          this.explorers.push({ pop: ex, x: 0 });
+        }
       }
 
       // tonic drive while the leg carries weight (walking)
@@ -215,6 +265,22 @@ export class SpinalCord {
       tonic(post, 'VAS', g.stS0Vas * mult('tVasStand'), 60);
       tonic(post, 'SOL', g.stS0Sol * mult('tSolStand'), 60);
       for (const m of ['HAM', 'GLU', 'HFL'] as const) tonic(post, m, g.stS0Hip * mult('tHipStand'), 60);
+    }
+
+    // ---- gait initiation outputs: release the calf, pull with the shin, lift the rear leg ----
+    for (let leg = 0; leg < 2; leg++) {
+      const L = `_${leg}`;
+      const mnOf = (m: MuscleName): Pop => this.mn[leg * NM + M[m]];
+      E(init, mnOf('TA'), g.initTa * 1.25 * K_UNITY * mult('iTa'), 2);
+      I(initI, mnOf('SOL'), g.initSolOff * 0.6 * K_INH_UNITY * mult('iSol'), 2);
+      I(initI, mnOf('GAS'), g.initSolOff * 0.6 * K_INH_UNITY * mult('iSol'), 2);
+      const lift = exc('INITtr' + L, nI, -12);
+      const liftI = inh('INITtri' + L, nI, -1.0);
+      E(init, lift, 33, 1);
+      E(this.aff.get('HipExt' + L)!.pop, lift, 40, 2);
+      E(lift, liftI, K_UNITY_FS, 1);
+      E(lift, mnOf('HFL'), g.initHfl * 2 * K_UNITY * mult('iHfl'), 2);
+      I(liftI, mnOf('VAS'), g.initSolOff * K_INH_UNITY, 2);
     }
 
     // ---- swing initiation: the trailing leg in double support is unloaded and flexed ----
@@ -234,6 +300,24 @@ export class SpinalCord {
     }
   }
 
+  /** amplitude of the exploratory variation (neuromodulated) */
+  exploreGain = 1;
+
+  private stepExplorers(): void {
+    const iext = this.net.iext;
+    const rng = this.net.rng;
+    const k = 1 / EX_TAU;
+    const sd = Math.sqrt(2 * k);
+    for (const ex of this.explorers) {
+      ex.x += -ex.x * k + sd * gaussian(rng);
+      let rate = EX_RATE * (1 + this.exploreGain * ex.x);
+      if (rate < 0) rate = 0;
+      else if (rate > 2.5 * EX_RATE) rate = 2.5 * EX_RATE;
+      const cur = currentForRate(rate);
+      for (let i = ex.pop.start; i < ex.pop.end; i++) iext[i] = cur;
+    }
+  }
+
   private set(name: string, value: number): void {
     this.aff.get(name)!.value = value < 0 ? 0 : value > 1.8 ? 1.8 : value;
   }
@@ -246,7 +330,10 @@ export class SpinalCord {
     this.goLevel += (Math.min(1, this.mlr.rate / 80) - this.goLevel) * 0.01;
     const ref = g.stTheta + (g.thetaRef - g.stTheta) * this.goLevel;
     const kdr = (g.kd / g.kp) * this.goLevel + (g.stKd / g.stKp) * (1 - this.goLevel);
-    const e = b.theta - ref + kdr * b.dtheta;
+    // the balance organ reports a smoothed turning rate; without this the reflex would amplify
+    // the tremor that noisy motoneuron firing causes in the trunk
+    this.dthetaF += (b.dtheta - this.dthetaF) * (1 / VEST_TAU);
+    const e = b.theta - ref + kdr * this.dthetaF;
     this.set('VestF', e / SC.vest);
     this.set('VestB', -e / SC.vest);
     for (let leg = 0; leg < 2; leg++) {
@@ -275,13 +362,13 @@ export class SpinalCord {
       this.set('HipExt' + L, (b.phi[leg * 3] - 178 * DEG) / (20 * DEG));
     }
     const iext = this.net.iext;
-    const gainI = R_AFF / SLOPE;
     for (const a of this.aff.values()) {
-      const cur = a.value > 0 ? 0.5 + gainI * a.value : 0;
+      const cur = currentForRate(R_AFF * a.value);
       for (let i = a.pop.start; i < a.pop.end; i++) iext[i] = cur;
     }
-    const cmd = this.go > 0 ? 0.5 + gainI * this.go : 0;
+    const cmd = currentForRate(R_AFF * this.go);
     for (let i = this.mlr.start; i < this.mlr.end; i++) iext[i] = cmd;
+    if (this.explorers.length > 0) this.stepExplorers();
   }
 
   /** motoneuron firing drives the muscles */
@@ -290,13 +377,14 @@ export class SpinalCord {
     for (let i = 0; i < 2 * NM; i++) {
       const p = this.mn[i];
       const inst = (p.count * 1000) / (p.n * R_MN);
-      this.stimTrace[i] += (inst - this.stimTrace[i]) * (1 / 12);
+      this.stimTrace[i] += (inst - this.stimTrace[i]) * (1 / STIM_TAU);
       b.stim[i] = this.stimTrace[i];
     }
   }
 
   reset(): void {
     this.stimTrace.fill(0);
+    this.dthetaF = 0;
   }
 
   affValue(name: string): number {

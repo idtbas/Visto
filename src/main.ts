@@ -1,5 +1,6 @@
 import { BodyView } from './ui/bodyView';
 import { BrainView } from './ui/brainView';
+import { HormoneView } from './ui/hormoneView';
 import { MUSCLE_NAMES, MUSCLE_LABELS, NM } from './sim/body/biped';
 import type { FromWorker, ToWorker } from './protocol';
 import type { Frame } from './sim/sim';
@@ -12,6 +13,7 @@ worker.onerror = (e) => console.error('worker error:', e.message, e.filename, e.
 
 const bodyView = new BodyView($<HTMLCanvasElement>('world'));
 const brainView = new BrainView($<HTMLCanvasElement>('brain'), $('brainTip'));
+const hormoneView = new HormoneView($('hormoneRows'));
 const nf = new Intl.NumberFormat('de-DE');
 const de = (v: number, digits = 1): string => v.toFixed(digits).replace('.', ',');
 let lastFrameTime = 0;
@@ -66,10 +68,7 @@ const bars: { act: HTMLElement; force: HTMLElement; knob: HTMLElement }[] = [];
 
 function updatePanels(f: Frame): void {
   document.body.classList.toggle('manual', f.mode === 'manual');
-  $('muscleHint').textContent =
-    f.mode === 'manual'
-      ? 'Handsteuerung: Ziehe in einem Balken, um den Muskel anzuspannen. Doppelklick lässt ihn los.'
-      : 'Rot: Anspannung des Muskels. Heller Strich: Kraft an der Sehne.';
+  $('muscleHint').textContent = f.mode === 'manual' ? 'ziehen = anspannen' : 'rot = Anspannung';
   for (let i = 0; i < 2 * NM; i++) {
     bars[i].act.style.width = `${Math.min(100, f.muscles[i * 3] * 100)}%`;
     bars[i].force.style.width = `${Math.min(100, f.muscles[i * 3 + 2] * 100)}%`;
@@ -81,15 +80,16 @@ function updatePanels(f: Frame): void {
   const ss = t % 60;
   $('simTime').textContent = (hh ? `${hh}:${String(mm).padStart(2, '0')}` : `${mm}`) + `:${String(ss).padStart(2, '0')}`;
   $('simSpeed').textContent = `×${f.speed.toFixed(f.speed < 10 ? 1 : 0)}`;
-  $('hud').textContent = `Strecke ${de(f.body[0], 2)} m   Neigung ${((f.lean * 180) / Math.PI).toFixed(0)}°`;
+  $('hud').textContent = `Strecke ${de(f.body[0], 1)} m   Tempo ${de(f.velX)} m/s   Neigung ${((f.lean * 180) / Math.PI).toFixed(0)}°   Leistung ${f.power.toFixed(0)} W`;
   const life = f.life;
   $('lifeState').textContent =
     f.mode !== 'brain' ? (f.mode === 'manual' ? 'Handsteuerung' : 'Referenz-Reflexe (ohne Gehirn)') : life.state === 'fallen' ? 'gestürzt – wird gleich aufgestellt' : life.state === 'standing' ? 'steht' : 'läuft';
   $('stFalls').textContent = String(life.falls);
   $('stAttempt').textContent = `${de(life.attempt)} m`;
   $('stBest').textContent = `${de(life.bestAttempt)} m`;
-  $('stSpeed').textContent = `${de(f.velX)} m/s`;
-  $('stPower').textContent = `${f.power.toFixed(0)} W`;
+  hormoneView.update(f.hormones, f.time);
+  $('energyFill').style.width = `${Math.round(f.energy * 100)}%`;
+  $('stCookies').textContent = String(f.cookiesEaten);
   if (brainMeta) $('brainMeta').textContent = `${brainMeta} · ${nf.format(Math.round(spikeRate))} Spikes/s`;
 }
 
@@ -101,6 +101,15 @@ $('btnPause').addEventListener('click', () => {
   send({ type: 'pause', paused });
 });
 $('btnReset').addEventListener('click', () => send({ type: 'reset' }));
+$('btnCookie').addEventListener('click', () => send({ type: 'cookie' }));
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'c' || e.key === 'C') send({ type: 'cookie' });
+});
+$<HTMLInputElement>('chkAuto').addEventListener('change', (e) => send({ type: 'autoReward', on: (e.target as HTMLInputElement).checked }));
+$('world').addEventListener('click', (e) => {
+  const x = bodyView.worldX(e.offsetX);
+  send({ type: 'placeCookie', x });
+});
 for (const b of Array.from($('speedSeg').querySelectorAll('button'))) {
   b.addEventListener('click', () => {
     $('speedSeg').querySelectorAll('button').forEach((x) => x.classList.remove('on'));

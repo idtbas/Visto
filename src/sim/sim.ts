@@ -1,4 +1,5 @@
 // One living creature in its world: body, (later) brain and hormones, advanced in 1 ms ticks.
+import { Vec2 } from 'planck';
 import { Physics, DT } from './world/physics';
 import { NM, STAND_POSE, staggeredStandPose, type Pose } from './body/biped';
 import { Brain, type PopInfo } from './brain/brain';
@@ -25,6 +26,18 @@ export interface Frame {
   /** spikes per neuron since the previous frame */
   activity: Uint8Array | null;
   life: LifeStats;
+  /** levels of the hormones, in the order of HORMONES */
+  hormones: number[];
+  energy: number;
+  cookies: Cookie[];
+  /** counts cookies eaten so far (to trigger effects in the display) */
+  cookiesEaten: number;
+}
+
+export interface Cookie {
+  x: number;
+  /** 1 = normal cookie */
+  size: number;
 }
 
 export interface LifeStats {
@@ -34,6 +47,17 @@ export interface LifeStats {
   attempt: number;
   bestAttempt: number;
   spikeRate: number;
+}
+
+export interface SimOptions {
+  brainScale?: number;
+  seed?: number;
+  learn?: boolean;
+  learningRate?: number;
+  newborn?: number;
+  mult?: number[];
+  /** reflex blueprint; defaults to the built-in genome */
+  params?: number[];
 }
 
 export interface BrainInfo {
@@ -48,20 +72,78 @@ export class Sim {
   readonly brain: Brain;
   readonly life: LifeStats = { state: 'standing', falls: 0, attempt: 0, bestAttempt: 0, spikeRate: 0 };
   private stateSince = 0;
+  private holdUntil = 0;
+  private holdX = 0;
+  /** how long the helping hand steadies the creature after putting it down [s] */
+  holdTime = 0.5;
   private attemptX0 = 0;
+  readonly cookies: Cookie[] = [];
+  cookiesEaten = 0;
+  /** keep one cookie waiting ahead of the creature */
+  autoCookies = true;
+  private lastImpact = 0;
+
+  /** hand the creature a cookie right now (the user's reward button) */
+  giveCookie(size = 1): void {
+    const h = this.brain.hormones;
+    this.brain.reward.give(1.2 * size * h.effects.appetite);
+    this.brain.bodyState.intake += 0.06 * size;
+    this.cookiesEaten++;
+  }
+
+  placeCookie(x: number, size = 1): void {
+    this.cookies.push({ x, size });
+  }
+
+  private cookieTick(): void {
+    const x = this.physics.biped.hipX();
+    for (let i = this.cookies.length - 1; i >= 0; i--) {
+      const c = this.cookies[i];
+      if (Math.abs(c.x - x) < 0.25 && this.life.state !== 'fallen') {
+        this.cookies.splice(i, 1);
+        this.giveCookie(c.size);
+      } else if (c.x < x - 6) this.cookies.splice(i, 1);
+    }
+    if (this.autoCookies && !this.cookies.some((c) => c.x > x)) this.cookies.push({ x: x + 4 + 3 * this.brain.net.rng(), size: 1 });
+  }
+
+  /** reward for progress without the user handing out cookies */
+  autoRewardOn = true;
+  /** false keeps the creature standing */
+  wantsToWalk = true;
   /** seconds of standing before the brainstem gives the walk command */
   standBeforeGo = 1.5;
 
-  constructor(opt: { brainScale?: number; seed?: number } = {}) {
-    this.brain = new Brain(this.physics.biped, { params: this.reflexParams, mult: SPINAL_MULT }, { scale: opt.brainScale ?? 1, seed: opt.seed ?? 1 });
+  constructor(opt: SimOptions = {}) {
+    const genome = opt.params ?? REFLEX_GENOME;
+    this.reflexParams = REFLEX_DEFAULTS.map((v, i) => genome[i] ?? v);
+    this.reflex = new ReflexController(this.physics.biped, this.reflexParams);
+    this.brain = new Brain(
+      this.physics.biped,
+      { params: this.reflexParams, mult: opt.mult ?? SPINAL_MULT },
+      { scale: opt.brainScale ?? 1, seed: opt.seed ?? 1, learn: opt.learn ?? true, learningRate: opt.learningRate, newborn: opt.newborn ?? 0 },
+    );
     this.placeStanding();
+  }
+
+  /** automatic reward: staying upright and making progress feels good */
+  private autoReward(): number {
+    const b = this.physics.biped;
+    if (this.life.state === 'fallen') return 0;
+    const v = b.velX();
+    const speed = v < -0.5 ? -0.5 : v > 1.4 ? 1.4 : v;
+    const tilt = Math.abs(b.theta - 0.1) - 0.2;
+    let r = 0.3 - (tilt > 0 ? tilt : 0);
+    if (this.life.state === 'walking') r += 0.7 * speed;
+    else r -= 0.5 * Math.abs(v);
+    return r;
   }
 
   brainInfo(): BrainInfo {
     return { pops: this.brain.popInfo(), neurons: this.brain.net.n, synapses: this.brain.net.nSynapses };
   }
 
-  /** the "helping hand": puts the creature back on its feet where it is */
+  /** the "helping hand": puts the creature back on its feet where it is and steadies it for a moment */
   placeStanding(): void {
     const b = this.physics.biped;
     b.setPose(staggeredStandPose(undefined, b.hipX()));
@@ -69,6 +151,25 @@ export class Sim {
     this.life.state = 'standing';
     this.stateSince = this.time;
     this.attemptX0 = b.hipX();
+    this.holdX = b.hipX();
+    this.holdUntil = this.time + this.holdTime;
+  }
+
+  /** the hand steadies trunk position and tilt (it does not carry the weight) and lets go gradually */
+  private holdTick(): void {
+    const left = this.holdUntil - this.time;
+    if (left <= 0) return;
+    const b = this.physics.biped;
+    const k = Math.min(1, left / 0.15);
+    const t = b.trunk;
+    const v = t.getLinearVelocity();
+    const fx = k * (-3000 * (t.getPosition().x - this.holdX) - 600 * v.x);
+    t.applyForceToCenter(new Vec2(fx, 0), true);
+    t.applyTorque(k * (-1500 * (t.getAngle() + 0.03) - 150 * t.getAngularVelocity()), true);
+  }
+
+  get held(): boolean {
+    return this.time < this.holdUntil;
   }
 
   private lifeTick(): void {
@@ -78,7 +179,7 @@ export class Sim {
     const since = this.time - this.stateSince;
     if (life.state === 'standing') {
       sp.go = 0;
-      if (since > this.standBeforeGo) {
+      if (since > this.standBeforeGo && this.wantsToWalk) {
         life.state = 'walking';
         this.stateSince = this.time;
       }
@@ -92,6 +193,8 @@ export class Sim {
         life.state = 'fallen';
         life.falls++;
         this.stateSince = this.time;
+        this.brain.reward.give(-1.5); // falling hurts
+        this.brain.bodyState.pain = 1;
       }
     } else {
       sp.go = 0;
@@ -99,8 +202,8 @@ export class Sim {
     }
   }
   readonly manualStim = new Float32Array(2 * NM).fill(0.01);
-  readonly reflexParams: number[] = REFLEX_DEFAULTS.map((v, i) => REFLEX_GENOME[i] ?? v);
-  readonly reflex = new ReflexController(this.physics.biped, this.reflexParams);
+  readonly reflexParams: number[];
+  readonly reflex: ReflexController;
 
   get time(): number {
     return this.physics.time;
@@ -128,7 +231,17 @@ export class Sim {
     else if (this.mode === 'reflex') this.reflex.step();
     else {
       this.lifeTick();
-      this.brain.tick();
+      this.holdTick();
+      const st = this.life.state;
+      const b2 = this.physics.biped;
+      const bs = this.brain.bodyState;
+      bs.power = b2.power;
+      // a sudden jolt (push, stumble) is surprising
+      const jolt = Math.abs(b2.dtheta) > 2.5 ? 1 : 0;
+      if (jolt > this.lastImpact) bs.surprise = 1;
+      this.lastImpact = jolt;
+      if ((this.physics.time * 1000) % 50 < 1) this.cookieTick();
+      this.brain.tick(this.autoRewardOn ? this.autoReward() : 0, st === 'standing' ? 0 : st === 'walking' ? 1 : 2);
     }
     this.physics.step();
   }
@@ -158,6 +271,10 @@ export class Sim {
       speed,
       activity: this.mode === 'brain' ? this.brain.takeActivity() : null,
       life: { ...this.life, spikeRate: this.brain.net.nSpikes },
+      hormones: this.brain.hormones.snapshot(),
+      energy: this.brain.hormones.energy,
+      cookies: this.cookies.map((c) => ({ ...c })),
+      cookiesEaten: this.cookiesEaten,
     };
   }
 }

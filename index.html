@@ -37,11 +37,15 @@
             <div class="state" id="lifeState"></div>
           </section>
           <section class="strip" id="lifeStrip">
+            <div class="stat cookieBox">
+              <button id="btnCookie" title="Belohnung geben (Taste C)">🍪 Cookie geben</button>
+              <label class="toggle" title="Belohnt Fortschritt automatisch und legt Cookies auf den Weg"><input type="checkbox" id="chkAuto" checked /> Auto-Belohnung</label>
+            </div>
+            <div class="stat"><span class="k">Energie</span><span class="v"><span class="ebar"><span id="energyFill"></span></span></span></div>
+            <div class="stat"><span class="k">Cookies</span><span class="v" id="stCookies">0</span></div>
             <div class="stat"><span class="k">Stürze</span><span class="v" id="stFalls">0</span></div>
-            <div class="stat"><span class="k">Dieser Versuch</span><span class="v" id="stAttempt">0,0 m</span></div>
+            <div class="stat"><span class="k">Versuch</span><span class="v" id="stAttempt">0,0 m</span></div>
             <div class="stat"><span class="k">Rekord</span><span class="v" id="stBest">0,0 m</span></div>
-            <div class="stat"><span class="k">Tempo</span><span class="v" id="stSpeed">0,0 m/s</span></div>
-            <div class="stat"><span class="k">Leistung</span><span class="v" id="stPower">0 W</span></div>
           </section>
         </div>
         <div class="col right">
@@ -52,11 +56,16 @@
               <div class="tip" id="brainTip"></div>
             </div>
           </section>
-          <section class="panel" id="musclePanel">
-            <h2>Muskeln</h2>
-            <p class="hint" id="muscleHint"></p>
-            <div id="muscleRows"></div>
-          </section>
+          <div class="lower">
+            <section class="panel" id="hormonePanel">
+              <h2>Botenstoffe <span class="meta">letzte Minute</span></h2>
+              <div id="hormoneRows"></div>
+            </section>
+            <section class="panel" id="musclePanel">
+              <h2>Muskeln <span class="meta" id="muscleHint"></span></h2>
+              <div id="muscleRows"></div>
+            </section>
+          </div>
         </div>
       </main>
     </div>

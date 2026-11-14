@@ -13,6 +13,8 @@ export const REFLEX_PARAM_NAMES = [
   'vx0', 'lean0', 'hipStance0', 'hipSwing0', 'kneeStance0', 'kneeSwing0', 'ankleStance0', 'ankleSwing0',
   // standing reflexes
   'stKp', 'stKd', 'stTheta', 'stSolL', 'stSolOff', 'stSolCop', 'stTaL', 'stTaOff', 'stTaCop', 'stVasL', 'stVasOff', 'stS0Vas', 'stS0Sol', 'stS0Hip',
+  // gait initiation: a transient at the onset of the walk command (anticipatory postural adjustment)
+  'initTau', 'initTa', 'initHfl', 'initSolOff',
 ] as const;
 
 export const REFLEX_DEFAULTS: number[] = [
@@ -21,7 +23,10 @@ export const REFLEX_DEFAULTS: number[] = [
   1.15, 0.09, 0.05,
   1.3, 0.1, 160, 190, 175, 170, 95, 100,
   2.0, 0.3, 0.03, 2.0, 0.9, 0.5, 2.0, 0.8, 0.5, 2.0, 0.9, 0.05, 0.05, 0.03,
+  0.25, 0.4, 0.3, 1.0,
 ];
+
+export const P_INIT0 = 45;
 
 export const P_STAND0 = 31;
 
@@ -44,9 +49,12 @@ class Delay {
   }
 }
 
-const D_S = 5; // hip
-const D_M = 10; // knee
-const D_L = 20; // ankle
+// Reflex latencies [ms]. Longer than in the original model: they include the time the spiking
+// implementation needs for synaptic transmission and integration in afferents, interneurons and
+// motoneurons, so that gains tuned here remain stable when neurons take over.
+const D_S = 20; // hip
+const D_M = 25; // knee
+const D_L = 30; // ankle
 
 export function initialPose(p: ArrayLike<number>): Pose {
   return {
@@ -79,6 +87,9 @@ export class ReflexController {
   readonly stance = [true, true];
   /** 'stand': postural reflexes; 'walk': locomotor reflexes */
   mode: 'stand' | 'walk' = 'walk';
+  /** decaying transient that starts when the mode switches from stand to walk */
+  private init = 0;
+  private lastMode: 'stand' | 'walk' = 'walk';
   private readonly pto = [0, 0];
 
   constructor(readonly biped: Biped, readonly p: ArrayLike<number>) {
@@ -132,10 +143,16 @@ export class ReflexController {
     const pd = kp * (th - thetaRef) + kd * dth;
     const ankleX = [b.foot[0].getPosition().x, b.foot[1].getPosition().x];
 
+    if (this.mode === 'walk' && this.lastMode === 'stand') this.init = 1;
+    this.lastMode = this.mode;
     if (this.mode === 'stand') {
       this.standStep(th, dth);
       return;
     }
+    const q = P_INIT0;
+    const init = this.init;
+    this.init -= (this.init * 0.001) / Math.max(0.02, p[q]);
+    const hipExt = [b.phi[0], b.phi[3]];
     for (let leg = 0; leg < 2; leg++) {
       const other = 1 - leg;
       const load = this.load[leg].get(D_M);

@@ -72,6 +72,40 @@ export class BodyView {
     if (this.trail.length > 240) this.trail.splice(0, 2);
   }
 
+  /** world coordinate under a horizontal canvas position (CSS pixels) */
+  worldX(px: number): number {
+    return this.camX + (px - this.w / 2) / this.scale;
+  }
+
+  private drawCookie(x: number, size: number): void {
+    const c = this.ctx;
+    const cx = this.sx(x);
+    const cy = this.sy(1.15);
+    const r = 0.085 * Math.sqrt(size) * this.scale;
+    // a thread to the ground makes the position readable
+    c.strokeStyle = '#3a455a';
+    c.setLineDash([3, 5]);
+    c.lineWidth = 1;
+    c.beginPath();
+    c.moveTo(cx, cy + r);
+    c.lineTo(cx, this.groundY);
+    c.stroke();
+    c.setLineDash([]);
+    c.fillStyle = '#c98b3c';
+    c.beginPath();
+    c.arc(cx, cy, r, 0, Math.PI * 2);
+    c.fill();
+    c.strokeStyle = '#8a5a22';
+    c.lineWidth = 1.5;
+    c.stroke();
+    c.fillStyle = '#4a2c12';
+    for (const [dx, dy] of [[-0.35, -0.3], [0.3, -0.1], [-0.05, 0.4], [0.4, 0.45], [-0.5, 0.2]]) {
+      c.beginPath();
+      c.arc(cx + dx * r, cy + dy * r, r * 0.14, 0, Math.PI * 2);
+      c.fill();
+    }
+  }
+
   private sx(x: number): number {
     return this.w / 2 + (x - this.camX) * this.scale;
   }
@@ -101,6 +135,7 @@ export class BodyView {
       c.fill();
       c.stroke();
     }
+    for (const ck of f.cookies) this.drawCookie(ck.x, ck.size);
     this.drawLeg(f, 0, 0.5);
     this.drawTrunk(f);
     this.drawLeg(f, 1, 1);

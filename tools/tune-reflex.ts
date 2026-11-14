@@ -25,13 +25,36 @@ const sigma = REFLEX_DEFAULTS.map((v, i) => {
   return Math.max(0.01, Math.abs(v) * rel);
 });
 
+// keep the solution physiologically sensible: reflex gains must not change sign
+const lower = REFLEX_PARAM_NAMES.map((name) => {
+  if (name === 'stKp') return 0.8;
+  if (name === 'stKd') return 0.1;
+  if (name === 'stTheta' || name === 'lean0' || name === 'thetaRef') return -0.1;
+  if (name === 'initTau') return 0.1;
+  return 0;
+});
+for (let i = 0; i < x0.length; i++) if (x0[i] < lower[i]) x0[i] = lower[i] + 0.05;
+
+function penalty(x: number[]): number {
+  let pen = 0;
+  for (let i = 0; i < x.length; i++) if (x[i] < lower[i]) pen += 20 * (lower[i] - x[i]) + 1;
+  return pen;
+}
+
 function fitness(x: number[]): number {
+  const pen = penalty(x);
+  if (pen > 0) return -pen;
   if (mode === 'stand') {
     let f = 0;
     for (const push of [30, -30, 0]) f += evaluateReflex(x, { T: 6, standFor: 6, push }).fitness;
     return f / 3;
   }
+  // standing must be stable for long (and cheap), and walking must start from standing
   let f = 0;
+  for (const push of [25, -25]) {
+    const r = evaluateReflex(x, { T: 8, standFor: 8, push });
+    f += 0.5 * (r.fitness - r.energy / r.time / 600);
+  }
   for (const push of [15, -15]) f += evaluateReflex(x, { T: 14, standFor: 2, push }).fitness;
   return f / 2;
 }

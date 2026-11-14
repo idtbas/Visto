@@ -22,7 +22,7 @@ const p = REFLEX_DEFAULTS.slice();
 const names = new SpinalCord(new Network(1), new Physics().biped, p).pathNames;
 let x0 = names.map((n) => (n.startsWith('t') ? Math.log(2.5) : 0));
 if (existsSync(init)) x0 = (JSON.parse(readFileSync(init, 'utf8')).mult as number[]).map(Math.log);
-const sigma = names.map((n) => (mode === 'walk' && (n.startsWith('s') || n.endsWith('Stand')) ? 0 : 0.25));
+const sigma = names.map((n) => (mode === 'walk' && (n.startsWith('s') || n.endsWith('Stand')) ? 0 : 0.15));
 const toMult = (x: number[]): number[] => x.map(Math.exp);
 
 let evalSeed = 1;

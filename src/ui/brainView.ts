@@ -17,7 +17,9 @@ interface RegionDef {
 const INH: [number, number, number] = [110, 170, 255];
 
 const REGIONS: RegionDef[] = [
+  { key: 'explore', title: 'Erkundungs-Kern', x: 0.0, y: 0.0, w: 0.32, h: 0.13, color: [200, 160, 255] },
   { key: 'brainstem', title: 'Hirnstamm', x: 0.34, y: 0.0, w: 0.32, h: 0.13, color: [255, 214, 130] },
+  { key: 'vta', title: 'Dopamin-Kern', x: 0.68, y: 0.0, w: 0.32, h: 0.13, color: [255, 180, 84] },
   { key: 'afferent', title: 'Gleichgewichtssinn', x: 0.4, y: 0.16, w: 0.2, h: 0.07, color: [150, 235, 170] },
   { key: 'afferent_0', title: 'Sinnesnerven links', x: 0.0, y: 0.16, w: 0.38, h: 0.2, color: [150, 235, 170] },
   { key: 'afferent_1', title: 'Sinnesnerven rechts', x: 0.62, y: 0.16, w: 0.38, h: 0.2, color: [150, 235, 170] },
@@ -26,6 +28,8 @@ const REGIONS: RegionDef[] = [
   { key: 'motor_0', title: 'Motoneuronen links', x: 0.0, y: 0.78, w: 0.49, h: 0.22, color: [255, 120, 100] },
   { key: 'motor_1', title: 'Motoneuronen rechts', x: 0.51, y: 0.78, w: 0.49, h: 0.22, color: [255, 120, 100] },
 ];
+
+const SPLIT_BY_LEG = new Set(['afferent', 'spinal', 'motor']);
 
 interface Block {
   pop: PopInfo;
@@ -85,7 +89,7 @@ export class BrainView {
 
   private regionKey(p: PopInfo): string {
     const m = /_([01])$/.exec(p.name);
-    return m ? `${p.region}_${m[1]}` : p.region;
+    return m && SPLIT_BY_LEG.has(p.region) ? `${p.region}_${m[1]}` : p.region;
   }
 
   private layout(): void {
