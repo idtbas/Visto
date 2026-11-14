@@ -46,7 +46,7 @@ export class RewardSystem {
     const iext = this.net.iext;
     for (let i = this.vta.start; i < this.vta.end; i++) iext[i] = cur;
     this.conc += this.vta.count / N_DA - this.conc / TAU_DA;
-    this.tonic += (this.conc - this.tonic) / 30000;
+    this.tonic += (this.conc - this.tonic) / (this.fastBaseline ? 6000 : 30000);
     this.level = (this.conc - this.tonic) / this.tonic;
     if (this.shamDelay > 0) {
       // control experiment: the synapses receive the dopamine signal of `shamDelay` ticks ago.
@@ -58,6 +58,8 @@ export class RewardSystem {
     } else this.net.dopamine = this.level;
   }
 
+  /** let the tonic level follow quickly (between replays in sleep) */
+  fastBaseline = false;
   shamDelay = 0;
   private shamBuf: Float32Array | null = null;
   private shamIdx = 0;

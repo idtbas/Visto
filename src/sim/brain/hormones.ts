@@ -134,7 +134,8 @@ export class Hormones {
 
     // --- somnin: sleep pressure builds with time awake and neural activity ---
     if (inp.asleep) relax('somnin', 0, 25);
-    else if (this.sleepEnabled) L.somnin += DT * (1 / 900) * (0.6 + 0.4 * Math.min(2, inp.activity / 20));
+    // sleep pressure builds faster while much is being learned (a newborn sleeps a lot)
+    else if (this.sleepEnabled) L.somnin += DT * (1 / 900) * (0.6 + 0.4 * Math.min(2, inp.activity / 20)) * (1 + 2.5 * L.fokin);
 
     // --- plastin: released by rewarding activity, suppressed by stress ---
     const success = inp.rpe > 0 ? Math.min(1, inp.rpe) : 0;

@@ -94,6 +94,10 @@ export function createHost(post: (m: FromWorker) => void): (m: ToWorker) => void
       case 'wantsToWalk':
         sim.setWantsToWalk(m.on);
         break;
+      case 'debugSomnin':
+        // for tests and screenshots: make the creature tired right away
+        sim.brain.hormones.level.somnin = m.level;
+        break;
       case 'obstacles':
         sim.obstaclesOn = m.on;
         break;

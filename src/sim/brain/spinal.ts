@@ -392,6 +392,14 @@ export class SpinalCord {
 
   /** amplitude of the exploratory variation (neuromodulated) */
   exploreGain = 1;
+  /** recent average of the tone exploration, per nucleus */
+  readonly toneRecent = new Float32Array(5);
+  /** if set, the tone explorers express this pattern instead of their own random variation */
+  toneOverride: Float32Array | null = null;
+  /** silences the external drive of the tone explorers (memory then drives them alone) */
+  toneDriveOff = false;
+  /** no exploration of individual reflex pathways (during sleep) */
+  quiet = false;
 
   /** tone nuclei: explore, then translate their firing into the gain of their reflex groups */
   private stepTone(): void {
@@ -401,9 +409,13 @@ export class SpinalCord {
     const rng = this.net.rng;
     const k = 1 / TONE_EX_TAU;
     const sd = Math.sqrt(2 * k);
-    for (const tn of this.tone) {
+    for (let q = 0; q < this.tone.length; q++) {
+      const tn = this.tone[q];
       tn.x += -tn.x * k + sd * gaussian(rng);
-      let rate = EX_RATE * (1 + this.exploreGain * tn.x);
+      // what was tried over the last couple of seconds (this is what memory stores)
+      this.toneRecent[q] += (this.exploreGain * tn.x - this.toneRecent[q]) * (1 / 2000);
+      const dev = this.toneOverride ? this.toneOverride[q] : this.exploreGain * tn.x;
+      let rate = this.toneDriveOff ? 0 : EX_RATE * (1 + dev);
       if (rate < 0) rate = 0;
       else if (rate > 2.5 * EX_RATE) rate = 2.5 * EX_RATE;
       const cur = currentForRate(rate);
@@ -424,7 +436,7 @@ export class SpinalCord {
     const sd = Math.sqrt(2 * k);
     for (const ex of this.explorers) {
       ex.x += -ex.x * k + sd * gaussian(rng);
-      let rate = EX_RATE * (1 + this.exploreGain * ex.x);
+      let rate = EX_RATE * (1 + (this.quiet ? 0 : this.exploreGain * ex.x));
       if (rate < 0) rate = 0;
       else if (rate > 2.5 * EX_RATE) rate = 2.5 * EX_RATE;
       const cur = currentForRate(rate);

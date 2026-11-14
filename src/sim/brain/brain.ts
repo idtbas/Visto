@@ -4,6 +4,8 @@ import { SpinalCord } from './spinal';
 import { RewardSystem } from './reward';
 import { Cerebellum } from './cerebellum';
 import { Decision } from './decision';
+import { Memory, type MemoryState } from './memory';
+import { Predictor } from './predict';
 import { Hormones, HORMONES, type HormoneInputs } from './hormones';
 import type { Biped } from '../body/biped';
 
@@ -15,7 +17,7 @@ export interface PopInfo {
   inhibitory: boolean;
 }
 
-const STATE_VERSION = 1;
+const STATE_VERSION = 2;
 
 export interface BrainState {
   version: number;
@@ -24,6 +26,7 @@ export interface BrainState {
   hormones: number[];
   energy: number;
   expected: number[];
+  memory?: MemoryState;
 }
 
 export interface Genome {
@@ -58,6 +61,8 @@ export class Brain {
   readonly reward: RewardSystem;
   readonly cerebellum: Cerebellum | null;
   readonly decision: Decision;
+  readonly memory: Memory;
+  readonly predictor: Predictor;
   readonly hormones = new Hormones();
   /** set by the simulation before every tick */
   readonly bodyState: HormoneInputs = { rpe: 0, dopamine: 0, pain: 0, surprise: 0, power: 0, intake: 0, asleep: false, activity: 0 };
@@ -76,6 +81,8 @@ export class Brain {
     });
     this.reward = new RewardSystem(this.net);
     this.decision = new Decision(this.net, this.spinal, { learn: !!opt.learn, lr: opt.decisionLr ?? 2e-6, n: Math.round(32 * (opt.scale ?? 1)) });
+    this.predictor = new Predictor(this.net, this.spinal, !!opt.learn);
+    this.memory = new Memory(this.net, this.spinal, this.decision, this.reward, !!opt.learn);
     this.cerebellum = opt.granules && opt.granules > 0 ? new Cerebellum(this.net, this.spinal, { granules: opt.granules }) : null;
     this.net.build();
     this.net.learning = !!opt.learn;
@@ -91,16 +98,37 @@ export class Brain {
     bs.dopamine = this.reward.level;
     this.activityRate += ((this.net.nSpikes * 1000) / this.net.n - this.activityRate) * 0.01;
     bs.activity = this.activityRate;
+    if (this.surpriseNext > bs.surprise) bs.surprise = this.surpriseNext;
+    this.surpriseNext = 0;
     this.hormones.step(bs);
     bs.pain = 0;
     bs.surprise = 0;
     bs.intake = 0;
+    const asleep = bs.asleep;
     if ((this.net.t & 31) === 0) {
       const fx = this.hormones.effects;
       this.spinal.exploreGain = fx.exploration;
       this.decision.exploreGain = Math.max(0.6, fx.exploration);
-      for (const pr of this.net.projs) if (pr.plastic) pr.lrGain = fx.learningRate;
+      // dopamine-gated synapses follow the hormonal learning rate; in sleep they learn from replay
+      const lr = asleep ? this.replayGain : fx.learningRate;
+      for (const pr of this.net.projs) if (pr.elig) pr.lrGain = lr;
     }
+    if (asleep !== this.wasAsleep) {
+      // asleep, a synapse remembers what it just did only briefly, so that one replayed
+      // attempt is not credited with the outcome of the next
+      this.wasAsleep = asleep;
+      for (const tn of this.spinal.tone) {
+        const pl = tn.proj.plastic;
+        if (pl && pl.rule === 'perturb') {
+          if (asleep) this.awakeTauE = pl.tauE;
+          pl.tauE = asleep ? 500 : this.awakeTauE;
+        }
+      }
+    }
+    this.memory.step(asleep);
+    this.predictor.step(asleep);
+    // an unexpected sensation is a surprise for the hormone system
+    if (this.predictor.surprised) this.surpriseNext = 1;
     this.spinal.sense();
     this.decision.step();
     this.cerebellum?.step();
@@ -114,21 +142,11 @@ export class Brain {
     }
   }
 
-  /** slowly averaged copy of the learned tone synapses: what sleep consolidates towards */
-  private consolidated: Float32Array[] | null = null;
-
-  /** call about once per second: awake, the long-term average follows the synapses slowly;
-   *  asleep, the synapses are pulled back to that average, which removes the jitter of the day */
-  consolidate(asleep: boolean): void {
-    const projs = this.spinal.tone.map((t) => t.proj);
-    if (!this.consolidated) this.consolidated = projs.map((p) => p.w.slice());
-    projs.forEach((p, k) => {
-      const c = this.consolidated![k];
-      const w = p.w;
-      if (asleep) for (let i = 0; i < w.length; i++) w[i] += (c[i] - w[i]) * 0.03;
-      else for (let i = 0; i < w.length; i++) c[i] += (w[i] - c[i]) * (1 / 120);
-    });
-  }
+  /** how strongly the tone synapses learn from a replayed attempt, relative to a real one */
+  replayGain = Number((globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env.REPLAY_GAIN ?? 0.5);
+  private wasAsleep = false;
+  private surpriseNext = 0;
+  private awakeTauE = 3000;
 
   /** returns the spike counts collected since the last call */
   takeActivity(): Uint8Array {
@@ -147,6 +165,7 @@ export class Brain {
       hormones: this.hormones.snapshot(),
       energy: this.hormones.energy,
       expected: this.reward.expected.slice(),
+      memory: this.memory.save(),
     };
   }
 
@@ -159,6 +178,7 @@ export class Brain {
     HORMONES.forEach((h, i) => (this.hormones.level[h] = st.hormones[i] ?? this.hormones.level[h]));
     this.hormones.energy = st.energy;
     st.expected.forEach((v, i) => (this.reward.expected[i] = v));
+    if (st.memory) this.memory.load(st.memory);
     return true;
   }
 

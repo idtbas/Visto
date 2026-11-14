@@ -4,6 +4,7 @@ import { BodyView } from './ui/bodyView';
 import { BrainView } from './ui/brainView';
 import { HormoneView } from './ui/hormoneView';
 import { LearnView } from './ui/learnView';
+import { Brain3D } from './ui/brain3d';
 import { TONE_GROUPS } from './sim/brain/spinal';
 import { MUSCLE_NAMES, MUSCLE_LABELS, NM } from './sim/body/biped';
 import type { FromWorker, ToWorker } from './protocol';
@@ -38,6 +39,36 @@ const bodyView = new BodyView($<HTMLCanvasElement>('world'));
 const brainView = new BrainView($<HTMLCanvasElement>('brain'), $('brainTip'));
 const hormoneView = new HormoneView($('hormoneRows'));
 const learnView = new LearnView($<HTMLCanvasElement>('learn'));
+const brain3d = new Brain3D($<HTMLCanvasElement>('gl3d'), $<HTMLCanvasElement>('lab3d'));
+{
+  // the 3D view lives in a window of its own that can be moved, resized and closed
+  const win = $('win3d');
+  const head = $('win3dHead');
+  $('noGl').hidden = brain3d.supported;
+  const show = (on: boolean): void => {
+    win.hidden = !on;
+    brain3d.open = on;
+    $('btn3d').classList.toggle('on', on);
+  };
+  $('btn3d').addEventListener('click', () => show(win.hidden !== false));
+  $('btn3dClose').addEventListener('click', () => show(false));
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !win.hidden) show(false);
+  });
+  let grab: [number, number] | null = null;
+  head.addEventListener('pointerdown', (e) => {
+    if ((e.target as HTMLElement).tagName === 'BUTTON') return;
+    const r = win.getBoundingClientRect();
+    grab = [e.clientX - r.left, e.clientY - r.top];
+    head.setPointerCapture(e.pointerId);
+  });
+  head.addEventListener('pointermove', (e) => {
+    if (!grab) return;
+    win.style.left = `${Math.max(-200, Math.min(window.innerWidth - 80, e.clientX - grab[0]))}px`;
+    win.style.top = `${Math.max(0, Math.min(window.innerHeight - 40, e.clientY - grab[1]))}px`;
+  });
+  head.addEventListener('pointerup', () => (grab = null));
+}
 const toneBars: { fill: HTMLElement; val: HTMLElement }[] = [];
 for (const g of TONE_GROUPS) {
   const row = document.createElement('div');
@@ -115,11 +146,16 @@ function updatePanels(f: Frame): void {
   $('simSpeed').textContent = `×${f.speed.toFixed(f.speed < 10 ? 1 : 0)}`;
   $('hud').textContent = `Strecke ${de(f.body[0], 1)} m   Tempo ${de(f.velX)} m/s   Neigung ${((f.lean * 180) / Math.PI).toFixed(0)}°   Leistung ${f.power.toFixed(0)} W`;
   const life = f.life;
+  const mind = f.mind;
   $('lifeState').textContent =
-    f.mode !== 'brain' ? (f.mode === 'manual' ? 'Handsteuerung' : 'Referenz-Reflexe (ohne Gehirn)') : life.state === 'sleeping' ? 'schläft – festigt, was es gelernt hat' : life.state === 'fallen' ? 'gestürzt – wird gleich aufgehoben' : life.inHand ? 'in der helfenden Hand' : life.state === 'standing' ? 'steht' : 'läuft';
+    f.mode !== 'brain' ? (f.mode === 'manual' ? 'Handsteuerung' : 'Referenz-Reflexe (ohne Gehirn)') : life.state === 'sleeping' ? (mind.dream ? 'schläft und träumt' : 'schläft') : life.state === 'fallen' ? 'gestürzt – wird gleich aufgehoben' : life.inHand ? 'in der helfenden Hand' : life.state === 'standing' ? 'steht' : 'läuft';
   $('stFalls').textContent = String(life.falls);
   $('stAttempt').textContent = life.attempt >= 100 ? `${Math.round(life.attempt)} m` : `${de(life.attempt)} m`;
   $('stBest').textContent = life.bestAttempt >= 100 ? `${Math.round(life.bestAttempt)} m` : `${de(life.bestAttempt)} m`;
+  $('memNote').textContent = `${mind.attempts} Läufe · ${mind.encounters} Hind. · ${mind.dreams} Träume`;
+  $('speFill').style.width = `${Math.min(100, mind.spe * 200)}%`;
+  $('speMark').style.left = `${Math.min(100, mind.speUsual * 200)}%`;
+  $('speVal').textContent = de(mind.spe, 2);
   const dbars = $('decBars').children;
   f.decision.forEach((v, i) => ((dbars[i] as HTMLElement).style.height = `${Math.round(Math.min(1, v / 1.5) * 100)}%`));
   $('decVal').textContent = f.highStep > 0.3 ? '↑' : '';
@@ -176,6 +212,7 @@ function onMessage(m: FromWorker): void {
     bodyView.setFrame(f);
     if (f.activity) {
       brainView.addActivity(f.activity, dt);
+      brain3d.addActivity(f.activity, dt);
       if (dt > 0) {
         let n = 0;
         for (let i = 0; i < f.activity.length; i++) n += f.activity[i];
@@ -184,6 +221,7 @@ function onMessage(m: FromWorker): void {
     }
   } else if (m.type === 'ready') {
     brainView.setInfo(m.brain);
+    brain3d.setInfo(m.brain);
     brainMeta = `${nf.format(m.brain.neurons)} Neuronen · ${nf.format(m.brain.synapses)} Synapsen`;
   } else if (m.type === 'attempts') {
     learnView.setAttempts(m.list);
@@ -199,6 +237,7 @@ function raf(): void {
   if (latest) {
     bodyView.draw();
     brainView.draw();
+    brain3d.draw();
     updatePanels(latest);
   }
   requestAnimationFrame(raf);

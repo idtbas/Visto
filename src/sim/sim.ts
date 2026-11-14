@@ -36,12 +36,34 @@ export interface Frame {
   highStep: number;
   /** learned drive from each visual distance pool onto the striatum */
   decision: number[];
+  /** what the hippocampus is doing */
+  mind: Mind;
   /** learned gain of the brainstem tone nuclei (1 = mature) */
   tone: number[];
   /** number of finished walking attempts; the list itself is sent separately when this changes */
   attemptCount: number;
   /** counts cookies eaten so far (to trigger effects in the display) */
   cookiesEaten: number;
+}
+
+export interface Mind {
+  /** stored walking attempts / obstacle encounters */
+  attempts: number;
+  encounters: number;
+  /** the attempt being replayed in sleep: what was tried per tone nucleus (relative to rest) and how it ended (-1..1) */
+  dream: { tone: number[]; outcome: number } | null;
+  dreams: number;
+  /** 0 = nothing, 1 = imagining lifting the feet, 2 = imagining not lifting them */
+  imagining: number;
+  /** recalled outcomes speaking for and against lifting the feet, 0..1 */
+  pro: number;
+  contra: number;
+  /** recalled outcome right now: good / bad, 0..1 */
+  recallGood: number;
+  recallBad: number;
+  /** prediction error of the forward model and its usual level */
+  spe: number;
+  speUsual: number;
 }
 
 export interface Cookie {
@@ -109,6 +131,8 @@ export class Sim {
   private holdUntil = 0;
   private holdX = 0;
   private frozenUntil = 0;
+  /** reward prediction error summed over the current walking attempt */
+  private attemptSurprise = 0;
   private sleepOption = false;
   /** walking starts with a helping push instead of from quiet standing */
   startInStride = true;
@@ -152,6 +176,7 @@ export class Sim {
   /** blocks appear on the path every few metres */
   obstaclesOn = false;
   private nextObstacleX = 12;
+  private readonly encounters = new Map<number, { sum: number; n: number; done: boolean }>();
   /** range of block heights [m] */
   obstacleHeight: [number, number] = [0.05, 0.1];
 
@@ -170,6 +195,26 @@ export class Sim {
         this.nextObstacleX = ox + 7 + 5 * rng();
       }
     }
+    // remember how each encounter went: were the feet lifted, and did it work?
+    for (const o of terrain.obstacles) {
+      const d = o.x - x;
+      let tr = this.encounters.get(o.x);
+      if (!tr && d < 1.0 && d > -0.5) this.encounters.set(o.x, (tr = { sum: 0, n: 0, done: false }));
+      if (!tr || tr.done) continue;
+      if (d > 0 && this.life.state === 'walking') {
+        tr.sum += this.brain.spinal.stepLevel;
+        tr.n++;
+      }
+      const stepped = tr.n > 0 && tr.sum / tr.n > 0.3;
+      if (this.life.state === 'fallen' && Math.abs(d) < 1.6) {
+        tr.done = true;
+        this.brain.memory.rememberObstacle(stepped, false);
+      } else if (d < -0.7 && this.life.state === 'walking') {
+        tr.done = true;
+        this.brain.memory.rememberObstacle(stepped, true);
+      }
+    }
+    if (this.encounters.size > 40) for (const k of this.encounters.keys()) if (k < x - 8) this.encounters.delete(k);
     // obstacles far behind are cleared away; after a fall the hand also removes the one it tripped over
     const fallen = this.life.state === 'fallen';
     const keep = terrain.obstacles.filter((o) => o.x > x - 5 && !(fallen && Math.abs(o.x - x) < 1.6));
@@ -232,6 +277,37 @@ export class Sim {
     return r;
   }
 
+  private dreamUnit = -1;
+  private dream: Mind['dream'] = null;
+
+  private mind(): Mind {
+    const m = this.brain.memory;
+    if (m.replaying !== this.dreamUnit) {
+      this.dreamUnit = m.replaying;
+      if (m.replaying < 0) this.dream = null;
+      else {
+        const r = m.recall(m.replaying);
+        // stored synaptic weights back into "tried more / less than usual"
+        const mean = r.tone.reduce((a, b) => a + b, 0) / r.tone.length || 1;
+        this.dream = { tone: r.tone.map((w) => w / mean - 1), outcome: Math.max(-1, Math.min(1, (r.good - r.bad) / 2.5)) };
+      }
+    }
+    const p = this.brain.predictor;
+    return {
+      attempts: m.writtenA.filter(Boolean).length,
+      encounters: m.writtenB.filter(Boolean).length,
+      dream: this.dream,
+      dreams: m.replayCount,
+      imagining: m.imagining,
+      pro: Math.min(1, m.go.rate / 60),
+      contra: Math.min(1, m.nogo.rate / 60),
+      recallGood: Math.min(1, m.valGood.rate / 80),
+      recallBad: Math.min(1, m.valBad.rate / 80),
+      spe: p.spe,
+      speUsual: p.usual,
+    };
+  }
+
   saveState(): SimState {
     return { brain: this.brain.saveState(), time: this.physics.time, life: { ...this.life }, cookiesEaten: this.cookiesEaten, x: this.physics.biped.hipX(), attempts: this.attempts.slice(), durations: this.fallExpectation.save() };
   }
@@ -284,6 +360,7 @@ export class Sim {
     this.life.state = 'walking';
     this.stateSince = this.time;
     this.attemptX0 = b.hipX();
+    this.attemptSurprise = 0;
     this.holdUntil = 0;
     // the nervous system gets a moment to register the posture before the hand lets go
     this.frozenUntil = this.time + 0.2;
@@ -354,6 +431,8 @@ export class Sim {
       if (life.attempt > life.bestAttempt) life.bestAttempt = life.attempt;
       if (b.hipY() < 0.6 || Math.abs(b.theta) > 1.2 || b.impact > 0.05) {
         if (life.state === 'walking') {
+          // store the attempt: what was tried and whether it went better or worse than expected
+          this.brain.memory.rememberAttempt(this.attemptSurprise - FALL_COST);
           this.fallExpectation.record(this.time - this.stateSince);
           this.attempts.push(Math.max(0, life.attempt));
           if (this.attempts.length > 3000) this.attempts.shift();
@@ -416,7 +495,7 @@ export class Sim {
       const jolt = Math.abs(b2.dtheta) > 2.5 ? 1 : 0;
       if (jolt > this.lastImpact) bs.surprise = 1;
       this.lastImpact = jolt;
-      if ((this.physics.time * 1000) % 1000 < 1) this.brain.consolidate(st === 'sleeping');
+      if (st === 'walking' && this.time >= this.frozenUntil) this.attemptSurprise += this.brain.reward.rpe * DT;
       if ((this.physics.time * 1000) % 50 < 1 && st !== 'sleeping') this.cookieTick();
       if ((this.physics.time * 1000) % 20 < 1) this.obstacleTick();
       // still on its feet at a moment when it usually falls: better than expected
@@ -463,6 +542,7 @@ export class Sim {
       seen: Number.isFinite(this.brain.decision.seenDistance) ? this.brain.decision.seenDistance : -1,
       highStep: this.brain.spinal.stepLevel,
       decision: this.brain.decision.weights(),
+      mind: this.mind(),
       tone: this.brain.spinal.tone.map((t) => t.gain),
       attemptCount: this.attemptCount,
     };

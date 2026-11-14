@@ -13,7 +13,8 @@ const mult = multFile && existsSync(multFile) ? (JSON.parse(readFileSync(multFil
 const exploreW = process.env.EXW ? Number(process.env.EXW) : undefined;
 const newbornTone = process.env.TONE ? Number(process.env.TONE) : undefined;
 const granules = process.env.GRANULES ? Number(process.env.GRANULES) : 0;
-const sim = new Sim({ learn, newborn, learningRate: lr, mult, seed, exploreW, newbornTone, granules });
+const sim = new Sim({ learn, newborn, learningRate: lr, mult, seed, exploreW, newbornTone, granules, sleep: !!process.env.SLEEP });
+if (process.env.NOREPLAY) sim.brain.memory.replayEnabled = false;
 sim.autoCookies = !process.env.NOCOOKIES;
 if (process.env.SHAM) sim.brain.reward.shamDelay = 17000;
 const sp = sim.brain.spinal;
@@ -26,10 +27,12 @@ let lastX = sim.physics.biped.hipX();
 let walkTicks = 0;
 let daAbs = 0;
 let stepSum = 0;
+let sleepTicks = 0;
 for (let m = 0; m < minutes; m++) {
   for (let i = 0; i < 60000; i++) {
     sim.tick();
     if (sim.life.state === 'walking') walkTicks++;
+    if (sim.life.state === 'sleeping') sleepTicks++;
     daAbs += Math.abs(sim.brain.reward.level);
     stepSum += sim.brain.spinal.stepLevel;
   }
@@ -44,9 +47,10 @@ for (let m = 0; m < minutes; m++) {
   sp.pathProj.forEach((leg, l) => leg.forEach((p, k) => { drift += Math.abs(Math.log(p.meanWeight() / w0[l][k])); cnt++; }));
   console.log(
     `min ${m + 1}: falls ${falls}, distance ${distSum.toFixed(1)} m, walking ${(walkTicks / 1000).toFixed(0)} s (${(walkTicks / 1000 / Math.max(1, falls)).toFixed(1)} s/attempt), best ${sim.life.bestAttempt.toFixed(1)} m, ` +
-      `step ${(stepSum / 60000).toFixed(2)}, |DA| ${(daAbs / 60000).toFixed(2)}, drift ${(drift / cnt).toFixed(3)}, tone ${sp.tone.map((t) => t.gain.toFixed(2)).join(' ')}, rpeSd ${Math.sqrt(sim.brain.hormones.rpeVar).toFixed(2)} fokin ${sim.brain.hormones.level.fokin.toFixed(2)} lrx ${sim.brain.hormones.effects.learningRate.toFixed(2)}, exp ${sim.brain.reward.expected.map((v) => v.toFixed(2)).join('/')} (${((Date.now() - t0) / 1000).toFixed(0)} s)`,
+      `asleep ${(sleepTicks / 1000).toFixed(0)} s, replays ${sim.brain.memory.replayCount}, step ${(stepSum / 60000).toFixed(2)}, |DA| ${(daAbs / 60000).toFixed(2)}, drift ${(drift / cnt).toFixed(3)}, tone ${sp.tone.map((t) => t.gain.toFixed(2)).join(' ')}, rpeSd ${Math.sqrt(sim.brain.hormones.rpeVar).toFixed(2)} fokin ${sim.brain.hormones.level.fokin.toFixed(2)} lrx ${sim.brain.hormones.effects.learningRate.toFixed(2)}, exp ${sim.brain.reward.expected.map((v) => v.toFixed(2)).join('/')} (${((Date.now() - t0) / 1000).toFixed(0)} s)`,
   );
   walkTicks = 0;
   daAbs = 0;
   stepSum = 0;
+  sleepTicks = 0;
 }

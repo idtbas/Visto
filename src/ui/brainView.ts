@@ -28,16 +28,18 @@ interface RegionDef {
 const INH: RGB = [110, 165, 255];
 const SPARK: RGB = [255, 214, 130];
 
-const REGIONS: RegionDef[] = [
+export const REGIONS: RegionDef[] = [
   // --- brain, seen from the side: front is on the right ---
-  { key: 'visual', title: 'Sehrinde', x: 0.04, y: 0.065, w: 0.24, h: 0.12, color: [120, 220, 255] },
-  { key: 'basal', title: 'Basalganglien', x: 0.37, y: 0.11, w: 0.25, h: 0.12, color: [255, 150, 200] },
-  { key: 'explore', title: 'Erkundungs-Kern', x: 0.68, y: 0.055, w: 0.28, h: 0.17, color: [200, 160, 255] },
-  { key: 'cerebellum_granule', title: 'Kleinhirn · Körnerzellen', x: 0.03, y: 0.235, w: 0.3, h: 0.19, color: [170, 200, 255] },
-  { key: 'cerebellum', title: 'Kleinhirn · Purkinje', x: 0.345, y: 0.275, w: 0.17, h: 0.15, color: [200, 170, 255] },
-  { key: 'vta', title: 'Dopamin-Kern', x: 0.57, y: 0.27, w: 0.2, h: 0.09, color: [255, 180, 84] },
-  { key: 'brainstem', title: 'Hirnstamm', x: 0.53, y: 0.385, w: 0.36, h: 0.115, color: [255, 214, 130] },
-  { key: 'afferent', title: 'Gleichgewicht', x: 0.345, y: 0.44, w: 0.165, h: 0.07, color: [150, 235, 170] },
+  { key: 'visual', title: 'Sehrinde', x: 0.03, y: 0.03, w: 0.22, h: 0.105, color: [120, 220, 255] },
+  { key: 'cortex', title: 'Scheitelrinde · Vorhersage', x: 0.27, y: 0.02, w: 0.34, h: 0.105, color: [255, 236, 170] },
+  { key: 'explore', title: 'Erkundungs-Kern', x: 0.63, y: 0.03, w: 0.34, h: 0.14, color: [200, 160, 255] },
+  { key: 'hippocampus', title: 'Hippocampus · Gedächtnis', x: 0.27, y: 0.14, w: 0.34, h: 0.125, color: [140, 240, 210] },
+  { key: 'basal', title: 'Basalganglien', x: 0.63, y: 0.185, w: 0.2, h: 0.085, color: [255, 150, 200] },
+  { key: 'vta', title: 'Dopamin', x: 0.845, y: 0.185, w: 0.125, h: 0.085, color: [255, 180, 84] },
+  { key: 'cerebellum_granule', title: 'Kleinhirn · Körnerzellen', x: 0.03, y: 0.15, w: 0.225, h: 0.265, color: [170, 200, 255] },
+  { key: 'cerebellum', title: 'Kleinhirn · Purkinje', x: 0.27, y: 0.28, w: 0.2, h: 0.135, color: [200, 170, 255] },
+  { key: 'brainstem', title: 'Hirnstamm', x: 0.485, y: 0.285, w: 0.485, h: 0.13, color: [255, 214, 130] },
+  { key: 'afferent', title: 'Gleichgewicht', x: 0.27, y: 0.43, w: 0.2, h: 0.07, color: [150, 235, 170] },
   // --- body: spinal cord in the middle, nerves to the left and right leg ---
   { key: 'afferent_0', title: 'Sinnesnerven links', x: 0.02, y: 0.55, w: 0.3, h: 0.19, color: [150, 235, 170] },
   { key: 'afferent_1', title: 'Sinnesnerven rechts', x: 0.68, y: 0.55, w: 0.3, h: 0.19, color: [150, 235, 170] },
@@ -49,6 +51,14 @@ const REGIONS: RegionDef[] = [
 const SPLIT_BY_LEG = new Set(['afferent', 'spinal', 'motor']);
 const GOLDEN = 2.399963229728653;
 const LEVELS = 4;
+
+/** which region of the map a population belongs to */
+export function regionKeyOf(p: PopInfo): string {
+  const m = /_([01])$/.exec(p.name);
+  if (m && SPLIT_BY_LEG.has(p.region)) return `${p.region}_${m[1]}`;
+  // spinal-type pools that serve both legs (mode gates, gait initiation, tone context) sit in the brainstem
+  return p.region === 'spinal' ? 'brainstem' : p.region;
+}
 
 interface Cluster {
   pop: PopInfo;
@@ -150,10 +160,7 @@ export class BrainView {
   }
 
   private regionKey(p: PopInfo): string {
-    const m = /_([01])$/.exec(p.name);
-    if (m && SPLIT_BY_LEG.has(p.region)) return `${p.region}_${m[1]}`;
-    // spinal-type pools that serve both legs (mode gates, gait initiation, tone context) sit in the brainstem
-    return p.region === 'spinal' ? 'brainstem' : p.region;
+    return regionKeyOf(p);
   }
 
   private colorIndex(c: RGB): number {
@@ -403,10 +410,10 @@ export class BrainView {
       s.ellipse(x * w, y * h, rx * w, ry * h, 0, 0, Math.PI * 2);
       s.fill();
     };
-    ell(0.5, 0.165, 0.49, 0.16); // cerebrum
-    ell(0.75, 0.17, 0.24, 0.15); // frontal lobe
-    ell(0.19, 0.34, 0.185, 0.115); // cerebellum
-    ell(0.56, 0.36, 0.34, 0.16); // midbrain and brainstem
+    ell(0.5, 0.15, 0.49, 0.15); // cerebrum
+    ell(0.76, 0.16, 0.235, 0.15); // frontal lobe
+    ell(0.17, 0.3, 0.165, 0.13); // cerebellum
+    ell(0.6, 0.34, 0.37, 0.12); // midbrain and brainstem
     s.beginPath();
     s.roundRect(0.325 * w, 0.42 * h, 0.35 * w, 0.6 * h, 0.05 * w); // spinal cord
     s.fill();

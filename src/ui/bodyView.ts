@@ -152,6 +152,77 @@ export class BodyView {
     this.drawLeg(f, 0, 0.5);
     this.drawTrunk(f);
     this.drawLeg(f, 1, 1);
+    this.drawThought(f);
+  }
+
+  /** what is going on in the hippocampus: a dream in sleep, or the options weighed before an obstacle */
+  private drawThought(f: Frame): void {
+    const m = f.mind;
+    const dreaming = f.life.state === 'sleeping';
+    if (!dreaming && m.imagining === 0) return;
+    const c = this.ctx;
+    const head = this.pt(f, 0, 0, GEOM.trunkLen - 0.1);
+    const bw = 150;
+    const bh = dreaming ? 74 : 62;
+    const bx = Math.max(8, Math.min(this.w - bw - 8, head[0] + 30));
+    const by = Math.max(40, head[1] - bh - 48);
+    // little circles leading from the head to the bubble
+    c.fillStyle = '#1b2433';
+    c.strokeStyle = '#4c5d7c';
+    c.lineWidth = 1;
+    for (const [t, r] of [[0.3, 3], [0.62, 5]] as const) {
+      c.beginPath();
+      c.arc(head[0] + (bx + 22 - head[0]) * t, head[1] - 14 + (by + bh - head[1] + 14) * t, r, 0, Math.PI * 2);
+      c.fill();
+      c.stroke();
+    }
+    c.beginPath();
+    c.roundRect(bx, by, bw, bh, 12);
+    c.fill();
+    c.stroke();
+    c.font = '11px Inter, system-ui, sans-serif';
+    c.textAlign = 'left';
+    c.textBaseline = 'top';
+    c.fillStyle = '#9fb0cc';
+    if (dreaming) {
+      c.fillText(m.dream ? 'träumt von einem Laufversuch' : 'schläft', bx + 10, by + 8);
+      if (m.dream) {
+        // what was tried in that attempt (per tone nucleus) and how it ended
+        const names = ['St', 'Ru', 'Sw', 'Fu', 'Ha'];
+        const col = m.dream.outcome >= 0 ? '#7ee0a1' : '#ff6b6b';
+        const mid = by + 44;
+        c.strokeStyle = '#3a4a66';
+        c.beginPath();
+        c.moveTo(bx + 10, mid);
+        c.lineTo(bx + 104, mid);
+        c.stroke();
+        m.dream.tone.forEach((v, i) => {
+          const hgt = Math.max(-16, Math.min(16, v * 42));
+          c.fillStyle = col;
+          c.fillRect(bx + 12 + i * 19, hgt >= 0 ? mid - hgt : mid, 12, Math.abs(hgt));
+          c.fillStyle = '#6f7f9a';
+          c.font = '8px Inter, system-ui, sans-serif';
+          c.fillText(names[i], bx + 12 + i * 19, by + 62);
+        });
+        c.font = '18px Inter, system-ui, sans-serif';
+        c.fillStyle = col;
+        c.fillText(m.dream.outcome >= 0 ? '✓' : '✗', bx + 118, by + 30);
+      }
+    } else {
+      const lift = m.imagining === 1;
+      c.fillText(lift ? 'Füße heben?' : 'nicht heben?', bx + 10, by + 8);
+      // the outcomes this option brings back to mind
+      c.font = '10px Inter, system-ui, sans-serif';
+      c.fillStyle = '#7ee0a1';
+      c.fillRect(bx + 10, by + 28, 60 * m.recallGood, 6);
+      c.fillStyle = '#ff6b6b';
+      c.fillRect(bx + 10, by + 38, 60 * m.recallBad, 6);
+      c.fillStyle = '#6f7f9a';
+      c.fillText('ging gut', bx + 76, by + 25);
+      c.fillText('ging schief', bx + 76, by + 35);
+      c.fillStyle = m.pro > m.contra ? '#7ee0a1' : '#ffb454';
+      c.fillText(m.pro > 0.15 || m.contra > 0.15 ? (m.pro > m.contra ? '→ heben' : '→ lassen') : '→ noch keine Erfahrung', bx + 10, by + 47);
+    }
   }
 
   private drawGround(): void {

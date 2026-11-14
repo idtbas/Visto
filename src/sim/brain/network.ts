@@ -63,6 +63,21 @@ export type Plasticity =
       ltd: number;
       wMin: number;
       wMax: number;
+    }
+  | {
+      /** fast Hebbian association for memories: while the projection's write gate is open,
+       *  every spike of the gating side moves the synapse towards the activity level of the
+       *  other side ("what fires together is bound together", stored in one go).
+       *  gate 'pre': updated at presynaptic spikes, stores the postsynaptic activity;
+       *  gate 'post': updated at postsynaptic spikes, stores the presynaptic activity. */
+      rule: 'hebb';
+      gate: 'pre' | 'post';
+      /** fraction of the way to the target per spike */
+      rate: number;
+      /** weight that corresponds to a spike trace of 1 (about 50 Hz) */
+      wScale: number;
+      theta: number;
+      wMax: number;
     };
 
 export interface PopSpec {
@@ -172,7 +187,7 @@ export class Proj {
     this.target = new Uint32Array(nSyn);
     this.w = new Float32Array(nSyn);
     this.delay = new Uint8Array(nSyn);
-    this.elig = this.plastic && this.plastic.rule !== 'cf' ? new Float32Array(nSyn) : null;
+    this.elig = this.plastic && (this.plastic.rule === 'perturb' || this.plastic.rule === 'rstdp') ? new Float32Array(nSyn) : null;
     const [d0, d1] = typeof spec.delay === 'number' ? [spec.delay, spec.delay] : spec.delay;
     const jit = spec.wJitter ?? 0;
     const all = k === post.n;
@@ -193,7 +208,7 @@ export class Proj {
       }
     }
     this.rowPtr[pre.n] = s;
-    if (this.plastic?.rule === 'rstdp') this.buildIncoming();
+    if (this.plastic?.rule === 'rstdp' || (this.plastic?.rule === 'hebb' && this.plastic.gate === 'post')) this.buildIncoming();
   }
 
   private buildIncoming(): void {
@@ -226,8 +241,8 @@ export class Proj {
   }
 }
 
-export const MAX_DELAY = 31;
-const RING = 32;
+export const MAX_DELAY = 63;
+const RING = 64;
 const RING_MASK = RING - 1;
 const NOISE_N = 1 << 16;
 const NOISE_MASK = NOISE_N - 1;
@@ -351,7 +366,9 @@ export class Network {
       }
     }
     this.plasticProjs = this.projs.filter((p) => p.plastic);
-    this.postProjsByPop = this.pops.map((p) => this.projs.filter((q) => q.post === p && q.plastic?.rule === 'rstdp'));
+    this.postProjsByPop = this.pops.map((p) =>
+      this.projs.filter((q) => q.post === p && (q.plastic?.rule === 'rstdp' || (q.plastic?.rule === 'hebb' && q.plastic.gate === 'post'))),
+    );
   }
 
   get nSynapses(): number {
@@ -473,6 +490,16 @@ export class Network {
           } else if (pl.rule === 'rstdp') {
             const el = pr.elig!;
             for (let s = a0; s < a1; s++) el[s] -= pl.aMinus * this.traceOf(target[s]);
+          } else if (pl.rule === 'hebb') {
+            if (pl.gate === 'pre' && pr.lrGain > 0) {
+              const r = pl.rate * pr.lrGain;
+              for (let s = a0; s < a1; s++) {
+                let goal = pl.wScale * (this.traceOf(target[s]) - pl.theta);
+                if (goal < 0) goal = 0;
+                else if (goal > pl.wMax) goal = pl.wMax;
+                w[s] += r * (goal - w[s]);
+              }
+            }
           } else {
             for (let s = a0; s < a1; s++) {
               let nw = w[s] + pl.ltp - pl.ltd * cf[target[s]];
@@ -488,13 +515,24 @@ export class Network {
         const posts = this.postProjsByPop[p.id];
         for (let q = 0; q < posts.length; q++) {
           const pr = posts[q];
-          const pl = pr.plastic as Extract<Plasticity, { rule: 'rstdp' }>;
-          const el = pr.elig!;
+          const pl = pr.plastic!;
           const c0 = pr.colPtr![local];
           const c1 = pr.colPtr![local + 1];
           const inSyn = pr.inSyn!;
           const inPre = pr.inPre!;
-          for (let s = c0; s < c1; s++) el[inSyn[s]] += pl.aPlus * this.traceOf(inPre[s]);
+          if (pl.rule === 'rstdp') {
+            const el = pr.elig!;
+            for (let s = c0; s < c1; s++) el[inSyn[s]] += pl.aPlus * this.traceOf(inPre[s]);
+          } else if (pl.rule === 'hebb' && pr.lrGain > 0) {
+            const r = pl.rate * pr.lrGain;
+            const w = pr.w;
+            for (let s = c0; s < c1; s++) {
+              let goal = pl.wScale * (this.traceOf(inPre[s]) - pl.theta);
+              if (goal < 0) goal = 0;
+              else if (goal > pl.wMax) goal = pl.wMax;
+              w[inSyn[s]] += r * (goal - w[inSyn[s]]);
+            }
+          }
         }
       }
       this.trace[i] = this.traceOf(i) + 1;

@@ -29,6 +29,9 @@ sich überall hosten oder direkt öffnen lässt.
   dorthin. Mit „Auto-Belohnung" belohnt sich Fortschritt von selbst.
 - **Hindernisse** legt kleine Stufen in den Weg, hinter jeder wartet ein Cookie. Die gestrichelte
   Linie zeigt, worauf das Auge gerade schaut.
+- **3D-Ansicht** öffnet das Nervensystem als drehbare Punktwolke in einem eigenen Fenster
+  (ziehen dreht, Mausrad oder zwei Finger zoomen, die Titelleiste verschiebt es). Sie zeigt
+  dieselben echten Spikes und Nervenbahnen wie die flache Karte.
 - Zeitraffer bis `max`, „Stehen/Laufen", „Neues Leben" (Gehirn zurücksetzen). Das Gehirn wird
   alle 30 Sekunden im Browser gespeichert und beim nächsten Besuch weiterverwendet.
 - **Kleinhirn (experimentell)** baut das Gehirn mit 12.000 zusätzlichen Körnerzellen neu auf.
@@ -58,6 +61,8 @@ hemmend, langsam erregend).
 | Dopamin-Kern | feuert bei „besser als erwartet", pausiert bei „schlechter als erwartet" | – |
 | Sehrinde | vier Neuronengruppen, die auf Hindernisse in 0,3 / 0,6 / 0,9 / 1,3 m Entfernung ansprechen | angeboren |
 | Basalganglien | Striatum, Pallidum, Thalamus: entscheiden, ob der Befehl „Füße anheben" gegeben wird | Entscheidung wird **gelernt** |
+| Hippocampus | zwei Speicher für einzelne Erlebnisse, Ausgangs- und Optionszellen, Abwägung | Inhalte werden **gelernt** (ein Erlebnis genügt) |
+| Scheitelrinde | Vorwärtsmodell: sagt vier Sinnessignale 50 ms voraus | gelernt |
 | Kleinhirn (optional) | Körnerzellen, Purkinje-Zellen, Kletterfasern: lernt Korrekturen vorwegzunehmen | gelernt, noch experimentell |
 
 ### Wie es lernt
@@ -81,15 +86,34 @@ zu bleiben als nach bisheriger Erfahrung zu erwarten war. Ein Sturz tut weh.
 | Serenin | Serotonin | ruhigen, schmerzfreien Phasen | dämpft Erkundung und Stress |
 | Stressin | Cortisol | Stürzen, Misserfolg | bremst das Lernen, wenn dauerhaft hoch |
 | Ergin | Hungerhormon | leerer Energiereserve | macht Cookies wertvoller |
-| Somnin | Adenosin | langer Wachzeit | Schlafdruck; nach etwa 15 Minuten schläft das Wesen ein |
+| Somnin | Adenosin | Wachzeit, schneller bei viel Lernen | Schlafdruck; je nach Lernstand schläft das Wesen etwa alle 5 bis 12 Minuten |
 | Plastin | BDNF | Erfolg | verstärkt das Lernen |
 
-### Schlaf
+### Gedächtnis, Schlaf und Träume
+
+Der Hippocampus hat zwei Speicher aus „Index-Zellen", die über schnelle Hebb-Synapsen an das
+gebunden werden, was beim Einspeichern gerade aktiv ist (ein Erlebnis genügt):
+
+- **Laufversuche.** Bei jedem Sturz wird gespeichert, was der Erkundungs-Kern in diesem Versuch
+  ausprobiert hat und ob der Versuch besser oder schlechter lief als erwartet.
+- **Hindernisse.** Bei jeder Stufe wird gespeichert, ob die Füße gehoben wurden und ob es gut
+  ging.
 
 Ist das Somnin hoch genug, erschlaffen die Muskeln und das Wesen legt sich hin (etwa 45
-Sekunden). Im Wachen folgt ein langsamer Mittelwert den gelernten Tonus-Synapsen; im Schlaf
-werden die Synapsen zu diesem Mittelwert zurückgezogen. Das glättet das Hin und Her des Tages.
-Ein Wiederabspielen von Erlebnissen (Replay) gibt es noch nicht.
+Sekunden). Wer viel Neues lernt, wird schneller müde: ein Neugeborenes schläft etwa alle 5
+Minuten, ein geübter Läufer etwa alle 12. Im Schlaf werden die Laufversuche seit dem letzten
+Schlaf einzeln wieder abgespielt (Replay): Die Index-Zellen treiben den Erkundungs-Kern in das
+damalige Muster und die Dopamin-Neuronen in den damaligen Ausgang, und die Tonus-Synapsen
+lernen daran noch einmal. Über dem schlafenden Wesen zeigt eine Gedankenblase, welcher Versuch
+gerade geträumt wird. Nach dem Aufwachen ist dieser Speicher wieder frei.
+
+### Vorhersage
+
+Vier Zellgruppen in der Scheitelrinde versuchen, genauso zu feuern wie vier Sinnessignale
+(Rumpf kippt nach vorn, nach hinten, Last auf dem linken, auf dem rechten Fuß), sehen aber
+nur, was 50 ms vorher gespürt und getan wurde. Ihre Synapsen lernen mit einer Delta-Regel aus
+dem Vorhersagefehler. Ein Fehler weit über dem üblichen Wert meldet dem Hormonsystem eine
+Überraschung (Vigilin).
 
 ### Sehen und Entscheiden
 
@@ -97,6 +121,13 @@ Das Auge meldet die Entfernung zum nächsten Hindernis. Ein Basalganglien-Schalt
 Befehl „Füße anheben" auslösen: Feuert das Striatum stark genug, verstummt das Pallidum, der
 Thalamus wird frei und treibt den Befehl. Welche Seheindrücke das Striatum antreiben, wird mit
 derselben Dopamin-Regel gelernt. Das Wesen wird unentschlossen geboren (halbe Stärke).
+
+**Inneres Durchspielen.** Solange ein Hindernis in Sicht ist, stellt sich das Gehirn die beiden
+Möglichkeiten abwechselnd vor, je eine Achtelsekunde lang (der Takt dafür ist von außen
+vorgegeben). Jede Vorstellung ruft die Begegnungen wach, bei denen so gehandelt wurde, und
+deren Ausgang. „Heben ging schief" und „Nicht heben ging gut" sammeln sich als Stimme dagegen,
+die umgekehrten Fälle als Stimme dafür, und beide wirken auf das Striatum. Die Gedankenblase
+über dem Kopf zeigt, was gerade erwogen wird.
 
 ## Was angeboren ist und was gelernt wird
 
@@ -145,16 +176,22 @@ das Maximum und sank erst danach.
 
 ## Was noch nicht geht
 
-- Ein Gedächtnis (Hippocampus), Replay im Schlaf, Arbeitsgedächtnis und inneres Durchspielen
-  sind nicht gebaut. „Denken" im Sinne des Plans gibt es damit noch nicht; es gibt eine gelernte
-  Entscheidung.
+- **Replay bringt bisher keinen Lernvorteil.** Es funktioniert wie beschrieben, aber in zwei
+  Messreihen lernten die Leben mit Replay nicht schneller laufen als ohne, bei stärkerer
+  Einstellung eher langsamer (Zahlen unten). Es ist deshalb schwach eingestellt.
+- **Der Vorhersagefehler taugt noch nicht als Alarm.** Das Vorwärtsmodell lernt den Gang, aber
+  vor einem Sturz steigt sein Fehler nur wenig und einen sanften Stoß erkennt er nicht.
+  Entsprechend selten meldet es eine Überraschung. „Vorsichtiger werden" ist nicht eingebaut.
+- **Abwägen heißt hier: zwei Möglichkeiten, eine Art von Erinnerung.** Ein Arbeitsgedächtnis,
+  Planen über mehrere Schritte oder ein Kortex, der Zusammenhänge lernt, fehlen. Das Wesen
+  bleibt auch nicht stehen, um nachzudenken; es wägt im Gehen ab.
 - Das Auge ist ein Entfernungsmesser für das nächste Hindernis, kein Bildsehen.
 - Der Befehl „Füße anheben" hilft nicht zuverlässig über Stufen. Mit Hindernissen stürzt das
   Wesen deutlich öfter als ohne.
 - Das Kleinhirn ist verdrahtet und seine Synapsen lernen, aber es verbessert das Laufen bisher
   nicht messbar. Deshalb ist es abgeschaltet, solange man es nicht einschaltet.
-- Das voreingestellte Gehirn hat rund 5.500 Neuronen und 205.000 Synapsen, mit Kleinhirn rund
-  18.000 und 646.000. Das ist weit unter den anfangs angepeilten 100.000 Neuronen.
+- Das voreingestellte Gehirn hat 6.392 Neuronen und 330.080 Synapsen, mit Kleinhirn rund
+  19.000 Neuronen. Das ist weit unter den anfangs angepeilten 100.000 Neuronen.
 - Das Stehen ist verkrampft (rund 650 W) und das Loslaufen aus dem Stand gelingt nicht.
 - Das Lernen einzelner Reflexbahnen ist zu langsam, um in Minuten sichtbar zu sein.
 - Auf einem Kern schafft JavaScript etwa 15–30 ns pro Neuron und Millisekunde. Rund 5.500

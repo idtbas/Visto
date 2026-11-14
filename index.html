@@ -50,6 +50,8 @@
             <div class="toneBox">
               <h2>Tonus-Kerne <span class="meta">gelernt</span></h2>
               <div id="toneRows"></div>
+              <div class="trow" title="Hippocampus: wie viele Laufversuche seit dem letzten Schlaf und wie viele Begegnungen mit Hindernissen gespeichert sind"><span>Erinnerungen</span><span class="tnote" id="memNote"></span><span class="tv"></span></div>
+              <div class="trow" title="Vorwärtsmodell: wie stark das Gespürte gerade von dem abweicht, was das Gehirn 50 ms vorher erwartet hat. Der Strich ist der übliche Wert."><span>Vorhersagefehler</span><span class="tbar"><span id="speFill" style="background:#ffecaa"></span><i id="speMark"></i></span><span class="tv" id="speVal"></span></div>
               <div class="trow dec" title="Gelernte Entscheidung der Basalganglien: Wie stark löst ein Hindernis in 0,3 / 0,6 / 0,9 / 1,3 m Entfernung den Befehl „Füße anheben“ aus? Das Wesen wird unentschlossen geboren (halbe Balken).">
                 <span>Füße heben?</span><span class="dbars" id="decBars"><i></i><i></i><i></i><i></i></span><span class="tv" id="decVal"></span>
               </div>
@@ -71,6 +73,7 @@
         <div class="col right">
           <section class="panel brain">
             <h2>Nervensystem <span class="meta" id="brainMeta"></span>
+              <button class="mini" id="btn3d" title="Öffnet das Nervensystem als drehbare 3D-Ansicht in einem eigenen Fenster">3D-Ansicht</button>
               <label class="toggle inl" title="Baut zusätzlich ein Kleinhirn mit 12.000 Körnerzellen ein. Experimentell: Es lernt, verbessert das Laufen aber noch nicht messbar und macht die Simulation langsamer. Das Gehirn wird dafür neu aufgebaut."><input type="checkbox" id="chkCb" /> Kleinhirn (experimentell)</label>
             </h2>
             <div class="brainWrap">
@@ -91,6 +94,18 @@
           </div>
         </div>
       </main>
+    </div>
+    <div class="win3d" id="win3d" hidden>
+      <div class="winHead" id="win3dHead">
+        <strong>Nervensystem in 3D</strong>
+        <span class="dim">ziehen dreht · Mausrad oder zwei Finger zoomen</span>
+        <button id="btn3dClose" title="Schließen" aria-label="3D-Ansicht schließen">✕</button>
+      </div>
+      <div class="winBody">
+        <canvas id="gl3d"></canvas>
+        <canvas id="lab3d"></canvas>
+        <p class="noGl" id="noGl" hidden>Dieser Browser stellt kein WebGL bereit, deshalb gibt es hier keine 3D-Ansicht.</p>
+      </div>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
