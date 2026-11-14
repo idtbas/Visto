@@ -2,7 +2,7 @@
 import { Sim, DT } from './sim/sim';
 import type { FromWorker, ToWorker } from './protocol';
 
-const sim = new Sim();
+let sim: Sim;
 let paused = false;
 /** target simulated seconds per real second; 0 = as fast as possible */
 let targetSpeed = 1;
@@ -52,9 +52,15 @@ function loop(): void {
 self.onmessage = (e: MessageEvent<ToWorker>): void => {
   const m = e.data;
   switch (m.type) {
-    case 'start':
-      post({ type: 'ready', brain: sim.brainInfo() });
+    case 'start': {
+      sim = new Sim(m.options ?? {});
+      const restored = m.state ? sim.loadState(m.state) : false;
+      post({ type: 'ready', brain: sim.brainInfo(), restored });
       loop();
+      break;
+    }
+    case 'save':
+      post({ type: 'state', state: sim.saveState() });
       break;
     case 'pause':
       paused = m.paused;
@@ -77,6 +83,9 @@ self.onmessage = (e: MessageEvent<ToWorker>): void => {
       break;
     case 'placeCookie':
       sim.placeCookie(m.x);
+      break;
+    case 'wantsToWalk':
+      sim.setWantsToWalk(m.on);
       break;
     case 'autoReward':
       sim.autoRewardOn = m.on;

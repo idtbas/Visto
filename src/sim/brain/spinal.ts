@@ -45,6 +45,8 @@ const EX_W = 0.35;
 const GOSLOW_W = 0.1;
 /** smoothing of the motoneuron pool rate before it reaches the muscle [ms] */
 const STIM_TAU = 5;
+/** depth (in units of input current) by which unloaded legs are cut off from the trunk balance reflex */
+const LOAD_GATE = 6;
 const VEST_TAU = 6;
 
 export type Phase = 'stance' | 'swing' | 'any';
@@ -62,6 +64,8 @@ interface PathDef {
   phase: Phase;
   mode: Mode;
   delay: 'S' | 'M' | 'L';
+  /** the pathway only passes signals in proportion to the weight the leg carries */
+  loadGated?: boolean;
 }
 
 export interface SpinalOptions {
@@ -82,7 +86,7 @@ function paramsByName(p: ArrayLike<number>): Record<string, number> {
 }
 
 // afferent signals are divided by these so that they span roughly 0..1
-const SC = { len: 0.4, knee: 10 * DEG, vest: 0.25, cop: 0.5 };
+const SC = { len: 0.4, knee: 10 * DEG, vest: 0.25, cop: 0.5, vel: 1.5 };
 
 export function pathDefs(g: Record<string, number>): PathDef[] {
   const w = (name: string, aff: string, muscle: MuscleName, sign: 1 | -1, gain: number, phase: Phase, delay: 'S' | 'M' | 'L', global = false): PathDef => ({
@@ -99,9 +103,9 @@ export function pathDefs(g: Record<string, number>): PathDef[] {
     w('wGasF', 'IbGAS', 'GAS', 1, g.gGas, 'stance', 'L'),
     w('wVasF', 'IbVAS', 'VAS', 1, g.gVas, 'stance', 'M'),
     w('wKneeVas', 'KneeExt', 'VAS', -1, g.kPhi * SC.knee, 'stance', 'M'),
-    w('wVestHam', 'VestF', 'HAM', 1, pdW, 'stance', 'S', true),
-    w('wVestGlu', 'VestF', 'GLU', 1, pdW * g.gluFactor, 'stance', 'S', true),
-    w('wVestHfl', 'VestB', 'HFL', 1, pdW, 'stance', 'S', true),
+    { ...w('wVestHam', 'VestF', 'HAM', 1, pdW, 'stance', 'S', true), loadGated: true },
+    { ...w('wVestGlu', 'VestF', 'GLU', 1, pdW * g.gluFactor, 'stance', 'S', true), loadGated: true },
+    { ...w('wVestHfl', 'VestB', 'HFL', 1, pdW, 'stance', 'S', true), loadGated: true },
     // ---- walking, both phases ----
     w('wTaL', 'IITA', 'TA', 1, g.gTa * SC.len, 'any', 'L'),
     // ---- walking, swing phase ----
@@ -118,6 +122,9 @@ export function pathDefs(g: Record<string, number>): PathDef[] {
     s('sTaL', 'IITAst', 'TA', g.stTaL * SC.len, 'L'),
     s('sTaCop', g.stTaCop >= 0 ? 'CopB' : 'CopF', 'TA', Math.abs(g.stTaCop) * SC.cop, 'L'),
     s('sVasL', 'IIVAS', 'VAS', g.stVasL * SC.len, 'M'),
+    s('sSolV', 'IaSOL', 'SOL', g.stSolV * SC.vel, 'L'),
+    s('sTaV', 'IaTA', 'TA', g.stTaV * SC.vel, 'L'),
+    s('sVasV', 'IaVAS', 'VAS', g.stVasV * SC.vel, 'M'),
     s('sVestHam', 'VestF', 'HAM', g.stKp * SC.vest, 'S', true),
     s('sVestGlu', 'VestF', 'GLU', 0.7 * g.stKp * SC.vest, 'S', true),
     s('sVestHfl', 'VestB', 'HFL', g.stKp * SC.vest, 'S', true),
@@ -209,7 +216,7 @@ export class SpinalCord {
     const st: Pop[] = [];
     for (let leg = 0; leg < 2; leg++) {
       const L = `_${leg}`;
-      for (const a of ['IbSOL', 'IbGAS', 'IbVAS', 'IbHAM', 'IbGLU', 'IITA', 'IITAst', 'IIHFL', 'IIHAM', 'IISOL', 'IIVAS', 'KneeExt', 'Load', 'CopF', 'CopB', 'HipExt']) affPop(a + L);
+      for (const a of ['IbSOL', 'IbGAS', 'IbVAS', 'IbHAM', 'IbGLU', 'IITA', 'IITAst', 'IIHFL', 'IIHAM', 'IISOL', 'IIVAS', 'IaSOL', 'IaTA', 'IaVAS', 'KneeExt', 'Load', 'LoadG', 'CopF', 'CopB', 'HipExt']) affPop(a + L);
       for (let m = 0; m < NM; m++) {
         this.mn.push(net.addPop({ name: `MN_${MUSCLE_NAMES[m]}${L}`, n: nM, type: NT.RELAY, region: 'motor', bias: 1.0, biasJitter: 1.5, noise: 2.5 }));
       }
@@ -231,7 +238,9 @@ export class SpinalCord {
         let inPop: Pop;
         let proj: Proj;
         if (d.sign > 0) {
-          inPop = exc(`IN_${d.name}${L}`, nI);
+          // load-gated pathways sit far below threshold; the graded load signal lifts them up to it
+          inPop = exc(`IN_${d.name}${L}`, nI, d.loadGated ? 1.0 - LOAD_GATE : 1.0);
+          if (d.loadGated) E(this.aff.get('LoadG' + L)!.pop, inPop, LOAD_GATE / (0.0055 * R_AFF), 2);
           proj = E(aff, inPop, K_UNITY * gain, dA, true);
           E(inPop, mnOf(d.muscle), K_UNITY, dM);
         } else {
@@ -338,10 +347,13 @@ export class SpinalCord {
     this.set('VestB', -e / SC.vest);
     for (let leg = 0; leg < 2; leg++) {
       const L = `_${leg}`;
-      const mu = (m: number): { f: number; l: number } => {
+      const mu = (m: number): { f: number; l: number; v: number } => {
         const x = b.muscles[leg * NM + m];
-        return { f: x.force / x.p.fmax, l: x.lce / x.p.lopt };
+        return { f: x.force / x.p.fmax, l: x.lce / x.p.lopt, v: x.vce / x.p.lopt };
       };
+      this.set('IaSOL' + L, mu(M.SOL).v / SC.vel);
+      this.set('IaTA' + L, mu(M.TA).v / SC.vel);
+      this.set('IaVAS' + L, mu(M.VAS).v / SC.vel);
       this.set('IbSOL' + L, mu(M.SOL).f);
       this.set('IbGAS' + L, mu(M.GAS).f);
       this.set('IbVAS' + L, mu(M.VAS).f);
@@ -356,6 +368,7 @@ export class SpinalCord {
       const phiK = b.phi[leg * 3 + 1];
       this.set('KneeExt' + L, b.dphi[leg * 3 + 1] > 0 ? (phiK - 170 * DEG) / SC.knee : 0);
       this.set('Load' + L, Math.min(1, b.legLoad(leg) / 0.2));
+      this.set('LoadG' + L, Math.min(1, b.legLoad(leg) / 0.8));
       const cop = b.toeLoad[leg] - b.heelLoad[leg];
       this.set('CopF' + L, cop / SC.cop);
       this.set('CopB' + L, -cop / SC.cop);

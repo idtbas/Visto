@@ -16,6 +16,10 @@ export interface EvalOptions {
   /** seconds of standing (with a push) before the walk command; 0 = start in mid-stride with initial speed */
   standFor?: number;
   push?: number;
+  /** repeat the push every two seconds with alternating direction */
+  pushes?: boolean;
+  /** impulse applied to the trunk three seconds into walking */
+  walkPush?: number;
   log?: boolean;
 }
 
@@ -40,9 +44,15 @@ export function evaluateReflex(p: ArrayLike<number>, opt: EvalOptions = {}): Eva
       ctrl.mode = 'walk';
       xGo = b.hipX();
     }
-    if (standFor > 0 && opt.push && i === Math.round(standFor * 400)) {
-      b.trunk.applyLinearImpulse(new Vec2(opt.push, 0), b.trunk.getWorldPoint(new Vec2(0, 0.3)), true);
+    if (standFor > 0 && opt.push) {
+      if (opt.pushes) {
+        // alternating pushes every two seconds while standing
+        if (i % 2000 === 1500 && i < goTick - 300) b.trunk.applyLinearImpulse(new Vec2(((i / 2000) & 1 ? -1 : 1) * opt.push, 0), b.trunk.getWorldPoint(new Vec2(0, 0.3)), true);
+      } else if (i === Math.round(standFor * 400)) {
+        b.trunk.applyLinearImpulse(new Vec2(opt.push, 0), b.trunk.getWorldPoint(new Vec2(0, 0.3)), true);
+      }
     }
+    if (opt.walkPush && i === 3000) b.trunk.applyLinearImpulse(new Vec2(opt.walkPush, 0), b.trunk.getWorldPoint(new Vec2(0, 0.3)), true);
     ctrl.step();
     ph.step();
     energy += b.power * 0.001;

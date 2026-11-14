@@ -15,6 +15,8 @@ export const REFLEX_PARAM_NAMES = [
   'stKp', 'stKd', 'stTheta', 'stSolL', 'stSolOff', 'stSolCop', 'stTaL', 'stTaOff', 'stTaCop', 'stVasL', 'stVasOff', 'stS0Vas', 'stS0Sol', 'stS0Hip',
   // gait initiation: a transient at the onset of the walk command (anticipatory postural adjustment)
   'initTau', 'initTa', 'initHfl', 'initSolOff',
+  // standing: velocity-sensitive stretch reflexes (primary spindle endings) for damping
+  'stSolV', 'stTaV', 'stVasV',
 ] as const;
 
 export const REFLEX_DEFAULTS: number[] = [
@@ -24,7 +26,10 @@ export const REFLEX_DEFAULTS: number[] = [
   1.3, 0.1, 160, 190, 175, 170, 95, 100,
   2.0, 0.3, 0.03, 2.0, 0.9, 0.5, 2.0, 0.8, 0.5, 2.0, 0.9, 0.05, 0.05, 0.03,
   0.25, 0.4, 0.3, 1.0,
+  0.3, 0.3, 0.3,
 ];
+
+export const P_VEL0 = 49;
 
 export const P_INIT0 = 45;
 
@@ -79,6 +84,9 @@ export class ReflexController {
   private readonly lSol = [new Delay(), new Delay()];
   private readonly lVas = [new Delay(), new Delay()];
   private readonly cop = [new Delay(), new Delay()];
+  private readonly vSol = [new Delay(), new Delay()];
+  private readonly vTa = [new Delay(), new Delay()];
+  private readonly vVas = [new Delay(), new Delay()];
   private readonly phiK = [new Delay(), new Delay()];
   private readonly dphiK = [new Delay(), new Delay()];
   private readonly load = [new Delay(), new Delay()];
@@ -128,6 +136,9 @@ export class ReflexController {
       this.lSol[leg].push(mu[o + M.SOL].lce / MUSCLE_PARAMS.SOL.lopt);
       this.lVas[leg].push(mu[o + M.VAS].lce / MUSCLE_PARAMS.VAS.lopt);
       this.cop[leg].push(b.toeLoad[leg] - b.heelLoad[leg]);
+      this.vSol[leg].push(mu[o + M.SOL].vce / MUSCLE_PARAMS.SOL.lopt);
+      this.vTa[leg].push(mu[o + M.TA].vce / MUSCLE_PARAMS.TA.lopt);
+      this.vVas[leg].push(mu[o + M.VAS].vce / MUSCLE_PARAMS.VAS.lopt);
       this.phiK[leg].push(b.phi[leg * 3 + 1]);
       this.dphiK[leg].push(b.dphi[leg * 3 + 1]);
       this.load[leg].push(b.legLoad(leg));
@@ -216,10 +227,10 @@ export class ReflexController {
       const o = leg * NM;
       this.stance[leg] = this.load[leg].get(D_M) > 0.05;
       const cop = this.cop[leg].get(D_L);
-      s[o + M.SOL] = p[q + 12] + Math.max(0, p[q + 3] * (this.lSol[leg].get(D_L) - p[q + 4])) + Math.max(0, p[q + 5] * cop);
+      s[o + M.SOL] = p[q + 12] + Math.max(0, p[q + 3] * (this.lSol[leg].get(D_L) - p[q + 4])) + Math.max(0, p[q + 5] * cop) + Math.max(0, p[P_VEL0] * this.vSol[leg].get(D_L));
       s[o + M.GAS] = 0.01 + 0.5 * Math.max(0, p[q + 5] * cop);
-      s[o + M.TA] = 0.01 + Math.max(0, p[q + 6] * (this.lTa[leg].get(D_L) - p[q + 7])) + Math.max(0, -p[q + 8] * cop);
-      s[o + M.VAS] = p[q + 11] + Math.max(0, p[q + 9] * (this.lVas[leg].get(D_M) - p[q + 10]));
+      s[o + M.TA] = 0.01 + Math.max(0, p[q + 6] * (this.lTa[leg].get(D_L) - p[q + 7])) + Math.max(0, -p[q + 8] * cop) + Math.max(0, p[P_VEL0 + 1] * this.vTa[leg].get(D_L));
+      s[o + M.VAS] = p[q + 11] + Math.max(0, p[q + 9] * (this.lVas[leg].get(D_M) - p[q + 10])) + Math.max(0, p[P_VEL0 + 2] * this.vVas[leg].get(D_M));
       s[o + M.HAM] = p[q + 13] + Math.max(0, pd);
       s[o + M.GLU] = p[q + 13] + 0.7 * Math.max(0, pd);
       s[o + M.HFL] = p[q + 13] + Math.max(0, -pd);

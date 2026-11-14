@@ -3,7 +3,8 @@ import { BrainView } from './ui/brainView';
 import { HormoneView } from './ui/hormoneView';
 import { MUSCLE_NAMES, MUSCLE_LABELS, NM } from './sim/body/biped';
 import type { FromWorker, ToWorker } from './protocol';
-import type { Frame } from './sim/sim';
+import type { Frame, SimState } from './sim/sim';
+import { saveLife, loadLife, deleteLife } from './ui/store';
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 
@@ -83,7 +84,7 @@ function updatePanels(f: Frame): void {
   $('hud').textContent = `Strecke ${de(f.body[0], 1)} m   Tempo ${de(f.velX)} m/s   Neigung ${((f.lean * 180) / Math.PI).toFixed(0)}°   Leistung ${f.power.toFixed(0)} W`;
   const life = f.life;
   $('lifeState').textContent =
-    f.mode !== 'brain' ? (f.mode === 'manual' ? 'Handsteuerung' : 'Referenz-Reflexe (ohne Gehirn)') : life.state === 'fallen' ? 'gestürzt – wird gleich aufgestellt' : life.state === 'standing' ? 'steht' : 'läuft';
+    f.mode !== 'brain' ? (f.mode === 'manual' ? 'Handsteuerung' : 'Referenz-Reflexe (ohne Gehirn)') : life.state === 'fallen' ? 'gestürzt – wird gleich aufgehoben' : life.inHand ? 'in der helfenden Hand' : life.state === 'standing' ? 'steht' : 'läuft';
   $('stFalls').textContent = String(life.falls);
   $('stAttempt').textContent = `${de(life.attempt)} m`;
   $('stBest').textContent = `${de(life.bestAttempt)} m`;
@@ -110,6 +111,13 @@ $('world').addEventListener('click', (e) => {
   const x = bodyView.worldX(e.offsetX);
   send({ type: 'placeCookie', x });
 });
+for (const b of Array.from($('goSeg').querySelectorAll('button'))) {
+  b.addEventListener('click', () => {
+    $('goSeg').querySelectorAll('button').forEach((x) => x.classList.remove('on'));
+    b.classList.add('on');
+    send({ type: 'wantsToWalk', on: b.dataset.go === '1' });
+  });
+}
 for (const b of Array.from($('speedSeg').querySelectorAll('button'))) {
   b.addEventListener('click', () => {
     $('speedSeg').querySelectorAll('button').forEach((x) => x.classList.remove('on'));
@@ -138,6 +146,9 @@ worker.onmessage = (e: MessageEvent<FromWorker>): void => {
   } else if (m.type === 'ready') {
     brainView.setInfo(m.brain);
     brainMeta = `${nf.format(m.brain.neurons)} Neuronen · ${nf.format(m.brain.synapses)} Synapsen`;
+  } else if (m.type === 'state') {
+    void saveLife(SAVE_KEY, m.state);
+    $('saveNote').textContent = `gespeichert ${new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`;
   }
 };
 
@@ -150,7 +161,21 @@ function raf(): void {
   requestAnimationFrame(raf);
 }
 requestAnimationFrame(raf);
-send({ type: 'start' });
+
+// ---------- life: restore the saved brain, save regularly ----------
+const SAVE_KEY = 'life-1';
+const query = new URLSearchParams(location.search);
+void (async () => {
+  const state = query.has('fresh') ? undefined : await loadLife<SimState>(SAVE_KEY);
+  send({ type: 'start', state });
+  setInterval(() => send({ type: 'save' }), 30000);
+})();
+window.addEventListener('pagehide', () => send({ type: 'save' }));
+$('btnNewLife').addEventListener('click', async () => {
+  if (!confirm('Wirklich neu beginnen? Das bisher Gelernte geht verloren.')) return;
+  await deleteLife(SAVE_KEY);
+  location.reload();
+});
 
 // small hook for automated screenshots / tests
 (window as unknown as { visto: unknown }).visto = { send, frame: () => latest };

@@ -2,7 +2,7 @@
 import { Vec2 } from 'planck';
 import { Physics, DT } from './world/physics';
 import { NM, STAND_POSE, staggeredStandPose, type Pose } from './body/biped';
-import { Brain, type PopInfo } from './brain/brain';
+import { Brain, type PopInfo, type BrainState } from './brain/brain';
 import { ReflexController, initialPose, REFLEX_DEFAULTS } from './control/reflex';
 import { REFLEX_GENOME, SPINAL_MULT } from './control/genome';
 
@@ -47,6 +47,16 @@ export interface LifeStats {
   attempt: number;
   bestAttempt: number;
   spikeRate: number;
+  /** the helping hand is holding the creature right now */
+  inHand: boolean;
+}
+
+export interface SimState {
+  brain: BrainState;
+  time: number;
+  life: LifeStats;
+  cookiesEaten: number;
+  x: number;
 }
 
 export interface SimOptions {
@@ -58,6 +68,7 @@ export interface SimOptions {
   mult?: number[];
   /** reflex blueprint; defaults to the built-in genome */
   params?: number[];
+  startInStride?: boolean;
 }
 
 export interface BrainInfo {
@@ -70,10 +81,13 @@ export class Sim {
   readonly physics = new Physics();
   mode: ControlMode = 'brain';
   readonly brain: Brain;
-  readonly life: LifeStats = { state: 'standing', falls: 0, attempt: 0, bestAttempt: 0, spikeRate: 0 };
+  readonly life: LifeStats = { state: 'standing', falls: 0, attempt: 0, bestAttempt: 0, spikeRate: 0, inHand: false };
   private stateSince = 0;
   private holdUntil = 0;
   private holdX = 0;
+  private frozenUntil = 0;
+  /** walking starts with a helping push instead of from quiet standing */
+  startInStride = true;
   /** how long the helping hand steadies the creature after putting it down [s] */
   holdTime = 0.5;
   private attemptX0 = 0;
@@ -118,12 +132,13 @@ export class Sim {
     const genome = opt.params ?? REFLEX_GENOME;
     this.reflexParams = REFLEX_DEFAULTS.map((v, i) => genome[i] ?? v);
     this.reflex = new ReflexController(this.physics.biped, this.reflexParams);
+    this.startInStride = opt.startInStride ?? true;
     this.brain = new Brain(
       this.physics.biped,
       { params: this.reflexParams, mult: opt.mult ?? SPINAL_MULT },
       { scale: opt.brainScale ?? 1, seed: opt.seed ?? 1, learn: opt.learn ?? true, learningRate: opt.learningRate, newborn: opt.newborn ?? 0 },
     );
-    this.placeStanding();
+    this.place();
   }
 
   /** automatic reward: staying upright and making progress feels good */
@@ -137,6 +152,20 @@ export class Sim {
     if (this.life.state === 'walking') r += 0.7 * speed;
     else r -= 0.5 * Math.abs(v);
     return r;
+  }
+
+  saveState(): SimState {
+    return { brain: this.brain.saveState(), time: this.physics.time, life: { ...this.life }, cookiesEaten: this.cookiesEaten, x: this.physics.biped.hipX() };
+  }
+
+  loadState(st: SimState): boolean {
+    if (!this.brain.loadState(st.brain)) return false;
+    this.physics.time = st.time;
+    Object.assign(this.life, st.life);
+    this.cookiesEaten = st.cookiesEaten;
+    this.physics.biped.setPose(staggeredStandPose(undefined, st.x));
+    this.place();
+    return true;
   }
 
   brainInfo(): BrainInfo {
@@ -153,6 +182,29 @@ export class Sim {
     this.attemptX0 = b.hipX();
     this.holdX = b.hipX();
     this.holdUntil = this.time + this.holdTime;
+  }
+
+  /** the hand sets the creature down in mid-stride with some forward speed, like in the
+   *  stepping-reflex test with infants; the spinal reflexes take over from there */
+  placeStride(): void {
+    const b = this.physics.biped;
+    const pose = initialPose(this.reflexParams);
+    pose.x = b.hipX();
+    b.setPose(pose);
+    this.brain.spinal.reset();
+    this.brain.spinal.go = 1;
+    this.life.state = 'walking';
+    this.stateSince = this.time;
+    this.attemptX0 = b.hipX();
+    this.holdUntil = 0;
+    // the nervous system gets a moment to register the posture before the hand lets go
+    this.frozenUntil = this.time + 0.2;
+  }
+
+  /** put the creature back on its feet in the way that suits what it is about to do */
+  place(): void {
+    if (this.wantsToWalk && this.startInStride) this.placeStride();
+    else this.placeStanding();
   }
 
   /** the hand steadies trunk position and tilt (it does not carry the weight) and lets go gradually */
@@ -198,7 +250,7 @@ export class Sim {
       }
     } else {
       sp.go = 0;
-      if (since > 1.5) this.placeStanding();
+      if (since > 1.5) this.place();
     }
   }
   readonly manualStim = new Float32Array(2 * NM).fill(0.01);
@@ -211,13 +263,20 @@ export class Sim {
 
   reset(pose?: Pose): void {
     if (this.mode === 'brain' && !pose) {
-      this.placeStanding();
+      this.place();
       return;
     }
     const p = pose ?? (this.mode === 'reflex' ? initialPose(this.reflexParams) : STAND_POSE);
     p.x = this.physics.biped.hipX();
     this.physics.biped.setPose(p);
     this.reflex.reset();
+  }
+
+  /** switch between walking and quiet standing */
+  setWantsToWalk(on: boolean): void {
+    if (this.wantsToWalk === on) return;
+    this.wantsToWalk = on;
+    if (this.mode === 'brain' && this.life.state !== 'fallen') this.place();
   }
 
   setMode(mode: ControlMode): void {
@@ -243,7 +302,12 @@ export class Sim {
       if ((this.physics.time * 1000) % 50 < 1) this.cookieTick();
       this.brain.tick(this.autoRewardOn ? this.autoReward() : 0, st === 'standing' ? 0 : st === 'walking' ? 1 : 2);
     }
-    this.physics.step();
+    if (this.time < this.frozenUntil) {
+      // still in the hand: the stance leg already feels the ground
+      const b = this.physics.biped;
+      b.heelLoad[1] = b.toeLoad[1] = 0.5;
+      this.physics.idle();
+    } else this.physics.step();
   }
 
   frame(speed: number): Frame {
@@ -270,7 +334,7 @@ export class Sim {
       mode: this.mode,
       speed,
       activity: this.mode === 'brain' ? this.brain.takeActivity() : null,
-      life: { ...this.life, spikeRate: this.brain.net.nSpikes },
+      life: { ...this.life, spikeRate: this.brain.net.nSpikes, inHand: this.time < this.frozenUntil || this.time < this.holdUntil },
       hormones: this.brain.hormones.snapshot(),
       energy: this.brain.hormones.energy,
       cookies: this.cookies.map((c) => ({ ...c })),

@@ -2,7 +2,7 @@
 import { Network } from './network';
 import { SpinalCord } from './spinal';
 import { RewardSystem } from './reward';
-import { Hormones, type HormoneInputs } from './hormones';
+import { Hormones, HORMONES, type HormoneInputs } from './hormones';
 import type { Biped } from '../body/biped';
 
 export interface PopInfo {
@@ -11,6 +11,17 @@ export interface PopInfo {
   start: number;
   n: number;
   inhibitory: boolean;
+}
+
+const STATE_VERSION = 1;
+
+export interface BrainState {
+  version: number;
+  neurons: number;
+  plastic: Float32Array[];
+  hormones: number[];
+  energy: number;
+  expected: number[];
 }
 
 export interface Genome {
@@ -90,6 +101,31 @@ export class Brain {
     const copy = this.activity.slice();
     this.activity.fill(0);
     return copy;
+  }
+
+  /** everything the creature has learned: plastic synapses, hormone levels, expectations */
+  saveState(): BrainState {
+    const plastic = this.net.projs.filter((p) => p.plastic).map((p) => p.w.slice());
+    return {
+      version: STATE_VERSION,
+      neurons: this.net.n,
+      plastic,
+      hormones: this.hormones.snapshot(),
+      energy: this.hormones.energy,
+      expected: this.reward.expected.slice(),
+    };
+  }
+
+  /** returns false if the state does not fit this brain (different size or version) */
+  loadState(st: BrainState): boolean {
+    const projs = this.net.projs.filter((p) => p.plastic);
+    if (st.version !== STATE_VERSION || st.neurons !== this.net.n || st.plastic.length !== projs.length) return false;
+    if (projs.some((p, i) => p.w.length !== st.plastic[i].length)) return false;
+    projs.forEach((p, i) => p.w.set(st.plastic[i]));
+    HORMONES.forEach((h, i) => (this.hormones.level[h] = st.hormones[i] ?? this.hormones.level[h]));
+    this.hormones.energy = st.energy;
+    st.expected.forEach((v, i) => (this.reward.expected[i] = v));
+    return true;
   }
 
   popInfo(): PopInfo[] {

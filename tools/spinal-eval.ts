@@ -16,11 +16,13 @@ export interface SpinalEvalOptions {
 
 export function evaluateSpinal(p: ArrayLike<number>, opt: SpinalEvalOptions = {}): EvalResult & { neurons: number; synapses: number } {
   const T = opt.T ?? 12;
-  const standFor = opt.standFor ?? 2;
+  const standFor = opt.standFor ?? 0;
   const sim = new Sim({ params: Array.from(p), mult: opt.mult ? Array.from(opt.mult) : undefined, learn: false, seed: opt.seed ?? 1, brainScale: opt.scale ?? 1 });
   sim.autoCookies = false;
   sim.standBeforeGo = Math.min(standFor, 1e6);
   sim.wantsToWalk = Number.isFinite(standFor);
+  sim.startInStride = standFor === 0;
+  sim.place();
   const b = sim.physics.biped;
   const n = Math.round(T * 1000);
   let steps = 0;
@@ -32,7 +34,7 @@ export function evaluateSpinal(p: ArrayLike<number>, opt: SpinalEvalOptions = {}
   let i = 0;
   const pushAt = Math.round(Math.min(standFor, T) * 500);
   for (; i < n; i++) {
-    if (opt.push && i === pushAt) b.trunk.applyLinearImpulse(new Vec2(opt.push, 0), b.trunk.getWorldPoint(new Vec2(0, 0.3)), true);
+    if (opt.push && i === (standFor === 0 ? 3000 : pushAt)) b.trunk.applyLinearImpulse(new Vec2(opt.push, 0), b.trunk.getWorldPoint(new Vec2(0, 0.3)), true);
     sim.tick();
     energy += b.power * 0.001;
     if (sim.life.state === 'fallen') break;

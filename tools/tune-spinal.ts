@@ -20,15 +20,18 @@ const p = REFLEX_DEFAULTS.slice();
   for (let i = 0; i < q.length; i++) p[i] = q[i];
 }
 const names = new SpinalCord(new Network(1), new Physics().biped, p).pathNames;
-let x0 = names.map((n) => (n.startsWith('t') ? Math.log(2.5) : 0));
-if (existsSync(init)) x0 = (JSON.parse(readFileSync(init, 'utf8')).mult as number[]).map(Math.log);
-const sigma = names.map((n) => (mode === 'walk' && (n.startsWith('s') || n.endsWith('Stand')) ? 0 : 0.15));
+let x0 = names.map(() => 0);
+if (existsSync(init)) {
+  const m = JSON.parse(readFileSync(init, 'utf8')).mult as number[];
+  x0 = names.map((_, i) => Math.log(m[i] ?? 1));
+}
+const sigma = names.map((n) => (mode === 'walk' && (n.startsWith('s') || n.endsWith('Stand') || n.startsWith('i')) ? 0 : 0.18));
 const toMult = (x: number[]): number[] => x.map(Math.exp);
 
 let evalSeed = 1;
 function fitness(x: number[]): number {
   const mult = toMult(x);
-  if (mode === 'walk') return evaluateSpinal(p, { T: 8, mult, seed: evalSeed }).fitness;
+  if (mode === 'walk') return (evaluateSpinal(p, { T: 8, mult, seed: evalSeed }).fitness + evaluateSpinal(p, { T: 8, mult, seed: evalSeed + 10 }).fitness) / 2;
   let f = 0;
   for (const push of [15, -15]) f += evaluateSpinal(p, { T: 11, standFor: 2, push, mult, seed: evalSeed }).fitness;
   return f / 2;

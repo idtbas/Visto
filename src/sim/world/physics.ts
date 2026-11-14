@@ -17,6 +17,11 @@ export class Physics {
     this.biped = new Biped(this.world);
   }
 
+  /** let time pass without moving the body (while the helping hand holds it) */
+  idle(): void {
+    this.time += DT;
+  }
+
   step(): void {
     this.biped.preStep(DT);
     this.world.step(DT, 4, 2);
