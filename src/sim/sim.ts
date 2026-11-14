@@ -51,7 +51,7 @@ export interface Cookie {
 }
 
 export interface LifeStats {
-  state: 'standing' | 'walking' | 'fallen';
+  state: 'standing' | 'walking' | 'fallen' | 'sleeping';
   falls: number;
   /** distance covered since the creature was last put on its feet */
   attempt: number;
@@ -88,6 +88,8 @@ export interface SimOptions {
   /** reflex blueprint; defaults to the built-in genome */
   params?: number[];
   startInStride?: boolean;
+  /** the creature gets tired and sleeps */
+  sleep?: boolean;
 }
 
 export interface BrainInfo {
@@ -105,6 +107,7 @@ export class Sim {
   private holdUntil = 0;
   private holdX = 0;
   private frozenUntil = 0;
+  private sleepOption = false;
   /** walking starts with a helping push instead of from quiet standing */
   startInStride = true;
   /** how long the helping hand steadies the creature after putting it down [s] */
@@ -147,6 +150,8 @@ export class Sim {
   /** blocks appear on the path every few metres */
   obstaclesOn = false;
   private nextObstacleX = 12;
+  /** range of block heights [m] */
+  obstacleHeight: [number, number] = [0.05, 0.1];
 
   private obstacleTick(): void {
     const b = this.physics.biped;
@@ -157,7 +162,7 @@ export class Sim {
       if (x > this.nextObstacleX - 6) {
         const rng = this.brain.net.rng;
         const ox = this.nextObstacleX;
-        terrain.addBlock(ox, 0.15, 0.04 + 0.03 * rng());
+        terrain.addBlock(ox, 0.15, this.obstacleHeight[0] + (this.obstacleHeight[1] - this.obstacleHeight[0]) * rng());
         // a cookie waits behind every obstacle
         this.cookies.push({ x: ox + 0.9, size: 1 });
         this.nextObstacleX = ox + 7 + 5 * rng();
@@ -182,7 +187,7 @@ export class Sim {
       }
     }
     const dec = this.brain.decision;
-    dec.seenDistance = best < 3.2 ? Math.max(0, best) : Infinity;
+    dec.seenDistance = best < 2.0 ? Math.max(0, best) : Infinity;
     dec.seenHeight = h;
   }
 
@@ -198,11 +203,13 @@ export class Sim {
     this.reflexParams = REFLEX_DEFAULTS.map((v, i) => genome[i] ?? v);
     this.reflex = new ReflexController(this.physics.biped, this.reflexParams);
     this.startInStride = opt.startInStride ?? true;
+    this.sleepOption = opt.sleep ?? false;
     this.brain = new Brain(
       this.physics.biped,
       { params: this.reflexParams, mult: opt.mult ?? SPINAL_MULT },
       { scale: opt.brainScale ?? 1, seed: opt.seed ?? 1, learn: opt.learn ?? true, learningRate: opt.learningRate, exploreW: opt.exploreW, newborn: opt.newborn ?? 0, newbornTone: opt.newbornTone, granules: opt.granules, decisionLr: opt.decisionLr },
     );
+    this.brain.hormones.sleepEnabled = this.sleepOption;
     this.place();
     // at birth the nervous system needs a little longer to settle before the hand lets go
     if (this.frozenUntil > 0) this.frozenUntil = this.time + 0.6;
@@ -211,13 +218,15 @@ export class Sim {
   /** automatic reward: staying upright and making progress feels good */
   private autoReward(): number {
     const b = this.physics.biped;
-    if (this.life.state === 'fallen') return 0;
+    if (this.life.state === 'fallen' || this.life.state === 'sleeping') return 0;
     const v = b.velX();
     const speed = v < -0.5 ? -0.5 : v > 1.4 ? 1.4 : v;
     const tilt = Math.abs(b.theta - 0.1) - 0.2;
     let r = 0.3 - (tilt > 0 ? tilt : 0);
     if (this.life.state === 'walking') r += 0.7 * speed;
     else r -= 0.5 * Math.abs(v);
+    // lifting the feet high is an effort
+    r -= 0.4 * this.brain.spinal.stepLevel;
     return r;
   }
 
@@ -309,6 +318,29 @@ export class Sim {
     } else if (life.state === 'walking') {
       sp.go = 1;
     }
+    // sleep: when the pressure is high enough the muscles go limp and the creature lies down
+    const fx = this.brain.hormones.effects;
+    if (life.state === 'sleeping') {
+      sp.go = 0;
+      sp.atonia = true;
+      this.brain.bodyState.asleep = true;
+      if (!fx.wantsSleep) {
+        sp.atonia = false;
+        this.brain.bodyState.asleep = false;
+        this.place();
+      }
+      return;
+    }
+    if (fx.wantsSleep && this.time >= this.frozenUntil) {
+      if (life.state === 'walking') {
+        this.fallExpectation.record(Math.max(this.time - this.stateSince, this.fallExpectation.mean));
+        this.attempts.push(Math.max(0, life.attempt));
+        this.attemptCount++;
+      }
+      life.state = 'sleeping';
+      this.stateSince = this.time;
+      return;
+    }
     if (life.state !== 'fallen') {
       life.attempt = b.hipX() - this.attemptX0;
       if (life.attempt > life.bestAttempt) life.bestAttempt = life.attempt;
@@ -376,11 +408,12 @@ export class Sim {
       const jolt = Math.abs(b2.dtheta) > 2.5 ? 1 : 0;
       if (jolt > this.lastImpact) bs.surprise = 1;
       this.lastImpact = jolt;
-      if ((this.physics.time * 1000) % 50 < 1) this.cookieTick();
+      if ((this.physics.time * 1000) % 1000 < 1) this.brain.consolidate(st === 'sleeping');
+      if ((this.physics.time * 1000) % 50 < 1 && st !== 'sleeping') this.cookieTick();
       if ((this.physics.time * 1000) % 20 < 1) this.obstacleTick();
       // still on its feet at a moment when it usually falls: better than expected
       const relief = st === 'walking' && this.time >= this.frozenUntil ? FALL_COST * this.fallExpectation.hazard(this.time - this.stateSince) : 0;
-      this.brain.tick(this.autoRewardOn ? this.autoReward() : 0, st === 'standing' ? 0 : st === 'walking' ? 1 : 2, relief);
+      this.brain.tick(this.autoRewardOn && st !== 'sleeping' ? this.autoReward() : 0, st === 'standing' ? 0 : st === 'walking' ? 1 : 2, relief);
     }
     if (this.time < this.frozenUntil) {
       // still in the hand: the stance leg already feels the ground

@@ -96,10 +96,13 @@ function updatePanels(f: Frame): void {
   $('hud').textContent = `Strecke ${de(f.body[0], 1)} m   Tempo ${de(f.velX)} m/s   Neigung ${((f.lean * 180) / Math.PI).toFixed(0)}°   Leistung ${f.power.toFixed(0)} W`;
   const life = f.life;
   $('lifeState').textContent =
-    f.mode !== 'brain' ? (f.mode === 'manual' ? 'Handsteuerung' : 'Referenz-Reflexe (ohne Gehirn)') : life.state === 'fallen' ? 'gestürzt – wird gleich aufgehoben' : life.inHand ? 'in der helfenden Hand' : life.state === 'standing' ? 'steht' : 'läuft';
+    f.mode !== 'brain' ? (f.mode === 'manual' ? 'Handsteuerung' : 'Referenz-Reflexe (ohne Gehirn)') : life.state === 'sleeping' ? 'schläft – festigt, was es gelernt hat' : life.state === 'fallen' ? 'gestürzt – wird gleich aufgehoben' : life.inHand ? 'in der helfenden Hand' : life.state === 'standing' ? 'steht' : 'läuft';
   $('stFalls').textContent = String(life.falls);
   $('stAttempt').textContent = life.attempt >= 100 ? `${Math.round(life.attempt)} m` : `${de(life.attempt)} m`;
   $('stBest').textContent = life.bestAttempt >= 100 ? `${Math.round(life.bestAttempt)} m` : `${de(life.bestAttempt)} m`;
+  const dbars = $('decBars').children;
+  f.decision.forEach((v, i) => ((dbars[i] as HTMLElement).style.height = `${Math.round(Math.min(1, v / 1.5) * 100)}%`));
+  $('decVal').textContent = f.highStep > 0.3 ? '↑' : '';
   hormoneView.update(f.hormones, f.time);
   f.tone.forEach((v, i) => {
     toneBars[i].fill.style.width = `${Math.min(100, v * 50)}%`;
@@ -188,7 +191,7 @@ void (async () => {
   const state = query.has('fresh') ? undefined : await loadLife<SimState>(SAVE_KEY);
   // a newborn starts with weak descending tone; "?tone=1" starts with a mature one instead
   const newbornTone = query.has('tone') ? Number(query.get('tone')) : 0.6;
-  send({ type: 'start', state, options: { newbornTone } });
+  send({ type: 'start', state, options: { newbornTone, sleep: !query.has('nosleep') } });
   setInterval(() => send({ type: 'save' }), 30000);
 })();
 window.addEventListener('pagehide', () => send({ type: 'save' }));

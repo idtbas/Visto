@@ -4,7 +4,8 @@
 // to different distances. A basal-ganglia loop decides whether to give the "lift the feet
 // higher" command: striatal cells that are driven strongly enough silence the tonically
 // active pallidum, which releases the thalamus, which drives the command (direct pathway).
-// Which visual signals drive the striatum is learned: the synapses from the visual pools
+// The creature is born undecided (the synapses start at half strength). Which visual signals
+// drive the striatum is learned: the synapses from the visual pools
 // to the striatum are plastic and guided by dopamine, with random trial actions coming
 // from the exploration nucleus.
 import { Network, NT, Pop, Proj } from './network';
@@ -13,7 +14,7 @@ import { currentForRate } from './spinal';
 import { gaussian } from '../util/rng';
 
 /** preferred obstacle distances of the visual pools [m] */
-export const EYE_DISTANCES = [0.3, 0.6, 0.9, 1.3, 1.8, 2.5];
+export const EYE_DISTANCES = [0.3, 0.6, 0.9, 1.3];
 const env = (globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env ?? {};
 const DEC_EX_W = Number(env.DEC_EX_W ?? 0.45);
 const STR_BIAS = Number(env.STR_BIAS ?? 0.5);
@@ -46,7 +47,7 @@ export class Decision {
     for (const v of this.visual) {
       this.proj.push(
         net.connect({
-          pre: v, post: this.striatum, channel: 'E', p: 0.5, w: 0.05 * wMature, wJitter: 0.3, delay: [2, 5],
+          pre: v, post: this.striatum, channel: 'E', p: 0.5, w: 0.5 * wMature, wJitter: 0.3, delay: [2, 5],
           plastic: opt.learn ? { rule: 'perturb', lr: opt.lr * wMature, tauE: 2000, wMin: 0, wMax: 1.5 * wMature } : undefined,
         }),
       );

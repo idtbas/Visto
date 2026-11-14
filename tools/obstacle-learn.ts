@@ -7,6 +7,8 @@ const decisionLr = process.argv[4] ? Number(process.argv[4]) : undefined;
 const seed = Number(process.argv[5] ?? 1);
 const sim = new Sim({ learn: true, newbornTone: 1, seed, decisionLr: learn ? decisionLr : 0 });
 sim.obstaclesOn = true;
+if (process.env.BLOCK_H) { const h = Number(process.env.BLOCK_H); sim.obstacleHeight = [h, h]; }
+const policy = process.env.POLICY ?? '';
 if (process.env.SHAM) sim.brain.reward.shamDelay = 17000;
 const dec = sim.brain.decision;
 const pending = new Map<number, true>();
@@ -15,6 +17,7 @@ let pass = 0, fail = 0, falls0 = 0, stepNear = 0, nearN = 0, stepFar = 0, farN =
 const t0 = Date.now();
 for (let m = 0; m < minutes; m++) {
   for (let i = 0; i < 60000; i++) {
+    if (policy === 'near') sim.brain.spinal.highStep = dec.seenDistance < 1.2 ? 1 : 0;
     sim.tick();
     if (i % 20 !== 0) continue;
     const x = sim.physics.biped.hipX();

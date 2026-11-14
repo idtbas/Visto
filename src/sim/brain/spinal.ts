@@ -492,6 +492,9 @@ export class SpinalCord {
     this.stepTone();
   }
 
+  /** sleep paralysis: motoneurons no longer reach the muscles */
+  atonia = false;
+
   /** motoneuron firing drives the muscles */
   act(): void {
     const b = this.biped;
@@ -499,7 +502,7 @@ export class SpinalCord {
       const p = this.mn[i];
       const inst = (p.count * 1000) / (p.n * R_MN);
       this.stimTrace[i] += (inst - this.stimTrace[i]) * (1 / STIM_TAU);
-      b.stim[i] = this.stimTrace[i];
+      b.stim[i] = this.atonia ? 0.01 : this.stimTrace[i];
     }
   }
 

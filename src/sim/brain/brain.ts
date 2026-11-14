@@ -75,7 +75,7 @@ export class Brain {
       newbornTone: opt.newbornTone,
     });
     this.reward = new RewardSystem(this.net);
-    this.decision = new Decision(this.net, this.spinal, { learn: !!opt.learn, lr: opt.decisionLr ?? 3e-6, n: Math.round(32 * (opt.scale ?? 1)) });
+    this.decision = new Decision(this.net, this.spinal, { learn: !!opt.learn, lr: opt.decisionLr ?? 2e-6, n: Math.round(32 * (opt.scale ?? 1)) });
     this.cerebellum = opt.granules && opt.granules > 0 ? new Cerebellum(this.net, this.spinal, { granules: opt.granules }) : null;
     this.net.build();
     this.net.learning = !!opt.learn;
@@ -112,6 +112,22 @@ export class Brain {
       const i = spikes[k];
       if (act[i] < 255) act[i]++;
     }
+  }
+
+  /** slowly averaged copy of the learned tone synapses: what sleep consolidates towards */
+  private consolidated: Float32Array[] | null = null;
+
+  /** call about once per second: awake, the long-term average follows the synapses slowly;
+   *  asleep, the synapses are pulled back to that average, which removes the jitter of the day */
+  consolidate(asleep: boolean): void {
+    const projs = this.spinal.tone.map((t) => t.proj);
+    if (!this.consolidated) this.consolidated = projs.map((p) => p.w.slice());
+    projs.forEach((p, k) => {
+      const c = this.consolidated![k];
+      const w = p.w;
+      if (asleep) for (let i = 0; i < w.length; i++) w[i] += (c[i] - w[i]) * 0.03;
+      else for (let i = 0; i < w.length; i++) c[i] += (w[i] - c[i]) * (1 / 120);
+    });
   }
 
   /** returns the spike counts collected since the last call */
