@@ -5,6 +5,7 @@
 // built in; all of them are local (a synapse only sees its own pre- and postsynaptic
 // neuron) plus globally broadcast neuromodulators such as dopamine.
 import { mulberry32, gaussian } from '../util/rng';
+import { KERNEL_WASM } from './kernel.wasm';
 
 export interface NeuronType {
   a: number;
@@ -61,6 +62,18 @@ export type Plasticity =
       rule: 'cf';
       ltp: number;
       ltd: number;
+      wMin: number;
+      wMax: number;
+    }
+  | {
+      /** learning from a teaching signal that arrives later: every presynaptic spike leaves a
+       *  trace; when the projection's own modulator (`Proj.mod`) arrives, the weight changes by
+       *  modulator × (trace − the usual trace of that input). Inputs that were more active than
+       *  usual just before the signal gain weight, inputs that are always active do not
+       *  (covariance rule). Used for learning what predicts pain. */
+      rule: 'trace';
+      lr: number;
+      tauE: number;
       wMin: number;
       wMax: number;
     }
@@ -167,6 +180,12 @@ export class Proj {
   daAcc = 0;
   /** multiplies the learning rate (neuromodulation) */
   lrGain = 1;
+  /** teaching signal of this projection (rule 'trace'), set by its owner every tick */
+  mod = 0;
+  /** rule 'trace': recent activity of every presynaptic neuron and its long-run average */
+  preTrace: Float32Array | null = null;
+  preMean: Float32Array | null = null;
+  sweeps = 0;
   /** multiplies the effect of every spike travelling through this projection (neuromodulatory
    *  control of synaptic efficacy) */
   gain = 1;
@@ -188,6 +207,10 @@ export class Proj {
     this.w = new Float32Array(nSyn);
     this.delay = new Uint8Array(nSyn);
     this.elig = this.plastic && (this.plastic.rule === 'perturb' || this.plastic.rule === 'rstdp') ? new Float32Array(nSyn) : null;
+    if (this.plastic?.rule === 'trace') {
+      this.preTrace = new Float32Array(pre.n);
+      this.preMean = new Float32Array(pre.n);
+    }
     const [d0, d1] = typeof spec.delay === 'number' ? [spec.delay, spec.delay] : spec.delay;
     const jit = spec.wJitter ?? 0;
     const all = k === post.n;
@@ -245,7 +268,6 @@ export const MAX_DELAY = 63;
 const RING = 64;
 const RING_MASK = RING - 1;
 const NOISE_N = 1 << 16;
-const NOISE_MASK = NOISE_N - 1;
 const TRACE_T = 256;
 
 const DECAY_E = Math.exp(-1 / 5);
@@ -255,6 +277,36 @@ const DECAY_X = Math.exp(-1 / 30);
 const DECAY_C = Math.exp(-1 / 60);
 const K_XBAR = 1 / 4000;
 const SWEEP_MS = 20;
+
+interface Kernel {
+  memory: WebAssembly.Memory;
+  heapBase(): number;
+  init(n: number, pops: number, first: number, ringLen: number, noiseLen: number): number;
+  setDecay(e: number, i: number, s: number, x: number, c: number): void;
+  step(slot: number, noiseOff: number, kx: number): number;
+}
+
+const POP_BYTES = 40;
+let kernelModule: WebAssembly.Module | null | undefined;
+
+/** the WebAssembly version of the neuron loop, or null where it is not available */
+function loadKernel(): Kernel | null {
+  try {
+    if (kernelModule === undefined) {
+      kernelModule = null;
+      if ((globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env.VISTO_JS) return null;
+      const bin = atob(KERNEL_WASM);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      kernelModule = new WebAssembly.Module(bytes);
+    }
+    if (!kernelModule) return null;
+    return new WebAssembly.Instance(kernelModule, { env: { abort: () => { throw new Error('kernel abort'); } } }).exports as unknown as Kernel;
+  } catch {
+    kernelModule = null;
+    return null;
+  }
+}
 
 export class Network {
   readonly pops: Pop[] = [];
@@ -296,7 +348,14 @@ export class Network {
   /** global switch for learning */
   learning = true;
 
-  private readonly noiseTab = new Float32Array(NOISE_N);
+  private noiseTab: Float32Array = new Float32Array(NOISE_N);
+  private kernel: Kernel | null = null;
+  private popI32: Int32Array | null = null;
+  private popF32: Float32Array | null = null;
+  /** 'wasm' when the neuron loop runs as WebAssembly with SIMD, otherwise 'js' */
+  engine: 'wasm' | 'js' = 'js';
+  /** set to false before build() to force the JavaScript loop */
+  useKernel = true;
   private readonly traceDecay = new Float32Array(TRACE_T);
   private plasticProjs: Proj[] = [];
   private postProjsByPop: Proj[][] = [];
@@ -337,24 +396,62 @@ export class Network {
 
   build(): void {
     const n = this.n;
-    this.v = new Float32Array(n);
-    this.u = new Float32Array(n);
-    this.bias = new Float32Array(n);
-    this.iext = new Float32Array(n);
-    this.gE = new Float32Array(n);
-    this.gI = new Float32Array(n);
-    this.gS = new Float32Array(n);
-    this.gX = new Float32Array(n);
-    this.xbar = new Float32Array(n);
-    this.cf = new Float32Array(n);
-    this.ringE = new Float32Array(n * RING);
-    this.ringI = new Float32Array(n * RING);
-    this.ringS = new Float32Array(n * RING);
-    this.ringX = new Float32Array(n * RING);
-    this.ringC = new Float32Array(n * RING);
+    // the noise table is read as a contiguous run starting at a random offset
+    const noiseLen = NOISE_N + n;
+    const kernel = this.useKernel ? loadKernel() : null;
+    let alloc: (len: number) => Float32Array;
+    let kernelEnd = 0;
+    let kernelFirst = 0;
+    if (kernel) {
+      kernelFirst = (kernel.heapBase() + 63) & ~63;
+      const floats = 11 * n + 5 * n * RING + noiseLen + n;
+      const bytes = kernelFirst + floats * 4 + this.pops.length * POP_BYTES + 64;
+      const have = kernel.memory.buffer.byteLength;
+      if (bytes > have) kernel.memory.grow(Math.ceil((bytes - have) / 65536));
+      let ptr = kernelFirst;
+      const buf = kernel.memory.buffer;
+      alloc = (len) => {
+        const a = new Float32Array(buf, ptr, len);
+        ptr += len * 4;
+        kernelEnd = ptr;
+        return a;
+      };
+    } else alloc = (len) => new Float32Array(len);
+    // the order of these allocations is the memory layout the kernel expects (see asm/kernel.ts)
+    this.v = alloc(n);
+    this.u = alloc(n);
+    this.bias = alloc(n);
+    this.iext = alloc(n);
+    this.gE = alloc(n);
+    this.gI = alloc(n);
+    this.gS = alloc(n);
+    this.gX = alloc(n);
+    this.xbar = alloc(n);
+    this.cf = alloc(n);
+    alloc(n); // scratch: input current from the slow channels
+    this.ringE = alloc(n * RING);
+    this.ringI = alloc(n * RING);
+    this.ringS = alloc(n * RING);
+    this.ringX = alloc(n * RING);
+    this.ringC = alloc(n * RING);
+    const noise = alloc(noiseLen);
+    noise.set(this.noiseTab);
+    noise.set(this.noiseTab.subarray(0, Math.min(n, NOISE_N)), NOISE_N);
+    for (let i = 2 * NOISE_N; i < noiseLen; i++) noise[i] = noise[i - NOISE_N];
+    this.noiseTab = noise;
+    if (kernel) {
+      this.spikes = new Uint32Array(kernel.memory.buffer, kernelEnd, n);
+      const popPtr = kernelEnd + n * 4;
+      this.popI32 = new Int32Array(kernel.memory.buffer, popPtr, this.pops.length * (POP_BYTES / 4));
+      this.popF32 = new Float32Array(kernel.memory.buffer, popPtr, this.pops.length * (POP_BYTES / 4));
+      const end = kernel.init(n, this.pops.length, kernelFirst, RING, noiseLen);
+      if (end !== popPtr + this.pops.length * POP_BYTES) throw new Error('kernel memory layout mismatch');
+      kernel.setDecay(DECAY_E, DECAY_I, DECAY_S, DECAY_X, DECAY_C);
+      this.kernel = kernel;
+      this.engine = 'wasm';
+    } else this.spikes = new Uint32Array(n);
     this.lastSpike = new Int32Array(n).fill(-100000);
     this.trace = new Float32Array(n);
-    this.spikes = new Uint32Array(n);
     this.popOf = new Uint16Array(n);
     for (const p of this.pops) {
       const pb = this.pendingBias[p.id];
@@ -363,6 +460,18 @@ export class Network {
         this.u[i] = p.type.b * this.v[i];
         this.bias[i] = pb.bias + pb.jitter * (2 * this.rng() - 1);
         this.popOf[i] = p.id;
+      }
+    }
+    if (this.popI32 && this.popF32) {
+      for (const p of this.pops) {
+        const o = p.id * (POP_BYTES / 4);
+        this.popI32[o] = p.start;
+        this.popI32[o + 1] = p.end;
+        this.popF32[o + 2] = p.type.a;
+        this.popF32[o + 3] = p.type.b;
+        this.popF32[o + 4] = p.type.c;
+        this.popF32[o + 5] = p.type.d;
+        this.popI32[o + 8] = (p.hasS ? 1 : 0) | (p.hasX ? 2 : 0) | (p.hasC ? 4 : 0);
       }
     }
     this.plasticProjs = this.projs.filter((p) => p.plastic);
@@ -394,6 +503,21 @@ export class Network {
     const kx = t < 4000 ? 1 / (t + 1) : K_XBAR;
     let ns = 0;
 
+    if (this.kernel) {
+      const pf = this.popF32!;
+      const pc = this.popI32!;
+      const pops = this.pops;
+      for (let pi = 0, o = 0; pi < pops.length; pi++, o += 10) {
+        pf[o + 6] = pops[pi].noise;
+        pf[o + 7] = pops[pi].drive;
+      }
+      ns = this.kernel.step(slot, noiseOff, kx);
+      for (let pi = 0, o = 9; pi < pops.length; pi++, o += 10) {
+        const p = pops[pi];
+        p.count = pc[o];
+        p.rate += (p.count * (1000 / p.n) - p.rate) * 0.02;
+      }
+    } else
     for (let pi = 0; pi < this.pops.length; pi++) {
       const p = this.pops[pi];
       const { a, b, c, d } = p.type;
@@ -420,7 +544,7 @@ export class Network {
         const gsyn = ge * 0.0153846 + gi * 0.0666667;
         const inv = 1 / (1 + 0.5 * gsyn);
         let cur = bias[i] + drive + iext[i] - gi * 5.333333;
-        if (noise !== 0) cur += noise * noiseTab[(i * 7 + noiseOff) & NOISE_MASK];
+        if (noise !== 0) cur += noise * noiseTab[noiseOff + i];
         if (slow) {
           if (p.hasS) {
             let g = gS[i] * DECAY_S + ringS[r];
@@ -490,6 +614,8 @@ export class Network {
           } else if (pl.rule === 'rstdp') {
             const el = pr.elig!;
             for (let s = a0; s < a1; s++) el[s] -= pl.aMinus * this.traceOf(target[s]);
+          } else if (pl.rule === 'trace') {
+            pr.preTrace![local] += 1;
           } else if (pl.rule === 'hebb') {
             if (pl.gate === 'pre' && pr.lrGain > 0) {
               const r = pl.rate * pr.lrGain;
@@ -544,12 +670,46 @@ export class Network {
       const da = this.dopamine;
       for (let q = 0; q < this.plasticProjs.length; q++) {
         const pr = this.plasticProjs[q];
+        if (pr.preTrace) {
+          pr.daAcc += pr.mod;
+          if ((t + q * 7) % SWEEP_MS === 0) this.sweepTrace(pr);
+          continue;
+        }
         if (!pr.elig) continue;
         pr.daAcc += da;
         if ((t + q * 7) % SWEEP_MS === 0) this.sweep(pr);
       }
     }
     this.t = t + 1;
+  }
+
+  private sweepTrace(pr: Proj): void {
+    const pl = pr.plastic as Extract<Plasticity, { rule: 'trace' }>;
+    const tr = pr.preTrace!;
+    const mean = pr.preMean!;
+    const w = pr.w;
+    const rowPtr = pr.rowPtr;
+    const g = pl.lr * pr.lrGain * pr.daAcc;
+    const decay = Math.exp(-SWEEP_MS / pl.tauE);
+    // the usual level is a running average over about 20 s (a plain average at the very start)
+    const k = Math.max(SWEEP_MS / 20000, 1 / ++pr.sweeps);
+    const { wMin, wMax } = pl;
+    pr.daAcc = 0;
+    for (let i = 0; i < tr.length; i++) {
+      const e = tr[i];
+      const m = mean[i] + (e - mean[i]) * k;
+      mean[i] = m;
+      if (g !== 0 && e !== m) {
+        const dw = g * (e - m);
+        for (let s = rowPtr[i]; s < rowPtr[i + 1]; s++) {
+          let nw = w[s] + dw;
+          if (nw < wMin) nw = wMin;
+          else if (nw > wMax) nw = wMax;
+          w[s] = nw;
+        }
+      }
+      tr[i] = e * decay;
+    }
   }
 
   private sweep(pr: Proj): void {

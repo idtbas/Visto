@@ -1,7 +1,7 @@
 // Does the creature get better with experience? Runs a life headless and prints its progress.
 // usage: tsx tools/learn-test.ts <minutes> <newborn sigma> <learn 0|1> [lr] [mult.json] [seed]
 import { readFileSync, existsSync } from 'node:fs';
-import { Sim } from '../src/sim/sim';
+import { Sim, type PainMode } from '../src/sim/sim';
 
 const minutes = Number(process.argv[2] ?? 10);
 const newborn = Number(process.argv[3] ?? 0.4);
@@ -13,9 +13,10 @@ const mult = multFile && existsSync(multFile) ? (JSON.parse(readFileSync(multFil
 const exploreW = process.env.EXW ? Number(process.env.EXW) : undefined;
 const newbornTone = process.env.TONE ? Number(process.env.TONE) : undefined;
 const granules = process.env.GRANULES ? Number(process.env.GRANULES) : 0;
-const sim = new Sim({ learn, newborn, learningRate: lr, mult, seed, exploreW, newbornTone, granules, sleep: !!process.env.SLEEP });
+const sim = new Sim({ learn, newborn, learningRate: lr, mult, seed, exploreW, newbornTone, granules, sleep: !!process.env.SLEEP, pain: (process.env.PAIN as PainMode | undefined) ?? 'graded' });
 if (process.env.NOREPLAY) sim.brain.memory.replayEnabled = false;
-sim.autoCookies = !process.env.NOCOOKIES;
+sim.autoCookies = !process.env.NOCOOKIES && !process.env.NOREWARD;
+if (process.env.NOREWARD) sim.autoRewardOn = false;
 if (process.env.SHAM) sim.brain.reward.shamDelay = 17000;
 const sp = sim.brain.spinal;
 const w0 = sp.pathProj.map((leg) => leg.map((p) => p.meanWeight()));
@@ -47,7 +48,7 @@ for (let m = 0; m < minutes; m++) {
   sp.pathProj.forEach((leg, l) => leg.forEach((p, k) => { drift += Math.abs(Math.log(p.meanWeight() / w0[l][k])); cnt++; }));
   console.log(
     `min ${m + 1}: falls ${falls}, distance ${distSum.toFixed(1)} m, walking ${(walkTicks / 1000).toFixed(0)} s (${(walkTicks / 1000 / Math.max(1, falls)).toFixed(1)} s/attempt), best ${sim.life.bestAttempt.toFixed(1)} m, ` +
-      `asleep ${(sleepTicks / 1000).toFixed(0)} s, replays ${sim.brain.memory.replayCount}, step ${(stepSum / 60000).toFixed(2)}, |DA| ${(daAbs / 60000).toFixed(2)}, drift ${(drift / cnt).toFixed(3)}, tone ${sp.tone.map((t) => t.gain.toFixed(2)).join(' ')}, rpeSd ${Math.sqrt(sim.brain.hormones.rpeVar).toFixed(2)} fokin ${sim.brain.hormones.level.fokin.toFixed(2)} lrx ${sim.brain.hormones.effects.learningRate.toFixed(2)}, exp ${sim.brain.reward.expected.map((v) => v.toFixed(2)).join('/')} (${((Date.now() - t0) / 1000).toFixed(0)} s)`,
+      `asleep ${(sleepTicks / 1000).toFixed(0)} s, replays ${sim.brain.memory.replayCount}, step ${(stepSum / 60000).toFixed(2)}, |DA| ${(daAbs / 60000).toFixed(2)}, drift ${(drift / cnt).toFixed(3)}, tone ${sp.tone.map((t) => t.gain.toFixed(2)).join(' ')}, rpeSd ${Math.sqrt(sim.brain.hormones.rpeVar).toFixed(2)} fokin ${sim.brain.hormones.level.fokin.toFixed(2)} lrx ${sim.brain.hormones.effects.learningRate.toFixed(2)}, exp ${sim.brain.reward.expected.map((v) => v.toFixed(2)).join('/')}, pain ${sim.expectedPain.toFixed(2)} stress ${sim.brain.hormones.level.stressin.toFixed(2)} (${((Date.now() - t0) / 1000).toFixed(0)} s)`,
   );
   walkTicks = 0;
   daAbs = 0;

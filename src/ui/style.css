@@ -170,7 +170,7 @@ main {
 }
 .stat {
   flex: 1;
-  padding: 10px 12px;
+  padding: 10px 10px;
   border-right: 1px solid var(--line);
   display: flex;
   flex-direction: column;
@@ -182,7 +182,7 @@ main {
 }
 .stat .k {
   font-size: 10.5px;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.07em;
   text-transform: uppercase;
   color: var(--dim);
   white-space: nowrap;
@@ -308,7 +308,7 @@ body.manual .mbar .knob {
   grid-template-columns: minmax(0, 1fr) 300px;
   border-top: 1px solid var(--line);
   background: var(--panel);
-  height: 188px;
+  height: 206px;
 }
 .learn h2 {
   margin: 0 0 6px;
@@ -395,8 +395,8 @@ body.manual .mbar .knob {
   flex: none;
   flex-direction: row;
   align-items: center;
-  gap: 10px;
-  padding-left: 16px;
+  gap: 9px;
+  padding-left: 14px;
 }
 .lower {
   display: grid;
@@ -692,4 +692,8 @@ button.mini {
 }
 .trow {
   grid-template-columns: 100px 1fr 30px;
+}
+
+.ebar.pain span {
+  background: linear-gradient(90deg, #ff8a7a, #ff4638);
 }

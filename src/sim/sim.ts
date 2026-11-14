@@ -44,6 +44,12 @@ export interface Frame {
   attemptCount: number;
   /** counts cookies eaten so far (to trigger effects in the display) */
   cookiesEaten: number;
+  /** pain level per body site (see PAIN_SITES), overall pain 0..1 and what a fall is expected to cost */
+  pain: number[];
+  painNow: number;
+  expectedPain: number;
+  /** what the amygdala expects: 0 = safe, 1 = pain is certain */
+  danger: number;
 }
 
 export interface Mind {
@@ -83,8 +89,13 @@ export interface LifeStats {
   inHand: boolean;
 }
 
-/** how much a fall hurts, in units of reward */
+/** how much an average fall hurts, in units of reward */
 const FALL_COST = 1.5;
+
+/** 'graded': pain receptors decide how much a fall (or an overstretched joint) hurts;
+ *  'fixed': every fall costs the same (the behaviour before pain was built in);
+ *  'off': nothing hurts */
+export type PainMode = 'graded' | 'fixed' | 'off';
 
 export interface SimState {
   brain: BrainState;
@@ -94,6 +105,7 @@ export interface SimState {
   x: number;
   attempts?: number[];
   durations?: number[];
+  expectedPain?: number;
 }
 
 export interface SimOptions {
@@ -112,9 +124,12 @@ export interface SimOptions {
   startInStride?: boolean;
   /** the creature gets tired and sleeps */
   sleep?: boolean;
+  pain?: PainMode;
 }
 
 export interface BrainInfo {
+  /** 'wasm' = the fast WebAssembly loop is running, 'js' = the JavaScript fallback */
+  engine: 'wasm' | 'js';
   pops: PopInfo[];
   /** every projection as [index of source population, index of target population, 1 if inhibitory] */
   projs: [number, number, number][];
@@ -139,6 +154,10 @@ export class Sim {
   /** how long the helping hand steadies the creature after putting it down [s] */
   holdTime = 0.5;
   private attemptX0 = 0;
+  painMode: PainMode = 'graded';
+  /** how much a fall usually hurts (running average of the pain actually felt) */
+  expectedPain = FALL_COST;
+  private fallPain = 0;
   readonly fallExpectation = new FallExpectation();
   /** distance of every finished walking attempt [m] (most recent last) */
   readonly attempts: number[] = [];
@@ -257,9 +276,20 @@ export class Sim {
       { scale: opt.brainScale ?? 1, seed: opt.seed ?? 1, learn: opt.learn ?? true, learningRate: opt.learningRate, exploreW: opt.exploreW, newborn: opt.newborn ?? 0, newbornTone: opt.newbornTone, granules: opt.granules, decisionLr: opt.decisionLr },
     );
     this.brain.hormones.sleepEnabled = this.sleepOption;
+    this.setPainMode(opt.pain ?? 'graded');
     this.place();
     // at birth the nervous system needs a little longer to settle before the hand lets go
     if (this.frozenUntil > 0) this.frozenUntil = this.time + 0.6;
+  }
+
+  setPainMode(mode: PainMode): void {
+    this.painMode = mode;
+    this.brain.pain.enabled = mode === 'graded';
+  }
+
+  /** what a fall is expected to cost right now */
+  private fallCost(): number {
+    return this.painMode === 'off' ? 0 : this.painMode === 'fixed' ? FALL_COST : this.expectedPain;
   }
 
   /** automatic reward: staying upright and making progress feels good */
@@ -309,7 +339,7 @@ export class Sim {
   }
 
   saveState(): SimState {
-    return { brain: this.brain.saveState(), time: this.physics.time, life: { ...this.life }, cookiesEaten: this.cookiesEaten, x: this.physics.biped.hipX(), attempts: this.attempts.slice(), durations: this.fallExpectation.save() };
+    return { brain: this.brain.saveState(), time: this.physics.time, life: { ...this.life }, cookiesEaten: this.cookiesEaten, x: this.physics.biped.hipX(), attempts: this.attempts.slice(), durations: this.fallExpectation.save(), expectedPain: this.expectedPain };
   }
 
   loadState(st: SimState): boolean {
@@ -321,6 +351,7 @@ export class Sim {
     this.attempts.push(...(st.attempts ?? []));
     this.attemptCount = this.attempts.length;
     this.fallExpectation.load(st.durations ?? []);
+    this.expectedPain = st.expectedPain ?? FALL_COST;
     this.physics.biped.setPose(staggeredStandPose(undefined, st.x));
     this.place();
     return true;
@@ -329,6 +360,7 @@ export class Sim {
   brainInfo(): BrainInfo {
     const net = this.brain.net;
     return {
+      engine: net.engine,
       pops: this.brain.popInfo(),
       projs: net.projs.map((p) => [p.pre.id, p.post.id, p.channel === 'I' ? 1 : 0]),
       neurons: net.n,
@@ -432,7 +464,7 @@ export class Sim {
       if (b.hipY() < 0.6 || Math.abs(b.theta) > 1.2 || b.impact > 0.05) {
         if (life.state === 'walking') {
           // store the attempt: what was tried and whether it went better or worse than expected
-          this.brain.memory.rememberAttempt(this.attemptSurprise - FALL_COST);
+          this.brain.memory.rememberAttempt(this.attemptSurprise - this.fallCost());
           this.fallExpectation.record(this.time - this.stateSince);
           this.attempts.push(Math.max(0, life.attempt));
           if (this.attempts.length > 3000) this.attempts.shift();
@@ -441,12 +473,20 @@ export class Sim {
         life.state = 'fallen';
         life.falls++;
         this.stateSince = this.time;
-        this.brain.reward.give(-FALL_COST); // falling hurts
-        this.brain.bodyState.pain = 1;
+        this.fallPain = 0;
+        if (this.painMode === 'fixed') {
+          this.brain.reward.give(-FALL_COST);
+          this.brain.bodyState.pain += 1;
+        }
       }
     } else {
       sp.go = 0;
-      if (since > 1.5) this.place();
+      this.fallPain += this.brain.pain.cost * DT;
+      if (since > 1.5) {
+        // how much did this fall hurt? That is what the next one is expected to cost.
+        if (this.painMode === 'graded') this.expectedPain += (this.fallPain - this.expectedPain) / 10;
+        this.place();
+      }
     }
   }
   readonly manualStim = new Float32Array(2 * NM).fill(0.01);
@@ -499,7 +539,7 @@ export class Sim {
       if ((this.physics.time * 1000) % 50 < 1 && st !== 'sleeping') this.cookieTick();
       if ((this.physics.time * 1000) % 20 < 1) this.obstacleTick();
       // still on its feet at a moment when it usually falls: better than expected
-      const relief = st === 'walking' && this.time >= this.frozenUntil ? FALL_COST * this.fallExpectation.hazard(this.time - this.stateSince) : 0;
+      const relief = st === 'walking' && this.time >= this.frozenUntil ? this.fallCost() * this.fallExpectation.hazard(this.time - this.stateSince) : 0;
       this.brain.tick(this.autoRewardOn && st !== 'sleeping' ? this.autoReward() : 0, st === 'standing' ? 0 : st === 'walking' ? 1 : 2, relief);
     }
     if (this.time < this.frozenUntil) {
@@ -545,6 +585,10 @@ export class Sim {
       mind: this.mind(),
       tone: this.brain.spinal.tone.map((t) => t.gain),
       attemptCount: this.attemptCount,
+      pain: Array.from(this.brain.pain.level),
+      painNow: this.brain.pain.intensity,
+      expectedPain: this.painMode === 'off' ? 0 : this.painMode === 'fixed' ? FALL_COST : this.expectedPain,
+      danger: this.brain.amygdala.danger,
     };
   }
 }

@@ -152,7 +152,37 @@ export class BodyView {
     this.drawLeg(f, 0, 0.5);
     this.drawTrunk(f);
     this.drawLeg(f, 1, 1);
+    this.drawPain(f);
     this.drawThought(f);
+  }
+
+  /** where it hurts: a red glow at every body site whose pain receptors are firing */
+  private drawPain(f: Frame): void {
+    const c = this.ctx;
+    const g = GEOM;
+    // [body index, x, y] in the order of PAIN_SITES
+    const sites: [number, number, number][] = [
+      [0, 0.09, g.trunkLen - 0.1], [0, -0.09, g.trunkLen - 0.1], [0, 0.09, 0.35], [0, -0.09, 0.35],
+      [1, 0, -0.25], [4, 0, -0.25], [2, 0.02, -0.14], [5, 0.02, -0.14],
+      [1, 0, 0], [4, 0, 0], [2, 0, 0], [5, 0, 0], [3, 0, 0], [6, 0, 0],
+    ];
+    c.globalCompositeOperation = 'lighter';
+    for (let s = 0; s < sites.length; s++) {
+      const lv = f.pain[s];
+      if (!(lv > 0.03)) continue;
+      const a = Math.min(1, lv);
+      const p = this.pt(f, sites[s][0], sites[s][1], sites[s][2]);
+      const r = (0.07 + 0.11 * a) * this.scale;
+      const gr = c.createRadialGradient(p[0], p[1], 0, p[0], p[1], r);
+      gr.addColorStop(0, `rgba(255,70,60,${0.25 + 0.65 * a})`);
+      gr.addColorStop(0.4, `rgba(255,60,60,${0.35 * a})`);
+      gr.addColorStop(1, 'rgba(255,60,60,0)');
+      c.fillStyle = gr;
+      c.beginPath();
+      c.arc(p[0], p[1], r, 0, Math.PI * 2);
+      c.fill();
+    }
+    c.globalCompositeOperation = 'source-over';
   }
 
   /** what is going on in the hippocampus: a dream in sleep, or the options weighed before an obstacle */

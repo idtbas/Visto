@@ -2,36 +2,48 @@
 
 Visto ist eine Website, auf der ein zweibeiniges Wesen laufen lernt. Es gibt kein fertiges
 Bewegungsprogramm und keine Evolution über Generationen: **ein** Wesen mit **einem** Nervensystem
-aus spikenden Neuronen lernt während seines Lebens, belohnt durch Cookies.
+aus spikenden Neuronen lernt während seines Lebens, belohnt durch Cookies und gewarnt durch
+Schmerz.
 
 ```
 npm install
 npm run dev        # dann http://localhost:5173 öffnen
 ```
 
-`npm run build` erzeugt eine einzige, eigenständige Datei `dist/index.html` (rund 550 kB), die
+`npm run build` erzeugt eine einzige, eigenständige Datei `dist/index.html` (rund 630 kB), die
 sich überall hosten oder direkt öffnen lässt.
 
 ## Was man sieht
 
 - **Links** die Welt: der Körper mit Knochen, 14 Muskeln und Sehnen. Rot heißt angespannt.
+  Wo es wehtut, leuchtet die Körperstelle rot auf.
 - **Rechts** das Nervensystem, anatomisch angeordnet: oben das Gehirn von der Seite, darunter
   Hirnstamm und Rückenmark mit linker und rechter Hälfte, außen die Sinnes- und Bewegungsnerven
   der Beine. Jeder Punkt ist ein Neuron und blitzt bei jedem seiner Spikes auf (blau = hemmend).
   Die Linien sind Nervenbahnen; sie werden mit der Feuerrate ihrer Quellneuronen heller, und die
   Lichtpunkte darauf sind eine Zufallsstichprobe der Spikes, die gerade hindurchlaufen
   (höchstens etwa jeder 250.; wie schnell sie wandern, ist frei gewählt). Der blasse Umriss von
-  Gehirn und Rückenmark dahinter ist reine Orientierungshilfe. Mit der Maus über eine Zellgruppe fahren zeigt Name
-  und Feuerrate.
+  Gehirn und Rückenmark dahinter ist reine Orientierungshilfe. Mit der Maus über eine
+  Zellgruppe fahren zeigt Name und Feuerrate.
 - **Botenstoffe**: die Pegel der acht Hormone mit ihrem Verlauf der letzten Minute.
-- **Lernkurve**: wie weit jeder Laufversuch kam. **Tonus-Kerne**: was das Wesen bisher gelernt hat.
+- **Lernkurve**: wie weit jeder Laufversuch kam. **Tonus-Kerne**: was das Wesen bisher gelernt
+  hat. Darunter unter anderem **Gefahr**: wie sicher der Mandelkern gerade Schmerz erwartet.
 - **Cookie geben** (oder Taste `C`) belohnt von Hand. Ein Klick in die Welt legt einen Cookie
-  dorthin. Mit „Auto-Belohnung" belohnt sich Fortschritt von selbst.
+  dorthin.
+- Die Schalter **Cookies** und **Schmerz** legen fest, woraus das Wesen lernt. „Cookies"
+  belohnt Fortschritt und legt Cookies auf den Weg; „Schmerz" schaltet die Schmerzrezeptoren
+  ein. Beide an ist die Voreinstellung; nur „Schmerz" lässt es allein aus Schmerz lernen.
 - **Hindernisse** legt kleine Stufen in den Weg, hinter jeder wartet ein Cookie. Die gestrichelte
   Linie zeigt, worauf das Auge gerade schaut.
-- **3D-Ansicht** öffnet das Nervensystem als drehbare Punktwolke in einem eigenen Fenster
-  (ziehen dreht, Mausrad oder zwei Finger zoomen, die Titelleiste verschiebt es). Sie zeigt
-  dieselben echten Spikes und Nervenbahnen wie die flache Karte.
+- **3D-Ansicht** öffnet das Nervensystem in einem eigenen Fenster als drehbares Gehirn:
+  zwei gefaltete Großhirnhälften, Kleinhirn, Hirnstamm und Rückenmark als gläserne Hülle
+  (abschaltbar), darin die Neuronen an den Orten ihrer biologischen Vorbilder – die
+  Körperfühlrinde hinter der Zentralfurche (das linke Bein in der rechten Hirnhälfte), die
+  Sehrinde am Hinterkopf, Hippocampus und Mandelkern tief im Schläfenlappen, die Dopaminzellen
+  im Mittelhirn. Ziehen dreht, Mausrad oder zwei Finger zoomen, die Titelleiste verschiebt
+  das Fenster. Gezeigt werden dieselben echten Spikes und Nervenbahnen wie in der flachen
+  Karte. Die Form ist aus Formeln erzeugt, kein vermessenes Gehirn, und das Rückenmark ist
+  etwa doppelt so dick gezeichnet, wie es wäre, damit man seine Neuronen unterscheiden kann.
 - Zeitraffer bis `max`, „Stehen/Laufen", „Neues Leben" (Gehirn zurücksetzen). Das Gehirn wird
   alle 30 Sekunden im Browser gespeichert und beim nächsten Besuch weiterverwendet.
 - **Kleinhirn (experimentell)** baut das Gehirn mit 12.000 zusätzlichen Körnerzellen neu auf.
@@ -49,7 +61,10 @@ die Aktivierung ist träge, und Muskeln ermüden.
 
 Alle Neuronen sind Izhikevich-Neuronen mit echten Aktionspotentialen im 1-ms-Takt. Synapsen
 haben einzelne Gewichte, Leitungsverzögerungen und wirken über Leitfähigkeiten (erregend,
-hemmend, langsam erregend).
+hemmend, langsam erregend). Die innere Schleife, die alle Neuronen um eine Millisekunde
+weiterrechnet, läuft als WebAssembly mit SIMD (vier Neuronen auf einmal, Quelltext in
+`asm/kernel.ts`); wo das nicht verfügbar ist, übernimmt dieselbe Schleife in JavaScript. Welche
+gerade läuft, zeigt der Hinweis, wenn man mit der Maus über die Neuronenzahl fährt.
 
 | Region | Aufgabe | angeboren / gelernt |
 |---|---|---|
@@ -63,6 +78,10 @@ hemmend, langsam erregend).
 | Basalganglien | Striatum, Pallidum, Thalamus: entscheiden, ob der Befehl „Füße anheben" gegeben wird | Entscheidung wird **gelernt** |
 | Hippocampus | zwei Speicher für einzelne Erlebnisse, Ausgangs- und Optionszellen, Abwägung | Inhalte werden **gelernt** (ein Erlebnis genügt) |
 | Scheitelrinde | Vorwärtsmodell: sagt vier Sinnessignale 50 ms voraus | gelernt |
+| Schmerzrezeptoren | 14 Stellen: Haut von Kopf, Rumpf, Oberschenkeln und Knien, Bänder von Hüft-, Knie- und Sprunggelenken | angeboren |
+| Schmerzkern, Habenula | leiten Schmerz weiter und bringen die Dopaminzellen zum Schweigen | angeboren |
+| Körperfühlrinde | rund 8.700 Zellen, die alles Gespürte neu kombinieren: jede feuert nur, wenn mehrere ihrer Eingänge zusammen aktiv sind | angeboren (feste Zufallsverschaltung) |
+| Mandelkern | lernt, welche Körperlagen dem Schmerz vorausgehen, und meldet steigende oder sinkende Gefahr an die Dopaminzellen | **gelernt** |
 | Kleinhirn (optional) | Körnerzellen, Purkinje-Zellen, Kletterfasern: lernt Korrekturen vorwegzunehmen | gelernt, noch experimentell |
 
 ### Wie es lernt
@@ -74,7 +93,35 @@ Perturbation nach Fiete & Seung 2006). Das ist eine lokale Regel: jede Synapse k
 eigenes Vorher-Neuron, ihr Nachher-Neuron und den Dopaminpegel.
 
 Belohnung gibt es für Cookies, für aufrechtes Vorwärtskommen und dafür, länger auf den Beinen
-zu bleiben als nach bisheriger Erfahrung zu erwarten war. Ein Sturz tut weh.
+zu bleiben als nach bisheriger Erfahrung zu erwarten war (der erwartete Schmerz ist
+ausgeblieben).
+
+### Schmerz
+
+Schmerzrezeptoren sitzen in der Haut der Körperteile, die nicht zum Tragen gemacht sind, und in
+den Bändern der Gelenke. Die Hautrezeptoren feuern, wenn ein Körperteil mit mehr als dem
+Doppelten des Körpergewichts aufschlägt (bei einem Sturz sind es das 10- bis 20-Fache), die
+Gelenkrezeptoren, wenn ein Gelenk mit Kraft gegen seinen Anschlag gedrückt wird. Ruhiges
+Liegen und normales Gehen tun nicht weh: Ein ausgereiftes Wesen spürt beim Gehen praktisch
+nichts, ein Neugeborenes hat schon beim Gehen leichte Schmerzen in Knie- und Sprunggelenken.
+Wie stark und wie lange es wehtut, hängt von der Wucht ab. Ein Sturz kostet dadurch nicht
+mehr pauschal gleich viel, sondern je nach Aufprall etwa das 0,6- bis 4,8-Fache der früheren
+festen Strafe. Rezeptoren, auf die es dauerhaft drückt, verstummen nach etwa 200 ms, und im
+Schlaf ist die Schmerzbahn zu.
+
+Der Weg im Gehirn: Schmerzrezeptoren → Schmerzkern → Habenula → hemmende Zellen → Dopaminzellen.
+Schmerz bringt die Dopaminzellen also über echte hemmende Synapsen zum Schweigen, und die
+Synapsen, die gerade aktiv waren, werden zurückgenommen. Derselbe Schmerz hebt Stressin und
+Vigilin.
+
+Der Schmerz sagt, **wo** das Wesen aufgeschlagen ist, aber nicht, welcher Muskel eine Sekunde
+vorher den Fehler gemacht hat. Diese Lücke soll der **Mandelkern** schließen. Er liest die
+Körperfühlrinde über lernfähige Synapsen. Setzt Schmerz unerwartet ein, werden die Synapsen
+der Rindenzellen verstärkt, die in der halben Sekunde davor ungewöhnlich aktiv waren; feuert
+der Mandelkern und es folgt kein Schmerz, werden sie wieder schwächer. Ein kleiner Schaltkreis
+vergleicht seine Erwartung mit einer trägen Kopie von ihr: Steigt die Gefahr, schweigen die
+Dopaminzellen schon in diesem Moment; geht sie vorbei, ohne dass es wehtut, feuern sie
+stärker (Erleichterung). Eine gleichbleibende Erwartung hebt sich auf.
 
 ### Die Hormone
 

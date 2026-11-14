@@ -1,0 +1,23 @@
+// Where does the time go? Runs a mature creature and times the parts of a tick.
+import { Sim } from '../src/sim/sim';
+const granules = process.env.GRANULES ? Number(process.env.GRANULES) : 0;
+const sim = new Sim({ learn: true, seed: 1, granules });
+const net = sim.brain.net;
+const orig = net.step.bind(net);
+let tNet = 0;
+net.step = () => { const t = performance.now(); orig(); tNet += performance.now() - t; };
+const ph = sim.physics;
+const origP = ph.step.bind(ph);
+let tPh = 0;
+ph.step = () => { const t = performance.now(); origP(); tPh += performance.now() - t; };
+for (let i = 0; i < 3000; i++) sim.tick();
+tNet = 0; tPh = 0; net.totalSpikes = 0;
+const T = 10000;
+const t0 = performance.now();
+for (let i = 0; i < T; i++) sim.tick();
+const all = performance.now() - t0;
+let ev = 0;
+console.log(`neurons ${net.n}, synapses ${net.nSynapses}; 1 s sim = ${(all / 10).toFixed(0)} ms wall (${(10000 / all).toFixed(2)}x): network ${(tNet / 10).toFixed(0)} ms, physics ${(tPh / 10).toFixed(0)} ms, rest ${((all - tNet - tPh) / 10).toFixed(0)} ms; spikes/s ${(net.totalSpikes / 10).toFixed(0)}, per neuron-tick ${(tNet * 1e6 / T / net.n).toFixed(1)} ns`);
+void ev;
+const g = globalThis as any;
+if (g.__tn) console.log(`neuron loop ${(g.__tn / 13).toFixed(0)} ms/s, spikes ${(g.__ts / 13).toFixed(0)} ms/s, sweep ${(g.__tw / 13).toFixed(0)} ms/s`);

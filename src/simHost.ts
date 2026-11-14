@@ -101,6 +101,9 @@ export function createHost(post: (m: FromWorker) => void): (m: ToWorker) => void
       case 'obstacles':
         sim.obstaclesOn = m.on;
         break;
+      case 'pain':
+        sim.setPainMode(m.on ? 'graded' : 'off');
+        break;
       case 'autoReward':
         sim.autoRewardOn = m.on;
         sim.autoCookies = m.on;

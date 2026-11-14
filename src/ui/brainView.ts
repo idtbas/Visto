@@ -30,16 +30,21 @@ const SPARK: RGB = [255, 214, 130];
 
 export const REGIONS: RegionDef[] = [
   // --- brain, seen from the side: front is on the right ---
-  { key: 'visual', title: 'Sehrinde', x: 0.03, y: 0.03, w: 0.22, h: 0.105, color: [120, 220, 255] },
-  { key: 'cortex', title: 'Scheitelrinde · Vorhersage', x: 0.27, y: 0.02, w: 0.34, h: 0.105, color: [255, 236, 170] },
-  { key: 'explore', title: 'Erkundungs-Kern', x: 0.63, y: 0.03, w: 0.34, h: 0.14, color: [200, 160, 255] },
-  { key: 'hippocampus', title: 'Hippocampus · Gedächtnis', x: 0.27, y: 0.14, w: 0.34, h: 0.125, color: [140, 240, 210] },
-  { key: 'basal', title: 'Basalganglien', x: 0.63, y: 0.185, w: 0.2, h: 0.085, color: [255, 150, 200] },
-  { key: 'vta', title: 'Dopamin', x: 0.845, y: 0.185, w: 0.125, h: 0.085, color: [255, 180, 84] },
-  { key: 'cerebellum_granule', title: 'Kleinhirn · Körnerzellen', x: 0.03, y: 0.15, w: 0.225, h: 0.265, color: [170, 200, 255] },
-  { key: 'cerebellum', title: 'Kleinhirn · Purkinje', x: 0.27, y: 0.28, w: 0.2, h: 0.135, color: [200, 170, 255] },
-  { key: 'brainstem', title: 'Hirnstamm', x: 0.485, y: 0.285, w: 0.485, h: 0.13, color: [255, 214, 130] },
-  { key: 'afferent', title: 'Gleichgewicht', x: 0.27, y: 0.43, w: 0.2, h: 0.07, color: [150, 235, 170] },
+  { key: 'cortex_body', title: 'Körperfühlrinde', x: 0.03, y: 0.02, w: 0.6, h: 0.135, color: [255, 222, 160] },
+  { key: 'cortex', title: 'Scheitelrinde · Vorhersage', x: 0.645, y: 0.02, w: 0.325, h: 0.065, color: [255, 236, 170] },
+  { key: 'explore', title: 'Erkundungs-Kern', x: 0.645, y: 0.095, w: 0.325, h: 0.095, color: [200, 160, 255] },
+  { key: 'visual', title: 'Sehrinde', x: 0.03, y: 0.165, w: 0.15, h: 0.105, color: [120, 220, 255] },
+  { key: 'hippocampus', title: 'Hippocampus · Gedächtnis', x: 0.19, y: 0.165, w: 0.29, h: 0.105, color: [140, 240, 210] },
+  { key: 'amygdala', title: 'Mandelkern', x: 0.49, y: 0.165, w: 0.145, h: 0.105, color: [255, 140, 120] },
+  { key: 'basal', title: 'Basalganglien', x: 0.645, y: 0.2, w: 0.16, h: 0.07, color: [255, 150, 200] },
+  { key: 'vta', title: 'Dopamin', x: 0.815, y: 0.2, w: 0.155, h: 0.07, color: [255, 180, 84] },
+  { key: 'cerebellum_granule', title: 'Kleinhirn · Körnerzellen', x: 0.03, y: 0.28, w: 0.225, h: 0.22, color: [170, 200, 255] },
+  { key: 'cerebellum', title: 'Kleinhirn · Purkinje', x: 0.265, y: 0.285, w: 0.2, h: 0.13, color: [200, 170, 255] },
+  { key: 'habenula', title: 'Habenula', x: 0.475, y: 0.285, w: 0.125, h: 0.062, color: [255, 120, 150] },
+  { key: 'pain_relay', title: 'Schmerzkern', x: 0.475, y: 0.353, w: 0.125, h: 0.062, color: [255, 90, 80] },
+  { key: 'brainstem', title: 'Hirnstamm', x: 0.61, y: 0.285, w: 0.36, h: 0.13, color: [255, 214, 130] },
+  { key: 'afferent', title: 'Gleichgewicht', x: 0.265, y: 0.43, w: 0.2, h: 0.07, color: [150, 235, 170] },
+  { key: 'pain', title: 'Schmerzrezeptoren', x: 0.475, y: 0.43, w: 0.495, h: 0.07, color: [255, 90, 80] },
   // --- body: spinal cord in the middle, nerves to the left and right leg ---
   { key: 'afferent_0', title: 'Sinnesnerven links', x: 0.02, y: 0.55, w: 0.3, h: 0.19, color: [150, 235, 170] },
   { key: 'afferent_1', title: 'Sinnesnerven rechts', x: 0.68, y: 0.55, w: 0.3, h: 0.19, color: [150, 235, 170] },
@@ -218,13 +223,15 @@ export class BrainView {
     }
     // regions should not look wildly different: nowhere are the cells spread much wider than
     // in the most crowded region (a region filled by one huge population is judged on its own)
-    const multi = spacing.filter((_, i) => this.regions[i].pops.length > 1);
+    // (also the cortex with its thousands of cells)
+    const crowded = (reg: Region): boolean => reg.pops.length === 1 || reg.pops.reduce((n, i) => n + pops[i].n, 0) > 3000;
+    const multi = spacing.filter((_, i) => !crowded(this.regions[i]));
     const tightest = multi.length > 0 ? Math.min(...multi) : Math.min(...spacing);
     const cap = tightest * 1.7;
     this.dot = Math.max(0.6 * dpr, tightest * 0.4);
 
     // 2. place every population as a little colony of cells
-    this.regions.forEach((reg, ri) => this.placeRegion(reg, ri, reg.pops.length > 1 ? Math.min(spacing[ri], cap) : spacing[ri], titleH));
+    this.regions.forEach((reg, ri) => this.placeRegion(reg, ri, crowded(reg) ? spacing[ri] : Math.min(spacing[ri], cap), titleH));
 
     // 3. nerve tracts: all projections between two different regions, bundled
     const bundles = new Map<string, Tract>();

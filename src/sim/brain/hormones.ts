@@ -26,7 +26,7 @@ export interface HormoneInputs {
   rpe: number;
   /** phasic dopamine level from the dopamine neurons */
   dopamine: number;
-  /** a painful event happened in this tick (fall), 0..1 */
+  /** pain felt in this tick; an average fall adds up to about 1 */
   pain: number;
   /** sudden sensory surprise 0..1 (push, stumble, something new in sight) */
   surprise: number;
@@ -113,7 +113,7 @@ export class Hormones {
     // --- vigilin: surprise and pain, cleared within seconds; sleep pressure dampens it ---
     const unsigned = Math.min(1, Math.abs(inp.rpe) * 0.6);
     const vigTarget = Math.min(1, 0.15 + 0.2 * L.ergin) * (1 - 0.6 * L.somnin);
-    L.vigilin += (Math.max(inp.surprise, inp.pain) * 0.35 + unsigned * 0.0003) * (1 - 0.5 * L.somnin);
+    L.vigilin += ((inp.surprise + inp.pain) * 0.35 + unsigned * 0.0003) * (1 - 0.5 * L.somnin);
     relax('vigilin', inp.asleep ? 0.02 : vigTarget, 2.5);
 
     // --- fokin: tracks how unpredictable rewards currently are ---
@@ -152,9 +152,8 @@ export class Hormones {
     // fokin gates plasticity: when everything goes as expected there is little reason to change
     e.learningRate = (0.4 + 1.2 * L.plastin) * (0.7 + 0.5 * arousalU) * (1 - 0.4 * Math.max(0, L.stressin - 0.6) * 2.5) * (0.1 + 1.6 * L.fokin);
     if (e.learningRate < 0.05) e.learningRate = 0.05;
-    // Even at full uncertainty the variation must stay small enough that a creature which
-    // can already walk is not knocked over by its own experiments; otherwise falls raise the
-    // uncertainty, which raises the exploration, which causes more falls.
+    // Strong variation can itself cause falls, which raise the uncertainty, which raises the
+    // variation. Simply capping it (0.8 or 0.5 instead of 1.5) did not make learning more reliable.
     e.exploration = Math.max(0.15, (0.15 + EXPLORE_SPAN * L.fokin) * (1 - 0.3 * L.serenin) * (1 - 0.5 * L.somnin));
     e.arousal = 1.5 * (L.vigilin - 0.2) - 1.5 * L.somnin;
     e.vigor = Math.min(1.15, Math.max(0.5, 1 + 0.25 * (L.ergin - 0.3) - 0.5 * L.stressin - 0.3 * L.somnin));

@@ -150,7 +150,6 @@ function updatePanels(f: Frame): void {
   $('lifeState').textContent =
     f.mode !== 'brain' ? (f.mode === 'manual' ? 'Handsteuerung' : 'Referenz-Reflexe (ohne Gehirn)') : life.state === 'sleeping' ? (mind.dream ? 'schläft und träumt' : 'schläft') : life.state === 'fallen' ? 'gestürzt – wird gleich aufgehoben' : life.inHand ? 'in der helfenden Hand' : life.state === 'standing' ? 'steht' : 'läuft';
   $('stFalls').textContent = String(life.falls);
-  $('stAttempt').textContent = life.attempt >= 100 ? `${Math.round(life.attempt)} m` : `${de(life.attempt)} m`;
   $('stBest').textContent = life.bestAttempt >= 100 ? `${Math.round(life.bestAttempt)} m` : `${de(life.bestAttempt)} m`;
   $('memNote').textContent = `${mind.attempts} Läufe · ${mind.encounters} Hind. · ${mind.dreams} Träume`;
   $('speFill').style.width = `${Math.min(100, mind.spe * 200)}%`;
@@ -165,6 +164,9 @@ function updatePanels(f: Frame): void {
     toneBars[i].val.textContent = `${Math.round(v * 100)}`;
   });
   $('energyFill').style.width = `${Math.round(f.energy * 100)}%`;
+  $('painFill').style.width = `${Math.round(Math.min(1, f.painNow) * 100)}%`;
+  $('dangerFill').style.width = `${Math.round(Math.min(1, f.danger) * 100)}%`;
+  $('dangerVal').textContent = `${Math.round(Math.min(1, f.danger) * 100)}`;
   $('stCookies').textContent = String(f.cookiesEaten);
   if (brainMeta) $('brainMeta').textContent = `${brainMeta} · ${nf.format(Math.round(spikeRate))} Spikes/s`;
 }
@@ -183,6 +185,8 @@ window.addEventListener('keydown', (e) => {
 });
 $<HTMLInputElement>('chkAuto').addEventListener('change', (e) => send({ type: 'autoReward', on: (e.target as HTMLInputElement).checked }));
 $<HTMLInputElement>('chkObst').addEventListener('change', (e) => send({ type: 'obstacles', on: (e.target as HTMLInputElement).checked }));
+$<HTMLInputElement>('chkShell').addEventListener('change', (e) => (brain3d.shell = (e.target as HTMLInputElement).checked));
+$<HTMLInputElement>('chkPain').addEventListener('change', (e) => send({ type: 'pain', on: (e.target as HTMLInputElement).checked }));
 $('world').addEventListener('click', (e) => {
   const x = bodyView.worldX(e.offsetX);
   send({ type: 'placeCookie', x });
@@ -223,6 +227,8 @@ function onMessage(m: FromWorker): void {
     brainView.setInfo(m.brain);
     brain3d.setInfo(m.brain);
     brainMeta = `${nf.format(m.brain.neurons)} Neuronen · ${nf.format(m.brain.synapses)} Synapsen`;
+    $('brainMeta').title = m.brain.engine === 'wasm' ? 'Rechenkern: WebAssembly mit SIMD' : 'Rechenkern: JavaScript (WebAssembly mit SIMD steht hier nicht zur Verfügung, deshalb langsamer)';
+    document.body.classList.toggle('slowEngine', m.brain.engine !== 'wasm');
   } else if (m.type === 'attempts') {
     learnView.setAttempts(m.list);
   } else if (m.type === 'state') {
@@ -287,6 +293,7 @@ async function boot(fresh: boolean): Promise<void> {
   send({ type: 'speed', speed: Number(speedBtn?.dataset.speed ?? 1) });
   send({ type: 'autoReward', on: $<HTMLInputElement>('chkAuto').checked });
   send({ type: 'obstacles', on: $<HTMLInputElement>('chkObst').checked });
+  send({ type: 'pain', on: $<HTMLInputElement>('chkPain').checked });
   send({ type: 'wantsToWalk', on: $('goSeg').querySelector<HTMLElement>('button.on')?.dataset.go === '1' });
   if (paused) send({ type: 'pause', paused });
 }

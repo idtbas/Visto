@@ -30,17 +30,20 @@ export class RewardSystem {
   }
 
   /** @param reward continuous reward rate; @param context index of the current behavioural context;
-   *  @param surprise reward that is already relative to expectation (bypasses the baseline) */
-  step(reward: number, context: number, surprise = 0): void {
+   *  @param surprise reward that is already relative to expectation (bypasses the baseline);
+   *  @param pain cost of the pain that is being felt (per second). It counts as "worse than
+   *  expected" but is not turned into current here: it reaches the dopamine neurons through
+   *  their inhibitory synapses from the pain pathway. */
+  step(reward: number, context: number, surprise = 0, pain = 0): void {
     // pulses are paid out with a time constant of 150 ms
     const pay = this.pulse / 150;
     this.pulse -= pay;
     const r = reward + pay * 1000;
     // context 2 (lying on the ground) carries no expectation: pain is always worse than expected
     const exp = context === 2 ? 0 : this.expected[context];
-    this.rpe = r - exp + surprise;
+    this.rpe = r - exp + surprise - pain;
     if (context !== 2) this.expected[context] = exp + (r - exp) / 20000;
-    let cur = DA_GAIN * this.rpe;
+    let cur = DA_GAIN * (this.rpe + pain);
     if (cur > 40) cur = 40;
     else if (cur < -DA_BIAS - 4) cur = -DA_BIAS - 4;
     const iext = this.net.iext;

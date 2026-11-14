@@ -6,6 +6,9 @@ import { Cerebellum } from './cerebellum';
 import { Decision } from './decision';
 import { Memory, type MemoryState } from './memory';
 import { Predictor } from './predict';
+import { Pain } from './pain';
+import { BodyCortex } from './cortex';
+import { Amygdala } from './amygdala';
 import { Hormones, HORMONES, type HormoneInputs } from './hormones';
 import type { Biped } from '../body/biped';
 
@@ -17,7 +20,7 @@ export interface PopInfo {
   inhibitory: boolean;
 }
 
-const STATE_VERSION = 2;
+const STATE_VERSION = 3;
 
 export interface BrainState {
   version: number;
@@ -53,6 +56,8 @@ export interface BrainOptions {
   granules?: number;
   /** descending tone of the newborn relative to mature (1 = mature) */
   newbornTone?: number;
+  /** number of excitatory cells in the body-sense cortex */
+  cortex?: number;
 }
 
 export class Brain {
@@ -63,6 +68,9 @@ export class Brain {
   readonly decision: Decision;
   readonly memory: Memory;
   readonly predictor: Predictor;
+  readonly pain: Pain;
+  readonly cortex: BodyCortex;
+  readonly amygdala: Amygdala;
   readonly hormones = new Hormones();
   /** set by the simulation before every tick */
   readonly bodyState: HormoneInputs = { rpe: 0, dopamine: 0, pain: 0, surprise: 0, power: 0, intake: 0, asleep: false, activity: 0 };
@@ -83,6 +91,9 @@ export class Brain {
     this.decision = new Decision(this.net, this.spinal, { learn: !!opt.learn, lr: opt.decisionLr ?? 2e-6, n: Math.round(32 * (opt.scale ?? 1)) });
     this.predictor = new Predictor(this.net, this.spinal, !!opt.learn);
     this.memory = new Memory(this.net, this.spinal, this.decision, this.reward, !!opt.learn);
+    this.pain = new Pain(this.net, biped, this.reward.vta);
+    this.cortex = new BodyCortex(this.net, this.spinal, this.pain, Math.round((opt.cortex ?? 8192) * (opt.scale ?? 1)));
+    this.amygdala = new Amygdala(this.net, this.cortex, this.pain, this.reward.vta, !!opt.learn);
     this.cerebellum = opt.granules && opt.granules > 0 ? new Cerebellum(this.net, this.spinal, { granules: opt.granules }) : null;
     this.net.build();
     this.net.learning = !!opt.learn;
@@ -91,13 +102,17 @@ export class Brain {
 
   /** @param reward continuous reward rate, @param context behavioural context for the reward expectation */
   tick(reward = 0, context = 0, surprise = 0): void {
-    this.reward.step(reward, context, surprise);
+    // pain and the amygdala's expectation of it act on the dopamine neurons through synapses;
+    // here they only enter the bookkeeping of "better or worse than expected"
+    this.reward.step(reward, context, surprise, this.pain.cost - this.amygdala.td);
     // hormones: read the state of body and reward system, then modulate the network
     const bs = this.bodyState;
     bs.rpe = this.reward.rpe;
     bs.dopamine = this.reward.level;
     this.activityRate += ((this.net.nSpikes * 1000) / this.net.n - this.activityRate) * 0.01;
     bs.activity = this.activityRate;
+    // felt pain, scaled so that an average fall adds up to about 1
+    bs.pain += this.pain.cost * (0.001 / 1.5);
     if (this.surpriseNext > bs.surprise) bs.surprise = this.surpriseNext;
     this.surpriseNext = 0;
     this.hormones.step(bs);
@@ -130,6 +145,8 @@ export class Brain {
     // an unexpected sensation is a surprise for the hormone system
     if (this.predictor.surprised) this.surpriseNext = 1;
     this.spinal.sense();
+    this.pain.sense(asleep);
+    this.amygdala.step(asleep);
     this.decision.step();
     this.cerebellum?.step();
     this.net.step();

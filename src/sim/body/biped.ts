@@ -123,6 +123,15 @@ interface FootTag {
   part: 'heel' | 'toe';
 }
 
+/** a part of the body that is not made for carrying weight; touching the ground with it hurts */
+interface SkinTag {
+  skin: number;
+}
+
+/** body parts with pain receptors in the skin, as tagged on the fixtures */
+export const SKIN = { head: 0, trunk: 1, thigh: 2, shank: 4 } as const;
+export const N_SKIN = 6;
+
 const KNEE_SOFT = 175 * DEG;
 const SOFT_K = 0.3 / DEG; // N m / rad
 const SOFT_WMAX = 1 * DEG; // rad / s
@@ -152,10 +161,15 @@ export class Biped {
   readonly toeLoad = new Float32Array(2);
   private readonly heelImp = new Float32Array(2);
   private readonly toeImp = new Float32Array(2);
-  /** impulse received by non-foot parts this step (pain) */
+  /** impulse received by non-foot parts this step */
   private bodyImp = 0;
+  private readonly skinImp = new Float32Array(N_SKIN);
   /** filtered impact load on trunk / legs, in body weights */
   impact = 0;
+  /** the same per body part (see SKIN) */
+  readonly skinLoad = new Float32Array(N_SKIN);
+  /** torque with which each joint presses against its end stop [N m], index = leg * 3 + joint */
+  readonly jointStrain = new Float32Array(6);
   /** total metabolic power [W] */
   power = 0;
 
@@ -165,16 +179,18 @@ export class Biped {
     world.on('post-solve', (contact, impulse) => {
       const fa = contact.getFixtureA();
       const fb = contact.getFixtureB();
-      const ta = fa.getUserData() as FootTag | 'body' | null;
-      const tb = fb.getUserData() as FootTag | 'body' | null;
+      const ta = fa.getUserData() as FootTag | SkinTag | null;
+      const tb = fb.getUserData() as FootTag | SkinTag | null;
       const tag = ta ?? tb;
       if (!tag) return;
       let n = 0;
       const imp = impulse.normalImpulses;
       const count = contact.getManifold().pointCount;
       for (let i = 0; i < count; i++) n += imp[i];
-      if (tag === 'body') this.bodyImp += n;
-      else if (tag.part === 'heel') this.heelImp[tag.leg] += n;
+      if ('skin' in tag) {
+        this.bodyImp += n;
+        this.skinImp[tag.skin] += n;
+      } else if (tag.part === 'heel') this.heelImp[tag.leg] += n;
       else this.toeImp[tag.leg] += n;
     });
     this.setPose(STAND_POSE);
@@ -192,16 +208,16 @@ export class Biped {
     const fin = (b: Body): void => b.setMassData((b as unknown as { _m: { mass: number; center: Vec2; I: number } })._m);
 
     this.trunk = mk(g.trunkMass, 0, g.trunkCom, g.trunkI);
-    this.trunk.createFixture({ shape: new Box(0.09, g.trunkLen / 2 - 0.04, new Vec2(0, g.trunkLen / 2 + 0.02), 0), density: 1, userData: 'body', ...filt });
-    this.trunk.createFixture({ shape: new Circle(new Vec2(0, g.trunkLen - 0.1), 0.11), density: 1, userData: 'body', ...filt });
+    this.trunk.createFixture({ shape: new Box(0.09, g.trunkLen / 2 - 0.04, new Vec2(0, g.trunkLen / 2 + 0.02), 0), density: 1, userData: { skin: SKIN.trunk } as SkinTag, ...filt });
+    this.trunk.createFixture({ shape: new Circle(new Vec2(0, g.trunkLen - 0.1), 0.11), density: 1, userData: { skin: SKIN.head } as SkinTag, ...filt });
     fin(this.trunk);
 
     for (let leg = 0; leg < 2; leg++) {
       const th = mk(g.thighMass, 0, -g.thighCom, g.thighI);
-      th.createFixture({ shape: new Box(0.06, g.thighLen / 2 - 0.03, new Vec2(0, -g.thighLen / 2), 0), density: 1, userData: 'body', ...filt });
+      th.createFixture({ shape: new Box(0.06, g.thighLen / 2 - 0.03, new Vec2(0, -g.thighLen / 2), 0), density: 1, userData: { skin: SKIN.thigh + leg } as SkinTag, ...filt });
       fin(th);
       const sh = mk(g.shankMass, 0, -g.shankCom, g.shankI);
-      sh.createFixture({ shape: new Box(0.045, g.shankLen / 2 - 0.05, new Vec2(0, -g.shankLen / 2 + 0.02), 0), density: 1, userData: 'body', ...filt });
+      sh.createFixture({ shape: new Box(0.045, g.shankLen / 2 - 0.05, new Vec2(0, -g.shankLen / 2 + 0.02), 0), density: 1, userData: { skin: SKIN.shank + leg } as SkinTag, ...filt });
       fin(sh);
       const ft = mk(g.footMass, g.footComX, g.footComY, g.footI);
       const footFilt = { filterGroupIndex: -1, friction: 1.0, restitution: 0 };
@@ -264,6 +280,8 @@ export class Biped {
     this.heelLoad.fill(0);
     this.toeLoad.fill(0);
     this.impact = 0;
+    this.skinLoad.fill(0);
+    this.jointStrain.fill(0);
     this.readAngles();
     for (let leg = 0; leg < 2; leg++) {
       for (let m = 0; m < NM; m++) this.muscles[leg * NM + m].reset(this.mtuLength(leg, m));
@@ -307,6 +325,7 @@ export class Biped {
     this.heelImp.fill(0);
     this.toeImp.fill(0);
     this.bodyImp = 0;
+    this.skinImp.fill(0);
     let power = 0;
     for (let leg = 0; leg < 2; leg++) {
       let tHip = 0;
@@ -357,6 +376,15 @@ export class Biped {
       this.toeLoad[leg] += (this.toeImp[leg] * s - this.toeLoad[leg]) * k;
     }
     this.impact += (this.bodyImp * s - this.impact) * k;
+    for (let i = 0; i < N_SKIN; i++) this.skinLoad[i] += (this.skinImp[i] * s - this.skinLoad[i]) * k;
+    // ligaments: how hard is each joint pressed against its end stop?
+    const inv = 1 / dt;
+    for (let leg = 0; leg < 2; leg++) {
+      const o = leg * 3;
+      this.jointStrain[o] += (Math.abs(this.hipJ[leg].getReactionTorque(inv)) - this.jointStrain[o]) * k;
+      this.jointStrain[o + 1] += (Math.abs(this.kneeJ[leg].getReactionTorque(inv)) - this.jointStrain[o + 1]) * k;
+      this.jointStrain[o + 2] += (Math.abs(this.ankleJ[leg].getReactionTorque(inv)) - this.jointStrain[o + 2]) * k;
+    }
     this.readAngles();
   }
 
