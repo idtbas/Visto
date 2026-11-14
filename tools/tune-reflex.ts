@@ -47,9 +47,13 @@ function fitness(x: number[]): number {
   const pen = penalty(x);
   if (pen > 0) return -pen;
   if (mode === 'stand') {
+    // stand long, shrug off pushes, and do it without cramping every muscle
     let f = 0;
-    for (const push of [30, -30, 0]) f += evaluateReflex(x, { T: 6, standFor: 6, push }).fitness;
-    return f / 3;
+    for (const push of [25, -25]) {
+      const r = evaluateReflex(x, { T: 9, standFor: 9, push, pushes: true });
+      f += r.fitness - r.energy / r.time / 120;
+    }
+    return f / 2;
   }
   if (mode === 'walk') {
     // started in mid-stride; must also cope with a shove from behind or in front

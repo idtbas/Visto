@@ -179,8 +179,8 @@ export class BrainView {
     for (let i = 0; i < g.length; i++) {
       const a = act[i];
       if (a > 0) {
-        const v = g[i] + 0.3 + 0.08 * a;
-        g[i] = v > 1.25 ? 1.25 : v;
+        const v = g[i] + a;
+        g[i] = v > 6 ? 6 : v;
       }
     }
     if (dtSim > 0) {
@@ -203,8 +203,9 @@ export class BrainView {
       const cell = this.cellOf[i];
       if (cell === 0) continue;
       const gl = g[i];
-      const lum = 0.13 + (gl > 1 ? 1 : gl) * 0.87;
-      const white = gl > 1 ? (gl - 1) * 0.9 : 0;
+      // a single spike is a clear flash; sustained firing saturates smoothly instead of washing out
+      const lum = 0.12 + 0.88 * (1 - Math.exp(-0.9 * gl));
+      const white = gl > 3.5 ? (gl - 3.5) * 0.12 : 0;
       const r = Math.min(255, this.colR[i] * lum + 255 * white);
       const gg = Math.min(255, this.colG[i] * lum + 255 * white);
       const b = Math.min(255, this.colB[i] * lum + 255 * white);
@@ -215,7 +216,7 @@ export class BrainView {
         const row = p + yy * w;
         for (let xx = 0; xx < dot; xx++) data[row + xx] = c;
       }
-      g[i] = gl * 0.82;
+      g[i] = gl * 0.6;
     }
     ctx.putImageData(img, 0, 0);
     // region frames and titles

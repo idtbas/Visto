@@ -41,7 +41,7 @@ export function currentForRate(rate: number): number {
 const N_EX = 8;
 const EX_RATE = 30; // mean firing rate [Hz]
 const EX_TAU = 300; // correlation time of the random variation [ms]
-const EX_W = 0.35;
+const EX_W = 0.05;
 const GOSLOW_W = 0.1;
 /** smoothing of the motoneuron pool rate before it reaches the muscle [ms] */
 const STIM_TAU = 5;
@@ -74,7 +74,7 @@ export interface SpinalOptions {
   /** per-pathway multipliers on the innate gains (same order as SpinalCord.pathNames) */
   mult?: ArrayLike<number>;
   /** make the afferent → interneuron synapses plastic and add the exploration nucleus */
-  learn?: { lr: number; tauE: number };
+  learn?: { lr: number; tauE: number; exploreW?: number };
   /** spread (std of log strength) of random deviations from the innate blueprint: an untrained newborn */
   newborn?: number;
 }
@@ -256,7 +256,7 @@ export class SpinalCord {
         if (opt.learn) {
           // exploration: a small group of cells that randomly nudges this pathway up and down
           const ex = net.addPop({ name: `EX_${d.name}${L}`, n: N_EX, type: NT.RELAY, region: 'explore', bias: AFF_BIAS, biasJitter: 0.6, noise: 2 });
-          net.connect({ pre: ex, post: inPop, channel: 'X', p: 1, w: EX_W, wJitter: 0.2, delay: [1, 3] });
+          net.connect({ pre: ex, post: inPop, channel: 'X', p: 1, w: opt.learn.exploreW ?? EX_W, wJitter: 0.2, delay: [1, 3] });
           this.explorers.push({ pop: ex, x: 0 });
         }
       }

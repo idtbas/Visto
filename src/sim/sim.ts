@@ -64,6 +64,7 @@ export interface SimOptions {
   seed?: number;
   learn?: boolean;
   learningRate?: number;
+  exploreW?: number;
   newborn?: number;
   mult?: number[];
   /** reflex blueprint; defaults to the built-in genome */
@@ -136,7 +137,7 @@ export class Sim {
     this.brain = new Brain(
       this.physics.biped,
       { params: this.reflexParams, mult: opt.mult ?? SPINAL_MULT },
-      { scale: opt.brainScale ?? 1, seed: opt.seed ?? 1, learn: opt.learn ?? true, learningRate: opt.learningRate, newborn: opt.newborn ?? 0 },
+      { scale: opt.brainScale ?? 1, seed: opt.seed ?? 1, learn: opt.learn ?? true, learningRate: opt.learningRate, exploreW: opt.exploreW, newborn: opt.newborn ?? 0 },
     );
     this.place();
   }

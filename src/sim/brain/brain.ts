@@ -38,6 +38,8 @@ export interface BrainOptions {
   /** enable synaptic learning */
   learn?: boolean;
   learningRate?: number;
+  /** strength of the exploratory perturbations */
+  exploreW?: number;
   /** how far the newborn's reflexes deviate from the innate blueprint (0 = perfectly tuned) */
   newborn?: number;
 }
@@ -58,7 +60,7 @@ export class Brain {
     this.spinal = new SpinalCord(this.net, biped, genome.params, {
       scale: opt.scale ?? 1,
       mult: genome.mult,
-      learn: opt.learn ? { lr: opt.learningRate ?? 2e-7, tauE: 400 } : undefined,
+      learn: opt.learn ? { lr: opt.learningRate ?? 2e-7, tauE: 400, exploreW: opt.exploreW } : undefined,
       newborn: opt.newborn,
     });
     this.reward = new RewardSystem(this.net);
