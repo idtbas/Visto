@@ -64,7 +64,7 @@ self.onmessage = (e: MessageEvent<ToWorker>): void => {
       simDebt = 0;
       break;
     case 'mode':
-      sim.mode = m.mode;
+      sim.setMode(m.mode);
       break;
     case 'manualStim':
       sim.manualStim.set(m.values);

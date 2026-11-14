@@ -106,6 +106,18 @@ export const STAND_POSE: Pose = {
   ankle: [93 * DEG, 93 * DEG],
 };
 
+/** standing with one foot a little behind the other, both soles flat on the ground */
+export function staggeredStandPose(stagger = 7.5 * DEG, x = 0): Pose {
+  const lean = 0.03;
+  const knee = 176 * DEG;
+  const hip: [number, number] = [Math.PI + stagger * 0.6, Math.PI - stagger * 1.4];
+  const ankle = hip.map((h) => {
+    const shank = -lean + (Math.PI - h) + (knee - Math.PI);
+    return Math.PI / 2 + shank;
+  }) as [number, number];
+  return { x, lean, hip, knee: [knee, knee], ankle };
+}
+
 interface FootTag {
   leg: number;
   part: 'heel' | 'toe';

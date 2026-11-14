@@ -7,6 +7,7 @@ const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) 
 
 const worker = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' });
 const send = (m: ToWorker): void => worker.postMessage(m);
+worker.onerror = (e) => console.error('worker error:', e.message, e.filename, e.lineno);
 
 const bodyView = new BodyView($<HTMLCanvasElement>('world'));
 let latest: Frame | null = null;

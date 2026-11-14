@@ -1,6 +1,8 @@
 // One living creature in its world: body, (later) brain and hormones, advanced in 1 ms ticks.
 import { Physics, DT } from './world/physics';
 import { NM, STAND_POSE, type Pose } from './body/biped';
+import { ReflexController, initialPose, REFLEX_DEFAULTS } from './control/reflex';
+import { REFLEX_GENOME } from './control/genome';
 
 export type ControlMode = 'manual' | 'reflex' | 'brain';
 
@@ -25,18 +27,29 @@ export class Sim {
   readonly physics = new Physics();
   mode: ControlMode = 'manual';
   readonly manualStim = new Float32Array(2 * NM).fill(0.01);
+  readonly reflexParams: number[] = REFLEX_DEFAULTS.map((v, i) => REFLEX_GENOME[i] ?? v);
+  readonly reflex = new ReflexController(this.physics.biped, this.reflexParams);
 
   get time(): number {
     return this.physics.time;
   }
 
-  reset(pose: Pose = STAND_POSE): void {
-    this.physics.biped.setPose(pose);
+  reset(pose?: Pose): void {
+    const p = pose ?? (this.mode === 'reflex' ? initialPose(this.reflexParams) : STAND_POSE);
+    p.x = this.physics.biped.hipX();
+    this.physics.biped.setPose(p);
+    this.reflex.reset();
+  }
+
+  setMode(mode: ControlMode): void {
+    this.mode = mode;
+    this.reset();
   }
 
   tick(): void {
     const b = this.physics.biped;
     if (this.mode === 'manual') b.stim.set(this.manualStim);
+    else if (this.mode === 'reflex') this.reflex.step();
     this.physics.step();
   }
 
