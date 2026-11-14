@@ -143,6 +143,12 @@ const PLACE: Record<string, Place> = {
   cortex: { kind: 'cortex', patch: [2.06, 2.42, 0.6, 2.0], sides: 'both', anchor: [0, 2.2, -0.72] },
   visual: { kind: 'cortex', patch: [2.62, 3.05, 0.0, 6.283], sides: 'both', anchor: [0, 1.75, -1.2] },
   explore: { kind: 'cortex', patch: [0.42, 1.0, 0.45, 2.1], sides: 'both', anchor: [0, 2.12, 0.78], split: true },
+  // the workspace cells sit in the frontal lobe in front of the central sulcus, the comparison
+  // of prediction and sensation behind the prediction cells in the parietal lobe
+  workspace: { kind: 'cortex', patch: [1.08, 1.5, 0.5, 2.1], sides: 'both', anchor: [0, 2.28, 0.32], split: true },
+  bodymodel: { kind: 'cortex', patch: [2.44, 2.6, 0.6, 2.0], sides: 'both', anchor: [0, 2.05, -1.0], split: true },
+  // the body's interior reports to the insula, deep in the side of the brain
+  intero: { kind: 'nucleus', c: [0.4, 1.52, 0.22], r: [0.035, 0.08, 0.12], bilateral: true, along: 2 },
   hippocampus: { kind: 'nucleus', c: [0.33, 1.3, -0.2], r: [0.07, 0.06, 0.4], bilateral: true, along: 2 },
   amygdala: { kind: 'nucleus', c: [0.33, 1.27, 0.3], r: [0.085, 0.075, 0.085], bilateral: true },
   basal: { kind: 'nucleus', c: [0.25, 1.66, 0.2], r: [0.1, 0.12, 0.18], bilateral: true },

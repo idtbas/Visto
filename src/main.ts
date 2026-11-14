@@ -5,6 +5,8 @@ import { BrainView } from './ui/brainView';
 import { HormoneView } from './ui/hormoneView';
 import { LearnView } from './ui/learnView';
 import { Brain3D } from './ui/brain3d';
+import { InnerView } from './ui/innerView';
+import type { ModuleName } from './sim/brain/brain';
 import { TONE_GROUPS } from './sim/brain/spinal';
 import { MUSCLE_NAMES, MUSCLE_LABELS, NM } from './sim/body/biped';
 import type { FromWorker, ToWorker } from './protocol';
@@ -68,6 +70,37 @@ const brain3d = new Brain3D($<HTMLCanvasElement>('gl3d'), $<HTMLCanvasElement>('
     win.style.top = `${Math.max(0, Math.min(window.innerHeight - 40, e.clientY - grab[1]))}px`;
   });
   head.addEventListener('pointerup', () => (grab = null));
+}
+const innerView = new InnerView($('innerBody'), $<HTMLCanvasElement>('innerCanvas'));
+{
+  // the diagnostics window: same kind of window as the 3D view
+  const win = $('winInner');
+  const head = $('winInnerHead');
+  const show = (on: boolean): void => {
+    win.hidden = !on;
+    innerView.open = on;
+    $('btnInner').classList.toggle('on', on);
+  };
+  $('btnInner').addEventListener('click', () => show(win.hidden !== false));
+  $('btnInnerClose').addEventListener('click', () => show(false));
+  let grab: [number, number] | null = null;
+  head.addEventListener('pointerdown', (e) => {
+    if ((e.target as HTMLElement).tagName === 'BUTTON') return;
+    const r = win.getBoundingClientRect();
+    grab = [e.clientX - r.left, e.clientY - r.top];
+    head.setPointerCapture(e.pointerId);
+  });
+  head.addEventListener('pointermove', (e) => {
+    if (!grab) return;
+    win.style.right = 'auto';
+    win.style.left = `${Math.max(-200, Math.min(window.innerWidth - 80, e.clientX - grab[0]))}px`;
+    win.style.top = `${Math.max(0, Math.min(window.innerHeight - 40, e.clientY - grab[1]))}px`;
+  });
+  head.addEventListener('pointerup', () => (grab = null));
+  $('btnPush').addEventListener('click', () => send({ type: 'push', impulse: (Math.random() < 0.5 ? -1 : 1) * 45 }));
+  win.querySelectorAll<HTMLInputElement>('input[data-module]').forEach((el) => {
+    el.addEventListener('change', () => send({ type: 'module', name: el.dataset.module as ModuleName, on: el.checked }));
+  });
 }
 const toneBars: { fill: HTMLElement; val: HTMLElement }[] = [];
 for (const g of TONE_GROUPS) {
@@ -214,6 +247,7 @@ function onMessage(m: FromWorker): void {
     lastFrameTime = f.time;
     latest = f;
     bodyView.setFrame(f);
+    innerView.update(f);
     if (f.activity) {
       brainView.addActivity(f.activity, dt);
       brain3d.addActivity(f.activity, dt);
@@ -226,6 +260,7 @@ function onMessage(m: FromWorker): void {
   } else if (m.type === 'ready') {
     brainView.setInfo(m.brain);
     brain3d.setInfo(m.brain);
+    innerView.setInfo(m.brain);
     brainMeta = `${nf.format(m.brain.neurons)} Neuronen · ${nf.format(m.brain.synapses)} Synapsen`;
     $('brainMeta').title = m.brain.engine === 'wasm' ? 'Rechenkern: WebAssembly mit SIMD' : 'Rechenkern: JavaScript (WebAssembly mit SIMD steht hier nicht zur Verfügung, deshalb langsamer)';
     document.body.classList.toggle('slowEngine', m.brain.engine !== 'wasm');
@@ -244,6 +279,7 @@ function raf(): void {
     bodyView.draw();
     brainView.draw();
     brain3d.draw();
+    if (latest) innerView.draw(latest.time);
     updatePanels(latest);
   }
   requestAnimationFrame(raf);

@@ -1,5 +1,5 @@
 // The whole nervous system of the creature: one spiking network, organised in regions.
-import { Network } from './network';
+import { Network, type Pop } from './network';
 import { SpinalCord } from './spinal';
 import { RewardSystem } from './reward';
 import { Cerebellum } from './cerebellum';
@@ -9,8 +9,14 @@ import { Predictor } from './predict';
 import { Pain } from './pain';
 import { BodyCortex } from './cortex';
 import { Amygdala } from './amygdala';
+import { BodyModel } from './bodymodel';
+import { Interoception } from './intero';
+import { Workspace } from './workspace';
 import { Hormones, HORMONES, type HormoneInputs } from './hormones';
 import type { Biped } from '../body/biped';
+
+export const MODULES = ['workspace', 'broadcast', 'bodymodel', 'efference'] as const;
+export type ModuleName = (typeof MODULES)[number];
 
 export interface PopInfo {
   name: string;
@@ -20,16 +26,23 @@ export interface PopInfo {
   inhibitory: boolean;
 }
 
-const STATE_VERSION = 3;
+// Version 4 stores every learned projection under its name, so that a saved life survives
+// when new regions are added to the brain. Version 3 stored them by position only; those
+// are still read as long as the old regions come first and unchanged (they do).
+const STATE_VERSION = 4;
 
 export interface BrainState {
   version: number;
   neurons: number;
   plastic: Float32Array[];
+  /** name of the projection each entry of `plastic` belongs to (version 4) */
+  names?: string[];
   hormones: number[];
   energy: number;
   expected: number[];
   memory?: MemoryState;
+  /** what the body model has come to regard as the usual mismatch */
+  bodyModel?: number[];
 }
 
 export interface Genome {
@@ -73,6 +86,9 @@ export class Brain {
   readonly pain: Pain;
   readonly cortex: BodyCortex;
   readonly amygdala: Amygdala;
+  readonly bodyModel: BodyModel;
+  readonly intero: Interoception;
+  readonly workspace: Workspace;
   readonly hormones = new Hormones();
   /** set by the simulation before every tick */
   readonly bodyState: HormoneInputs = { rpe: 0, dopamine: 0, pain: 0, surprise: 0, power: 0, intake: 0, asleep: false, activity: 0 };
@@ -80,7 +96,7 @@ export class Brain {
   /** spikes per neuron since the last frame was taken (for the display) */
   readonly activity: Uint8Array;
 
-  constructor(biped: Biped, genome: Genome, opt: BrainOptions = {}) {
+  constructor(readonly biped: Biped, genome: Genome, opt: BrainOptions = {}) {
     this.net = new Network(opt.seed ?? 1);
     this.spinal = new SpinalCord(this.net, biped, genome.params, {
       scale: opt.scale ?? 1,
@@ -97,6 +113,21 @@ export class Brain {
     this.cortex = new BodyCortex(this.net, this.spinal, this.pain, Math.round((opt.cortex ?? 8192) * (opt.scale ?? 1)));
     this.amygdala = new Amygdala(this.net, this.cortex, this.pain, this.reward.vta, !!opt.learn);
     this.cerebellum = opt.granules && opt.granules > 0 ? new Cerebellum(this.net, this.spinal, { granules: opt.granules }) : null;
+    // regions added later come last, so that lives saved before them still fit
+    this.bodyModel = new BodyModel(this.net, this.predictor, this.spinal, biped);
+    this.intero = new Interoception(this.net);
+    const tone = (key: string): Pop => this.spinal.tone.find((t) => t.pop.name === `TONE_${key}`)!.pop;
+    this.workspace = new Workspace(
+      this.net,
+      [
+        { name: 'Körper', pops: [this.bodyModel.external], brace: 1 },
+        { name: 'Schmerz', pops: [this.pain.relay], brace: 0 },
+        { name: 'Gefahr', pops: [this.amygdala.cells], brace: 1 },
+        { name: 'Sehen', pops: this.decision.visual, brace: 0 },
+        { name: 'Bedürfnis', pops: this.intero.pops, brace: 0 },
+      ],
+      [tone('extensor'), tone('trunk'), tone('posture')],
+    );
     if (opt.wasm === false) this.net.useKernel = false;
     this.net.build();
     this.net.learning = !!opt.learn;
@@ -145,11 +176,18 @@ export class Brain {
     }
     this.memory.step(asleep);
     this.predictor.step(asleep);
-    // an unexpected sensation is a surprise for the hormone system
-    if (this.predictor.surprised) this.surpriseNext = 1;
+    // a content that ignites in the global workspace alerts the hormone system; with the
+    // workspace cut off, the forward model's own alarm is all that is left
+    if (this.workspace.enabled ? this.workspace.justIgnited : this.predictor.surprised) this.surpriseNext = 1;
     this.spinal.sense();
     this.pain.sense(asleep);
+    this.bodyModel.sense();
     this.amygdala.step(asleep);
+    this.bodyModel.step(asleep);
+    let fatigue = 0;
+    for (const m of this.biped.muscles) fatigue += m.fatigue;
+    this.intero.sense(this.hormones.energy, this.hormones.level.somnin, fatigue / this.biped.muscles.length);
+    this.workspace.step(this.hormones.effects.arousal, asleep);
     this.decision.step();
     this.cerebellum?.step();
     this.net.step();
@@ -177,29 +215,74 @@ export class Brain {
 
   /** everything the creature has learned: plastic synapses, hormone levels, expectations */
   saveState(): BrainState {
-    const plastic = this.net.projs.filter((p) => p.plastic).map((p) => p.w.slice());
+    const projs = this.net.projs.filter((p) => p.plastic);
+    const plastic = projs.map((p) => p.w.slice());
     return {
       version: STATE_VERSION,
       neurons: this.net.n,
       plastic,
+      names: this.plasticNames(projs),
       hormones: this.hormones.snapshot(),
       energy: this.hormones.energy,
       expected: this.reward.expected.slice(),
       memory: this.memory.save(),
+      bodyModel: this.bodyModel.saveDrive(),
     };
   }
 
   /** returns false if the state does not fit this brain (different size or version) */
   loadState(st: BrainState): boolean {
     const projs = this.net.projs.filter((p) => p.plastic);
-    if (st.version !== STATE_VERSION || st.neurons !== this.net.n || st.plastic.length !== projs.length) return false;
-    if (projs.some((p, i) => p.w.length !== st.plastic[i].length)) return false;
-    projs.forEach((p, i) => p.w.set(st.plastic[i]));
+    if (st.version === 3) {
+      // by position: everything that was learned must find its place, new projections keep their start values
+      if (st.plastic.length > projs.length) return false;
+      if (st.plastic.some((w, i) => w.length !== projs[i].w.length)) return false;
+      st.plastic.forEach((w, i) => projs[i].w.set(w));
+    } else if (st.version === STATE_VERSION && st.names) {
+      const byName = new Map(this.plasticNames(projs).map((n, i) => [n, projs[i]]));
+      let found = 0;
+      st.names.forEach((n, i) => {
+        const pr = byName.get(n);
+        if (pr && pr.w.length === st.plastic[i].length) {
+          pr.w.set(st.plastic[i]);
+          found++;
+        }
+      });
+      // a state that fits nowhere belongs to a different brain
+      if (found === 0) return false;
+    } else return false;
     HORMONES.forEach((h, i) => (this.hormones.level[h] = st.hormones[i] ?? this.hormones.level[h]));
     this.hormones.energy = st.energy;
     st.expected.forEach((v, i) => (this.reward.expected[i] = v));
     if (st.memory) this.memory.load(st.memory);
+    if (st.bodyModel) this.bodyModel.loadDrive(st.bodyModel);
     return true;
+  }
+
+  /** Switch a part of the architecture off or on again, for ablation experiments. The cells
+   *  stay where they are (the random wiring of everything else is untouched); only the
+   *  connections of that part are silenced.
+   *   'workspace'  – the global workspace neither receives nor sends
+   *   'broadcast'  – contents still ignite but reach nothing
+   *   'bodymodel'  – the mismatch between predicted and felt reaches nothing
+   *   'efference'  – the forward model no longer gets the copies of the motor commands */
+  setModule(name: ModuleName, on: boolean): void {
+    this.modules[name] = on;
+    if (name === 'workspace') this.workspace.setEnabled(on);
+    else if (name === 'broadcast') this.workspace.setBroadcast(on);
+    else if (name === 'bodymodel') this.bodyModel.setOutput(on);
+    else this.bodyModel.setEfference(on);
+  }
+  readonly modules: Record<ModuleName, boolean> = { workspace: true, broadcast: true, bodymodel: true, efference: true };
+
+  /** a unique name for every learned projection (the same pair of populations can be connected more than once) */
+  private plasticNames(projs: { name: string }[]): string[] {
+    const seen = new Map<string, number>();
+    return projs.map((p) => {
+      const k = seen.get(p.name) ?? 0;
+      seen.set(p.name, k + 1);
+      return k === 0 ? p.name : `${p.name}#${k}`;
+    });
   }
 
   popInfo(): PopInfo[] {

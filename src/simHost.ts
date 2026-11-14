@@ -101,6 +101,12 @@ export function createHost(post: (m: FromWorker) => void): (m: ToWorker) => void
       case 'obstacles':
         sim.obstaclesOn = m.on;
         break;
+      case 'push':
+        sim.push(m.impulse);
+        break;
+      case 'module':
+        sim.brain.setModule(m.name, m.on);
+        break;
       case 'pain':
         sim.setPainMode(m.on ? 'graded' : 'off');
         break;

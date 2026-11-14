@@ -13,6 +13,11 @@ npm run dev        # dann http://localhost:5173 öffnen
 `npm run build` erzeugt eine einzige, eigenständige Datei `dist/index.html` (rund 630 kB), die
 sich überall hosten oder direkt öffnen lässt.
 
+Seit dem letzten Schritt gibt es ein zweites, längerfristiges Ziel: eine Architektur, bei der
+die Frage nach einer eigenen Innenperspektive wissenschaftlich untersuchbar wird. Stand,
+Entwurf, Experimente und Grenzen stehen in [docs/INNENPERSPEKTIVE.md](docs/INNENPERSPEKTIVE.md).
+Nichts davon behauptet, dass Visto etwas erlebt.
+
 ## Was man sieht
 
 - **Links** die Welt: der Körper mit Knochen, 14 Muskeln und Sehnen. Rot heißt angespannt.
@@ -44,6 +49,11 @@ sich überall hosten oder direkt öffnen lässt.
   das Fenster. Gezeigt werden dieselben echten Spikes und Nervenbahnen wie in der flachen
   Karte. Die Form ist aus Formeln erzeugt, kein vermessenes Gehirn, und das Rückenmark ist
   etwa doppelt so dick gezeichnet, wie es wäre, damit man seine Neuronen unterscheiden kann.
+- **Innenleben** öffnet ein Diagnosefenster: welcher Inhalt gerade den globalen Arbeitsraum
+  hält (Schreibstreifen der letzten 20 Sekunden), was das Körpermodell für jeden Sinn erwartet
+  hat und was gespürt wird, wie viel davon unerklärt ist, welche Bedürfnisse gemeldet werden.
+  „Schubsen" gibt dem Wesen einen Stoß von außen; vier Schalter trennen einzelne Teile der
+  Architektur ab. Alle Werte stammen aus den laufenden Neuronen.
 - Zeitraffer bis `max`, „Stehen/Laufen", „Neues Leben" (Gehirn zurücksetzen). Das Gehirn wird
   alle 30 Sekunden im Browser gespeichert und beim nächsten Besuch weiterverwendet.
 - **Kleinhirn (experimentell)** baut das Gehirn mit 12.000 zusätzlichen Körnerzellen neu auf.
@@ -82,6 +92,10 @@ gerade läuft, zeigt der Hinweis, wenn man mit der Maus über die Neuronenzahl f
 | Schmerzkern, Habenula | leiten Schmerz weiter und bringen die Dopaminzellen zum Schweigen | angeboren |
 | Körperfühlrinde | rund 8.700 Zellen, die alles Gespürte neu kombinieren: jede feuert nur, wenn mehrere ihrer Eingänge zusammen aktiv sind | angeboren (feste Zufallsverschaltung) |
 | Mandelkern | lernt, welche Körperlagen dem Schmerz vorausgehen, und meldet steigende oder sinkende Gefahr an die Dopaminzellen | **gelernt** |
+| Otolithen | spüren, wie stark der Kopf nach vorn oder hinten beschleunigt wird | angeboren |
+| Körpermodell | vergleicht für sechs Sinne Vorhersage und Gespürtes mit eigenen Zellen; was unerklärt bleibt, gilt als Fremdeinwirkung | Vorhersage **gelernt**, Vergleich angeboren |
+| Körperinneres | Zellen, die Hunger, Müdigkeit und Erschöpfung als Feuerrate melden | angeboren |
+| Globaler Arbeitsraum | fünf Inhalte (Körper, Schmerz, Gefahr, Sehen, Bedürfnis) konkurrieren um einen selbsterhaltenden, zeitlich begrenzten Zustand, der an Wachheit und Haltung ausgerufen wird | angeboren; der Zugang gewöhnt sich |
 | Kleinhirn (optional) | Körnerzellen, Purkinje-Zellen, Kletterfasern: lernt Korrekturen vorwegzunehmen | gelernt, noch experimentell |
 
 ### Wie es lernt
@@ -263,7 +277,9 @@ höchstens 3 Stürzen und auch am Ende noch so.
 | | 4 | 19 17 17 16 16 12 12 12 (3) 11 13 13 12 14 11 | läuft nicht |
 
 Am Ende liefen also 0 von 4 (feste Strafe), 1 von 4 (Schmerz), 2 von 4 (Schmerz + Mandelkern)
-und 1 von 4 (nur Schmerz, ohne Cookies). Was sich daraus ehrlich sagen lässt:
+und 1 von 4 (nur Schmerz, ohne Cookies). Ein fünftes Leben je Bedingung (nach 13 bis 14
+Minuten abgebrochen) lief in keiner der vier Bedingungen: 10 bis 18 Stürze pro Minute am Ende.
+Zusammen also 0, 1, 2 und 1 von 5. Was sich daraus ehrlich sagen lässt:
 
 - **Aus Schmerz allein kann das Wesen laufen lernen.** Ein Leben ohne jede Belohnung lief ab
   Minute 8 sturzfrei, ein zweites war auf dem Weg dorthin. Die Cookies sind dafür nicht nötig.
@@ -343,6 +359,12 @@ das Maximum und sank erst danach.
 
 ## Was noch nicht geht
 
+- **Die Innenperspektive ist ein Anfang, kein Ergebnis.** Es gibt jetzt ein Körpermodell mit
+  Vergleichszellen und einen globalen Arbeitsraum, der sich in Tests wie einer verhält. Aber
+  das Körpermodell unterscheidet Stöße von außen bisher schlechter von eigener Bewegung als
+  der rohe Sinn, und der Arbeitsraum trägt noch zu keiner messbaren Fähigkeit bei. Gedächtnis
+  für Ereignisfolgen, Selbstmodell und eigenes Handeln aus Bedürfnissen fehlen ganz. Alles
+  dazu in [docs/INNENPERSPEKTIVE.md](docs/INNENPERSPEKTIVE.md).
 - **Laufen lernt nicht jedes Leben.** In den Messungen schafften es je nach Reihe null bis zwei
   von vier Leben innerhalb von 15 bis 30 Minuten; die anderen bleiben in einer Schleife aus
   Stürzen und Ausprobieren hängen (Zahlen unter „Gemessen"). Schmerz und Mandelkern haben das
@@ -370,15 +392,16 @@ das Maximum und sank erst danach.
   Wesen deutlich öfter als ohne.
 - Das Kleinhirn ist verdrahtet und seine Synapsen lernen, aber es verbessert das Laufen bisher
   nicht messbar. Deshalb ist es abgeschaltet, solange man es nicht einschaltet.
-- Das voreingestellte Gehirn hat jetzt 15.696 Neuronen und 877.592 Synapsen (vorher 6.392 und
-  330.080), mit Kleinhirn 28.248 Neuronen. Das ist weiter deutlich unter den anfangs
+- Das voreingestellte Gehirn hat jetzt 17.024 Neuronen und 966.904 Synapsen (zu Beginn 6.392
+  und 330.080), mit Kleinhirn rund 29.600 Neuronen. Das ist weiter deutlich unter den anfangs
   angepeilten 100.000 Neuronen. Gut die Hälfte der neuen Zellen ist die Körperfühlrinde,
   deren Verschaltung fest ist; sie lernt selbst nichts.
 - Das Stehen ist verkrampft (rund 650 W) und das Loslaufen aus dem Stand gelingt nicht.
 - Das Lernen einzelner Reflexbahnen ist zu langsam, um in Minuten sichtbar zu sein.
 - Geschwindigkeit auf der Entwicklungsmaschine (ein Kern, `tools/bench-sim.ts`): Das Gehirn
-  mit 15.696 Neuronen läuft mit dem WebAssembly-Kern in 3,1-facher Echtzeit, mit der
-  JavaScript-Schleife in 1,8-facher; mit Kleinhirn (28.248 Neuronen) in 1,9-facher. Das alte
+  mit 15.696 Neuronen lief mit dem WebAssembly-Kern in 3,1-facher Echtzeit, mit der
+  JavaScript-Schleife in 1,8-facher; mit Kleinhirn (28.248 Neuronen) in 1,9-facher. Mit den
+  Teilen für die Innenperspektive (17.024 Neuronen) sind es 2,6-fache Echtzeit. Das alte
   Gehirn mit 6.392 Neuronen kam mit JavaScript auf 3,5-fache, mit WebAssembly auf 5,2-fache
   Echtzeit. Nur die Neuronenschleife ist in WebAssembly; das Verteilen der Spikes auf die
   Synapsen läuft weiter in JavaScript und ist jetzt der größte Posten. 100.000 Neuronen in
@@ -397,6 +420,7 @@ das Maximum und sank erst danach.
 | `npx tsx tools/memory-test.ts`, `tools/predict-test.ts` | Gedächtnis und Replay, Vorwärtsmodell |
 | `npx tsx tools/pain-test.ts`, `tools/cortex-test.ts`, `tools/amygdala-test.ts` | Schmerz je Sturz, Körperfühlrinde und was der Mandelkern lernt, Schaltkreis hinter dem Mandelkern |
 | `node tools/summarize-lives.cjs out/*.log` | wertet Protokolle von `learn-test` aus (`PAIN=fixed|graded|off`, `AMY_DA=0`, `NOREWARD=1` wählen die Bedingung) |
+| `npx tsx tools/exp-workspace.ts`, `tools/exp-self-other.ts`, `tools/exp-ablation.ts` | Experimente zur Innenperspektive: Zündung des Arbeitsraums, Selbst gegen Fremd, Abschalten einzelner Teile (`LESION=…`) |
 | `npm run build:kernel` | übersetzt `asm/kernel.ts` nach WebAssembly und bettet es ein |
 | `npx tsx tools/bench-sim.ts`, `tools/mature-test.ts` | Rechenzeit (`VISTO_JS=1` erzwingt JavaScript), Gang des ausgereiften Wesens |
 | `npx tsx tools/tune-reflex.ts`, `tools/shadow.ts`, `tools/tune-spinal.ts` | die „Evolution": Referenzregler optimieren, Rückenmark dagegen kalibrieren, im geschlossenen Kreis feinabstimmen |

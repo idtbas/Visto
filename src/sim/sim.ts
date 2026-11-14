@@ -2,7 +2,7 @@
 import { Vec2 } from 'planck';
 import { Physics, DT } from './world/physics';
 import { NM, STAND_POSE, staggeredStandPose, type Pose } from './body/biped';
-import { Brain, type PopInfo, type BrainState } from './brain/brain';
+import { Brain, MODULES, type PopInfo, type BrainState } from './brain/brain';
 import { FallExpectation } from './brain/expectation';
 import { ReflexController, initialPose, REFLEX_DEFAULTS } from './control/reflex';
 import { REFLEX_GENOME, SPINAL_MULT } from './control/genome';
@@ -50,6 +50,30 @@ export interface Frame {
   expectedPain: number;
   /** what the amygdala expects: 0 = safe, 1 = pain is certain */
   danger: number;
+  inner: Inner;
+}
+
+/** diagnostics of the architecture behind an integrated point of view (all values are read from the neurons) */
+export interface Inner {
+  /** firing rate of each workspace content [Hz] */
+  workspace: number[];
+  /** index of the content that is ignited right now, -1 = none */
+  content: number;
+  ignitions: number[];
+  /** body model: what was predicted and what is felt for each sense, in units of 100 Hz */
+  predicted: number[];
+  felt: number[];
+  /** unexplained sensation ("from outside") 0..1 and mean rate of the mismatch cells [Hz] */
+  external: number;
+  mismatch: number;
+  /** bodily needs as reported by the interoceptive cells 0..1 */
+  needs: number[];
+  /** firing rate of the bracing nucleus [Hz] */
+  brace: number;
+  /** which parts of the architecture are switched on (order of MODULES) */
+  modules: boolean[];
+  /** time of the last shove from outside [s] (-1 = none yet) */
+  lastPush: number;
 }
 
 export interface Mind {
@@ -132,6 +156,9 @@ export interface SimOptions {
 export interface BrainInfo {
   /** 'wasm' = the fast WebAssembly loop is running, 'js' = the JavaScript fallback */
   engine: 'wasm' | 'js';
+  /** names of the workspace contents and of the senses the body model predicts */
+  workspaceNames: string[];
+  senseNames: string[];
   pops: PopInfo[];
   /** every projection as [index of source population, index of target population, 1 if inhibitory] */
   projs: [number, number, number][];
@@ -294,6 +321,14 @@ export class Sim {
     return this.painMode === 'off' ? 0 : this.painMode === 'fixed' ? FALL_COST : this.expectedPain;
   }
 
+  /** an outside force shoves the trunk: impulse in N·s (positive = forwards) */
+  push(impulse: number): void {
+    const t = this.physics.biped.trunk;
+    t.applyLinearImpulse(new Vec2(impulse, 0), t.getWorldPoint(new Vec2(0, 0.3)), true);
+    this.lastPush = { time: this.time, impulse };
+  }
+  lastPush: { time: number; impulse: number } | null = null;
+
   /** automatic reward: staying upright and making progress feels good */
   private autoReward(): number {
     const b = this.physics.biped;
@@ -363,6 +398,8 @@ export class Sim {
     const net = this.brain.net;
     return {
       engine: net.engine,
+      workspaceNames: this.brain.workspace.names,
+      senseNames: this.brain.predictor.targets.map((p) => p.name),
       pops: this.brain.popInfo(),
       projs: net.projs.map((p) => [p.pre.id, p.post.id, p.channel === 'I' ? 1 : 0]),
       neurons: net.n,
@@ -375,6 +412,7 @@ export class Sim {
     const b = this.physics.biped;
     b.setPose(staggeredStandPose(undefined, b.hipX()));
     this.brain.spinal.reset();
+    this.brain.bodyModel.reset();
     this.life.state = 'standing';
     this.stateSince = this.time;
     this.attemptX0 = b.hipX();
@@ -390,6 +428,7 @@ export class Sim {
     pose.x = b.hipX();
     b.setPose(pose);
     this.brain.spinal.reset();
+    this.brain.bodyModel.reset();
     this.brain.spinal.go = 1;
     this.life.state = 'walking';
     this.stateSince = this.time;
@@ -591,6 +630,19 @@ export class Sim {
       painNow: this.brain.pain.intensity,
       expectedPain: this.painMode === 'off' ? 0 : this.painMode === 'fixed' ? FALL_COST : this.expectedPain,
       danger: this.brain.amygdala.danger,
+      inner: {
+        workspace: this.brain.workspace.pools.map((p) => p.rate),
+        content: this.brain.workspace.content,
+        ignitions: this.brain.workspace.ignitions.slice(),
+        predicted: this.brain.predictor.pops.map((p) => p.rate / 100),
+        felt: this.brain.predictor.targets.map((p) => p.rate / 100),
+        external: this.brain.bodyModel.externalLevel,
+        mismatch: this.brain.bodyModel.mismatch,
+        needs: Array.from(this.brain.intero.level),
+        brace: this.brain.workspace.brace.rate,
+        modules: MODULES.map((m) => this.brain.modules[m]),
+        lastPush: this.lastPush ? this.lastPush.time : -1,
+      },
     };
   }
 }

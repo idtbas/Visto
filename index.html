@@ -75,6 +75,7 @@
         <div class="col right">
           <section class="panel brain">
             <h2>Nervensystem <span class="meta" id="brainMeta"></span>
+              <button class="mini" id="btnInner" title="Diagnose: was gerade global verfügbar ist, was das Körpermodell erwartet und spürt, welche Bedürfnisse gemeldet werden. Mit Schaltern zum Abschalten einzelner Teile.">Innenleben</button>
               <button class="mini" id="btn3d" title="Öffnet das Nervensystem als drehbare 3D-Ansicht in einem eigenen Fenster">3D-Ansicht</button>
               <label class="toggle inl" title="Baut zusätzlich ein Kleinhirn mit 12.000 Körnerzellen ein. Experimentell: Es lernt, verbessert das Laufen aber noch nicht messbar und macht die Simulation langsamer. Das Gehirn wird dafür neu aufgebaut."><input type="checkbox" id="chkCb" /> Kleinhirn (experimentell)</label>
             </h2>
@@ -108,6 +109,41 @@
         <canvas id="gl3d"></canvas>
         <canvas id="lab3d"></canvas>
         <p class="noGl" id="noGl" hidden>Dieser Browser stellt kein WebGL bereit, deshalb gibt es hier keine 3D-Ansicht.</p>
+      </div>
+    </div>
+    <div class="win3d winInner" id="winInner" hidden>
+      <div class="winHead" id="winInnerHead">
+        <strong>Innenleben</strong>
+        <span class="dim">Diagnose · alle Werte stammen aus den Neuronen</span>
+        <button id="btnInnerClose" title="Schließen" aria-label="Innenleben schließen">✕</button>
+      </div>
+      <div class="innerBody" id="innerBody">
+        <section>
+          <h3>Globaler Arbeitsraum <span class="meta">letzte 20 s · kräftige Farbe = gezündet · weiße Linie = Schubs · rot gestrichelt = Sturz</span></h3>
+          <canvas id="innerCanvas"></canvas>
+          <p class="inote">Jetzt global verfügbar: <b id="innerNow">–</b><br /><span class="dim">Zündungen seit der Geburt: <span id="innerCount"></span></span></p>
+        </section>
+        <section>
+          <h3>Körpermodell <span class="meta">Balken = gespürt · Strich = 50 ms vorher erwartet</span></h3>
+          <div id="innerSenses"></div>
+          <div class="irow strong" title="Fremdeinwirkung: was die Vorhersage aus den eigenen Befehlen nicht erklärt. Gewöhnt sich an das übliche Maß."><span>Unerklärt</span><span class="ibar"><span class="felt ext" id="innerExternal"></span></span></div>
+          <p class="inote dim">Abweichungs-Zellen im Mittel: <span id="innerMismatch"></span></p>
+        </section>
+        <section>
+          <h3>Bedürfnisse und Reaktion</h3>
+          <div id="innerNeeds"></div>
+          <div class="irow" title="Hirnstamm-Kern, über den ein gezündeter Inhalt (Körper, Gefahr) kurz die Haltung versteift"><span>Stützreaktion</span><span class="ibar"><span class="felt brace" id="innerBrace"></span></span></div>
+        </section>
+        <section>
+          <h3>Eingriffe <span class="meta">für Experimente</span></h3>
+          <div class="ictl">
+            <button id="btnPush" title="Ein Stoß von außen gegen den Rumpf (zufällig nach vorn oder hinten, 45 N·s – etwa so viel, wie die eigene Bewegung den Körper ohnehin hin- und herwirft)">Schubsen</button>
+            <label class="toggle" title="Der Arbeitsraum empfängt und sendet nichts mehr"><input type="checkbox" data-module="workspace" checked /> Arbeitsraum</label>
+            <label class="toggle" title="Inhalte zünden noch, erreichen aber nichts"><input type="checkbox" data-module="broadcast" checked /> Rundruf</label>
+            <label class="toggle" title="Die Abweichung zwischen Erwartung und Gespürtem erreicht den Arbeitsraum"><input type="checkbox" data-module="bodymodel" checked /> Körpermodell → Arbeitsraum</label>
+            <label class="toggle" title="Das Vorwärtsmodell bekommt Kopien der Befehle an die Muskeln"><input type="checkbox" data-module="efference" checked /> Efferenzkopie</label>
+          </div>
+        </section>
       </div>
     </div>
     <script type="module" src="/src/main.ts"></script>

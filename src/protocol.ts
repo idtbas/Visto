@@ -1,4 +1,5 @@
 import type { BrainInfo, ControlMode, Frame, SimOptions, SimState } from './sim/sim';
+import type { ModuleName } from './sim/brain/brain';
 
 export type ToWorker =
   | { type: 'start'; options?: SimOptions; state?: SimState; mainThread?: boolean }
@@ -14,6 +15,8 @@ export type ToWorker =
   | { type: 'wantsToWalk'; on: boolean }
   | { type: 'obstacles'; on: boolean }
   | { type: 'pain'; on: boolean }
+  | { type: 'push'; impulse: number }
+  | { type: 'module'; name: ModuleName; on: boolean }
   | { type: 'debugSomnin'; level: number };
 
 export type FromWorker = { type: 'frame'; frame: Frame } | { type: 'ready'; brain: BrainInfo; restored: boolean } | { type: 'state'; state: SimState }
