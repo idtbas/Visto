@@ -15,8 +15,13 @@ sich überall hosten oder direkt öffnen lässt.
 ## Was man sieht
 
 - **Links** die Welt: der Körper mit Knochen, 14 Muskeln und Sehnen. Rot heißt angespannt.
-- **Rechts** das Nervensystem: jeder Punkt ist ein Neuron und leuchtet, wenn es feuert
-  (blau = hemmend). Mit der Maus über einen Block fahren zeigt Name und Feuerrate.
+- **Rechts** das Nervensystem, anatomisch angeordnet: oben das Gehirn von der Seite, darunter
+  Hirnstamm und Rückenmark mit linker und rechter Hälfte, außen die Sinnes- und Bewegungsnerven
+  der Beine. Jeder Punkt ist ein Neuron und blitzt bei jedem seiner Spikes auf (blau = hemmend).
+  Die Linien sind Nervenbahnen; sie werden mit der Feuerrate ihrer Quellneuronen heller, und die
+  Lichtpunkte darauf sind eine Zufallsstichprobe der Spikes, die gerade hindurchlaufen (etwa
+  jeder 250.). Nichts davon ist Dekoration. Mit der Maus über eine Zellgruppe fahren zeigt Name
+  und Feuerrate.
 - **Botenstoffe**: die Pegel der acht Hormone mit ihrem Verlauf der letzten Minute.
 - **Lernkurve**: wie weit jeder Laufversuch kam. **Tonus-Kerne**: was das Wesen bisher gelernt hat.
 - **Cookie geben** (oder Taste `C`) belohnt von Hand. Ein Klick in die Welt legt einen Cookie

@@ -94,6 +94,8 @@ export interface SimOptions {
 
 export interface BrainInfo {
   pops: PopInfo[];
+  /** every projection as [index of source population, index of target population, 1 if inhibitory] */
+  projs: [number, number, number][];
   neurons: number;
   synapses: number;
 }
@@ -249,7 +251,13 @@ export class Sim {
   }
 
   brainInfo(): BrainInfo {
-    return { pops: this.brain.popInfo(), neurons: this.brain.net.n, synapses: this.brain.net.nSynapses };
+    const net = this.brain.net;
+    return {
+      pops: this.brain.popInfo(),
+      projs: net.projs.map((p) => [p.pre.id, p.post.id, p.channel === 'I' ? 1 : 0]),
+      neurons: net.n,
+      synapses: net.nSynapses,
+    };
   }
 
   /** the "helping hand": puts the creature back on its feet where it is and steadies it for a moment */
