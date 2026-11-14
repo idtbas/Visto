@@ -287,7 +287,7 @@ async function boot(fresh: boolean): Promise<void> {
   // a newborn starts with weak descending tone; "?tone=1" starts with a mature one instead
   const newbornTone = query.has('tone') ? Number(query.get('tone')) : 0.6;
   const granules = query.has('granules') ? Number(query.get('granules')) : withCerebellum ? CEREBELLUM_GRANULES : 0;
-  send({ type: 'start', state, mainThread: onMainThread, options: { newbornTone, granules, sleep: !query.has('nosleep') } });
+  send({ type: 'start', state, mainThread: onMainThread, options: { newbornTone, granules, sleep: !query.has('nosleep'), wasm: !query.has('js') } });
   // bring the new simulation in line with the controls on the page
   const speedBtn = $('speedSeg').querySelector<HTMLElement>('button.on');
   send({ type: 'speed', speed: Number(speedBtn?.dataset.speed ?? 1) });

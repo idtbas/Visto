@@ -31,8 +31,8 @@ const SPARK: RGB = [255, 214, 130];
 export const REGIONS: RegionDef[] = [
   // --- brain, seen from the side: front is on the right ---
   { key: 'cortex_body', title: 'Körperfühlrinde', x: 0.03, y: 0.02, w: 0.6, h: 0.135, color: [255, 222, 160] },
-  { key: 'cortex', title: 'Scheitelrinde · Vorhersage', x: 0.645, y: 0.02, w: 0.325, h: 0.065, color: [255, 236, 170] },
-  { key: 'explore', title: 'Erkundungs-Kern', x: 0.645, y: 0.095, w: 0.325, h: 0.095, color: [200, 160, 255] },
+  { key: 'cortex', title: 'Scheitelrinde · Vorhersage', x: 0.645, y: 0.02, w: 0.325, h: 0.075, color: [255, 236, 170] },
+  { key: 'explore', title: 'Erkundungs-Kern', x: 0.645, y: 0.103, w: 0.325, h: 0.089, color: [200, 160, 255] },
   { key: 'visual', title: 'Sehrinde', x: 0.03, y: 0.165, w: 0.15, h: 0.105, color: [120, 220, 255] },
   { key: 'hippocampus', title: 'Hippocampus · Gedächtnis', x: 0.19, y: 0.165, w: 0.29, h: 0.105, color: [140, 240, 210] },
   { key: 'amygdala', title: 'Mandelkern', x: 0.49, y: 0.165, w: 0.145, h: 0.105, color: [255, 140, 120] },
@@ -226,7 +226,9 @@ export class BrainView {
     // (also the cortex with its thousands of cells)
     const crowded = (reg: Region): boolean => reg.pops.length === 1 || reg.pops.reduce((n, i) => n + pops[i].n, 0) > 3000;
     const multi = spacing.filter((_, i) => !crowded(this.regions[i]));
-    const tightest = multi.length > 0 ? Math.min(...multi) : Math.min(...spacing);
+    // (judged by a typical region, so that one cramped region does not shrink all the others)
+    const sorted = (multi.length > 0 ? multi : spacing).slice().sort((a, b) => a - b);
+    const tightest = sorted[Math.floor(sorted.length / 3)];
     const cap = tightest * 1.7;
     this.dot = Math.max(0.6 * dpr, tightest * 0.4);
 

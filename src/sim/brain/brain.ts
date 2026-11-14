@@ -58,6 +58,8 @@ export interface BrainOptions {
   newbornTone?: number;
   /** number of excitatory cells in the body-sense cortex */
   cortex?: number;
+  /** false forces the JavaScript neuron loop even where WebAssembly is available */
+  wasm?: boolean;
 }
 
 export class Brain {
@@ -95,6 +97,7 @@ export class Brain {
     this.cortex = new BodyCortex(this.net, this.spinal, this.pain, Math.round((opt.cortex ?? 8192) * (opt.scale ?? 1)));
     this.amygdala = new Amygdala(this.net, this.cortex, this.pain, this.reward.vta, !!opt.learn);
     this.cerebellum = opt.granules && opt.granules > 0 ? new Cerebellum(this.net, this.spinal, { granules: opt.granules }) : null;
+    if (opt.wasm === false) this.net.useKernel = false;
     this.net.build();
     this.net.learning = !!opt.learn;
     this.activity = new Uint8Array(this.net.n);

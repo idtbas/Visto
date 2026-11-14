@@ -105,8 +105,8 @@ Gelenkrezeptoren, wenn ein Gelenk mit Kraft gegen seinen Anschlag gedrückt wird
 Liegen und normales Gehen tun nicht weh: Ein ausgereiftes Wesen spürt beim Gehen praktisch
 nichts, ein Neugeborenes hat schon beim Gehen leichte Schmerzen in Knie- und Sprunggelenken.
 Wie stark und wie lange es wehtut, hängt von der Wucht ab. Ein Sturz kostet dadurch nicht
-mehr pauschal gleich viel, sondern je nach Aufprall etwa das 0,6- bis 4,8-Fache der früheren
-festen Strafe. Rezeptoren, auf die es dauerhaft drückt, verstummen nach etwa 200 ms, und im
+mehr pauschal 1,5 Belohnungseinheiten, sondern je nach Aufprall zwischen etwa 0,6 und 4,8
+(im Mittel 1,5 bis 2,2). Rezeptoren, auf die es dauerhaft drückt, verstummen nach etwa 200 ms, und im
 Schlaf ist die Schmerzbahn zu.
 
 Der Weg im Gehirn: Schmerzrezeptoren → Schmerzkern → Habenula → hemmende Zellen → Dopaminzellen.
@@ -210,7 +210,7 @@ lernten laufen (nach etwa 17 und 23 Minuten, danach 0–5 Stürze pro Minute und
 Stück), zwei stürzten nach 24 bzw. 30 Minuten immer noch 15–18-mal pro Minute. Ein früherer
 Lauf im Browser war schon nach etwa 10 Minuten so weit.
 
-Mit dem fertigen Stand (Gedächtnis, Schlaf mit Replay, Vorhersage; 6.392 Neuronen) noch einmal
+Mit dem Stand vor dem Schmerz (Gedächtnis, Schlaf mit Replay, Vorhersage; 6.392 Neuronen) noch einmal
 vier Leben, Stürze pro Minute:
 
 | Leben | Minute 1–22 |
@@ -236,6 +236,65 @@ Weise, ohne dass sich seine Grundspannung bewegte. Keines wurde sturzfrei, auch 
 Leben, das mit 1,5 schon nach 9 Minuten lief. Mit 0,5 (zwei Leben) war es nicht besser. Die
 Einstellung steht deshalb wieder auf 1,5. Bei vier Leben je Einstellung ist das alles nur ein
 Hinweis, kein Beweis.
+
+**Schmerz, Mandelkern und Cookies im Vergleich** (aktueller Stand, 15.696 Neuronen; je vier
+Leben, 15 Minuten, mit Schlaf; `tools/learn-test.ts`, ausgewertet mit
+`tools/summarize-lives.cjs`). Stürze pro Minute; in Klammern stehen Minuten, in denen das Wesen
+mehr als 10 Sekunden geschlafen hat. „Läuft" heißt: drei wache Minuten hintereinander mit
+höchstens 3 Stürzen und auch am Ende noch so.
+
+| Bedingung | Leben | Stürze pro Minute | Ergebnis |
+|---|---|---|---|
+| feste Sturzstrafe wie früher, mit Cookies | 1 | 15 14 15 13 14 12 12 (4) 12 11 12 10 9 12 (4) | läuft nicht |
+| | 2 | 20 15 10 14 5 11 0 (0) (4) 17 15 10 15 16 7 | lief in Minute 7, nach dem Schlaf wieder verlernt |
+| | 3 | 21 19 19 17 17 (13) (10) 18 17 18 17 13 (4) 14 11 | läuft nicht |
+| | 4 | 21 21 20 14 13 5 (5) 2 0 0 11 4 4 8 1 | lief ab Minute 8, danach unsicher |
+| Schmerz (ohne Wirkung des Mandelkerns), mit Cookies | 1 | 16 17 18 18 17 18 17 17 (13) (8) 18 18 17 17 17 | läuft nicht |
+| | 2 | 20 20 16 10 0 0 0 0 (0) (0) 0 0 0 1 0 | **läuft ab Minute 5** |
+| | 3 | 21 18 19 19 18 18 18 (7) (15) 16 17 15 16 15 15 | läuft nicht |
+| | 4 | 20 19 17 18 16 16 17 (6) 16 17 17 17 11 7 6 | läuft nicht (wird besser) |
+| Schmerz + Mandelkern, mit Cookies (Voreinstellung) | 1 | 19 5 0 0 0 0 0 0 0 0 0 (0) 0 0 0 | **läuft ab Minute 3** |
+| | 2 | 20 19 20 19 17 18 15 (7) 18 18 18 17 18 17 (5) | läuft nicht |
+| | 3 | 21 16 12 9 10 9 4 (0) 2 2 3 4 1 1 1 | **läuft ab Minute 9** |
+| | 4 | 21 19 20 19 19 18 18 (5) 18 18 18 18 18 18 (5) | läuft nicht |
+| Schmerz + Mandelkern, **ohne** Cookies | 1 | 21 22 24 20 13 (4) 10 3 0 0 0 0 1 0 0 | **läuft ab Minute 8** |
+| | 2 | 21 21 21 21 21 21 20 (6) 21 21 20 21 21 18 (7) | läuft nicht |
+| | 3 | 19 15 14 13 11 12 11 11 (2) 9 7 8 9 3 3 | läuft noch nicht (wird besser) |
+| | 4 | 19 17 17 16 16 12 12 12 (3) 11 13 13 12 14 11 | läuft nicht |
+
+Am Ende liefen also 0 von 4 (feste Strafe), 1 von 4 (Schmerz), 2 von 4 (Schmerz + Mandelkern)
+und 1 von 4 (nur Schmerz, ohne Cookies). Was sich daraus ehrlich sagen lässt:
+
+- **Aus Schmerz allein kann das Wesen laufen lernen.** Ein Leben ohne jede Belohnung lief ab
+  Minute 8 sturzfrei, ein zweites war auf dem Weg dorthin. Die Cookies sind dafür nicht nötig.
+- **Dass Schmerz das Lernen verlässlicher macht, ist damit nicht gezeigt.** Die Unterschiede
+  zwischen den Bedingungen (0, 1, 2, 1 von 4) liegen im Bereich dessen, was bei vier Leben der
+  Zufall hergibt: Dieselbe feste Strafe hatte in einer früheren Reihe 2 von 4 Leben laufen
+  lassen. Mit Schmerz + Mandelkern gab es das bisher schnellste Leben (sturzfrei nach zwei
+  Minuten), aber auch zwei, die gar nicht vorankamen.
+- **Es bleibt dabei: ungefähr jedes zweite Leben hängt fest.** Auch mit Schmerz.
+- Zwei Leben mit fester Strafe konnten schon laufen und verloren es wieder, eines direkt nach
+  dem Schlafen mit 38 Träumen. Das passt zu dem Befund, dass Replay eher schadet als nützt.
+
+Gleiche Startwerte sind zwischen den Bedingungen nicht vergleichbar, weil jede Änderung am
+Gehirn die Zufallsfolge verschiebt.
+
+**Schmerz selbst** (`tools/pain-test.ts`): Ein ausgereiftes Wesen hat beim Gehen Schmerzkosten
+von 0,002 pro Sekunde, ein Neugeborenes 0,16 pro Sekunde, fast nur aus Knie- und
+Sprunggelenken. Ein Sturz kostet im Mittel 1,5 bis 2,2 (kleinster gemessener 0,6, größter 4,8)
+und lässt die Dopaminzellen 280 bis 650 ms schweigen (mit der festen Strafe: 340 bis 530 ms).
+
+**Mandelkern**: Ob sich ein Sturz ankündigt, habe ich getrennt geprüft. Ein gewöhnlicher
+linearer Klassifikator, der nichts mit dem Gehirn zu tun hat, trennt „300 ms vor einem Sturz"
+von „mindestens 1 s davor" aus den Feuerraten der Sinnesnerven wie aus der Körperfühlrinde
+fast perfekt (AUC 1,00 auf zurückgehaltenen Daten, 104–124 Stürze). Die Information ist also
+da. Der Mandelkern selbst nutzt sie bisher nur zum Teil: Nach 5 Minuten lag seine Erwartung
+in der halben Sekunde vor einem Sturz bei 0,24 bis 0,28, sonst beim Gehen bei 0,15
+(`tools/cortex-test.ts`, ein einziges Leben, ohne Wirkung auf das Dopamin und mit der halben
+heutigen Lernrate gemessen). Er unterscheidet
+also, aber schwach. Der Schaltkreis dahinter tut, was er soll (`tools/amygdala-test.ts`):
+Springt die Erwartung an, fällt die Rate der Dopaminzellen von 14 auf 0 bis 2 Hz und erholt
+sich in 300 ms; fällt sie weg, steigt sie kurz auf 20 bis 24 Hz.
 
 **Gedächtnis und Replay** (`tools/memory-test.ts`): Was im Schlaf abgespielt wird, stimmt mit
 dem überein, was im Versuch ausprobiert wurde (Korrelation 0,89 bis 0,95 über 85–100 Werte),
@@ -284,11 +343,19 @@ das Maximum und sank erst danach.
 
 ## Was noch nicht geht
 
-- **Laufen lernt nicht jedes Leben.** In den Messungen schafften es je nach Reihe eines bis zwei
-  von vier Leben innerhalb von 20 bis 30 Minuten; die anderen bleiben in einer Schleife aus
-  Stürzen und Ausprobieren hängen (Zahlen unter „Gemessen"). Wenn ein Leben nach 20 Minuten
-  noch ständig fällt, hilft derzeit nur „Neues Leben". Was fehlt, ist eine Erkundung, die sich
-  danach richtet, ob Ausprobieren gerade etwas bringt.
+- **Laufen lernt nicht jedes Leben.** In den Messungen schafften es je nach Reihe null bis zwei
+  von vier Leben innerhalb von 15 bis 30 Minuten; die anderen bleiben in einer Schleife aus
+  Stürzen und Ausprobieren hängen (Zahlen unter „Gemessen"). Schmerz und Mandelkern haben das
+  nicht nachweisbar geändert. Wenn ein Leben nach 15 Minuten noch ständig fällt, hilft derzeit
+  nur „Neues Leben". Was fehlt, ist eine Erkundung, die sich danach richtet, ob Ausprobieren
+  gerade etwas bringt.
+- **Gelerntes kann wieder verloren gehen.** Zwei von sechzehn Leben liefen schon und fielen
+  danach wieder häufig, eines direkt nach dem Schlaf.
+- **Der Mandelkern sieht Stürze erst schwach kommen** (0,24–0,28 gegenüber 0,15), obwohl sie
+  sich aus denselben Daten fast perfekt vorhersagen ließen. Vorsichtiger macht er das Wesen
+  auch nicht: Seine Erwartung wirkt nur auf das Dopamin, nicht auf die Muskeln.
+- **Der Schmerz ist grob.** 14 Stellen, keine Schutzreflexe (das Wesen zieht nichts weg und
+  fängt sich nicht ab), und die Richtung des Sturzes wird nicht eigens ausgewertet.
 - **Replay bringt bisher keinen Lernvorteil.** Es funktioniert wie beschrieben, aber in zwei
   Messreihen lernten die Leben mit Replay nicht schneller laufen als ohne, bei stärkerer
   Einstellung eher langsamer (Zahlen unter „Gemessen"). Es ist deshalb schwach eingestellt.
@@ -303,14 +370,22 @@ das Maximum und sank erst danach.
   Wesen deutlich öfter als ohne.
 - Das Kleinhirn ist verdrahtet und seine Synapsen lernen, aber es verbessert das Laufen bisher
   nicht messbar. Deshalb ist es abgeschaltet, solange man es nicht einschaltet.
-- Das voreingestellte Gehirn hat 6.392 Neuronen und 330.080 Synapsen, mit Kleinhirn rund
-  19.000 Neuronen. Das ist weit unter den anfangs angepeilten 100.000 Neuronen.
+- Das voreingestellte Gehirn hat jetzt 15.696 Neuronen und 877.592 Synapsen (vorher 6.392 und
+  330.080), mit Kleinhirn 28.248 Neuronen. Das ist weiter deutlich unter den anfangs
+  angepeilten 100.000 Neuronen. Gut die Hälfte der neuen Zellen ist die Körperfühlrinde,
+  deren Verschaltung fest ist; sie lernt selbst nichts.
 - Das Stehen ist verkrampft (rund 650 W) und das Loslaufen aus dem Stand gelingt nicht.
 - Das Lernen einzelner Reflexbahnen ist zu langsam, um in Minuten sichtbar zu sein.
-- Auf einem Kern schafft JavaScript etwa 15–30 ns pro Neuron und Millisekunde. Rund 5.500
-  Neuronen liefen auf der Entwicklungsmaschine mit etwa 3,7-facher Echtzeit, 18.000 mit etwa
-  0,7-facher. 100.000 Neuronen bräuchten einen schnelleren Rechenkern (WebAssembly mit SIMD
-  oder WebGPU), den es noch nicht gibt.
+- Geschwindigkeit auf der Entwicklungsmaschine (ein Kern, `tools/bench-sim.ts`): Das Gehirn
+  mit 15.696 Neuronen läuft mit dem WebAssembly-Kern in 3,1-facher Echtzeit, mit der
+  JavaScript-Schleife in 1,8-facher; mit Kleinhirn (28.248 Neuronen) in 1,9-facher. Das alte
+  Gehirn mit 6.392 Neuronen kam mit JavaScript auf 3,5-fache, mit WebAssembly auf 5,2-fache
+  Echtzeit. Nur die Neuronenschleife ist in WebAssembly; das Verteilen der Spikes auf die
+  Synapsen läuft weiter in JavaScript und ist jetzt der größte Posten. 100.000 Neuronen in
+  Echtzeit sind damit noch nicht drin.
+- Ob WebAssembly in der veröffentlichten Seite überall zugelassen ist, habe ich nicht prüfen
+  können. Wenn nicht, läuft automatisch die langsamere JavaScript-Schleife; der Hinweis über
+  der Neuronenzahl zeigt, welche es ist.
 
 ## Werkzeuge für die Entwicklung
 
@@ -320,6 +395,10 @@ das Maximum und sank erst danach.
 | `npx tsx tools/spinal-test.ts out/x.json 0 20` | prüft die angeborene Verschaltung |
 | `npx tsx tools/obstacle-learn.ts <min> 1` | Hindernisse: lernt es, wann es die Füße hebt? (`NORECALL=1` ohne Erinnerungsabruf) |
 | `npx tsx tools/memory-test.ts`, `tools/predict-test.ts` | Gedächtnis und Replay, Vorwärtsmodell |
+| `npx tsx tools/pain-test.ts`, `tools/cortex-test.ts`, `tools/amygdala-test.ts` | Schmerz je Sturz, Körperfühlrinde und was der Mandelkern lernt, Schaltkreis hinter dem Mandelkern |
+| `node tools/summarize-lives.cjs out/*.log` | wertet Protokolle von `learn-test` aus (`PAIN=fixed|graded|off`, `AMY_DA=0`, `NOREWARD=1` wählen die Bedingung) |
+| `npm run build:kernel` | übersetzt `asm/kernel.ts` nach WebAssembly und bettet es ein |
+| `npx tsx tools/bench-sim.ts`, `tools/mature-test.ts` | Rechenzeit (`VISTO_JS=1` erzwingt JavaScript), Gang des ausgereiften Wesens |
 | `npx tsx tools/tune-reflex.ts`, `tools/shadow.ts`, `tools/tune-spinal.ts` | die „Evolution": Referenzregler optimieren, Rückenmark dagegen kalibrieren, im geschlossenen Kreis feinabstimmen |
 | `node tools/shot.cjs out.png`, `node tools/shot-series.cjs` | Screenshots der laufenden Seite |
 
