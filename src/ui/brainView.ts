@@ -143,9 +143,11 @@ export class BrainView {
         let rowH = 0;
         let ok = true;
         for (const p of pops) {
-          // blocks are a few cells tall so that many of them fit side by side
-          const rows = Math.max(1, Math.min(p.n, Math.round(Math.sqrt(p.n / 3))));
-          const cols = Math.ceil(p.n / rows);
+          // blocks are a few cells tall so that many of them fit side by side;
+          // a population that has a region to itself fills its width
+          const cols0 = Math.max(1, Math.floor(iw / cell));
+          const rows = pops.length === 1 ? Math.ceil(p.n / cols0) : Math.max(1, Math.min(p.n, Math.round(Math.sqrt(p.n / 3))));
+          const cols = pops.length === 1 ? cols0 : Math.ceil(p.n / rows);
           const bw = cols * cell;
           const bh = rows * cell;
           if (cx + bw > ix + iw && cx > ix) {

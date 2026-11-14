@@ -74,7 +74,8 @@ export class Decision {
     // trial actions
     const kk = 1 / EX_TAU;
     this.x += -this.x * kk + Math.sqrt(2 * kk) * gaussian(this.net.rng);
-    let rate = 30 * (1 + this.exploreGain * this.x);
+    // trial actions are only tried when there is something to decide about
+    let rate = 30 * (1 + (Number.isFinite(d) ? this.exploreGain * this.x : 0));
     if (rate < 0) rate = 0;
     else if (rate > 90) rate = 90;
     const cur = currentForRate(rate);

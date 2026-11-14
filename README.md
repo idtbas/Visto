@@ -9,7 +9,8 @@ npm install
 npm run dev        # dann http://localhost:5173 öffnen
 ```
 
-`npm run build` erzeugt eine statische Seite in `dist/`.
+`npm run build` erzeugt eine einzige, eigenständige Datei `dist/index.html` (rund 550 kB), die
+sich überall hosten oder direkt öffnen lässt.
 
 ## Was man sieht
 
@@ -20,8 +21,11 @@ npm run dev        # dann http://localhost:5173 öffnen
 - **Lernkurve**: wie weit jeder Laufversuch kam. **Tonus-Kerne**: was das Wesen bisher gelernt hat.
 - **Cookie geben** (oder Taste `C`) belohnt von Hand. Ein Klick in die Welt legt einen Cookie
   dorthin. Mit „Auto-Belohnung" belohnt sich Fortschritt von selbst.
+- **Hindernisse** legt kleine Stufen in den Weg, hinter jeder wartet ein Cookie. Die gestrichelte
+  Linie zeigt, worauf das Auge gerade schaut.
 - Zeitraffer bis `max`, „Stehen/Laufen", „Neues Leben" (Gehirn zurücksetzen). Das Gehirn wird
   alle 30 Sekunden im Browser gespeichert und beim nächsten Besuch weiterverwendet.
+- **Kleinhirn (experimentell)** baut das Gehirn mit 12.000 zusätzlichen Körnerzellen neu auf.
 
 ## Der Körper
 
@@ -46,6 +50,8 @@ hemmend, langsam erregend).
 | Hirnstamm | Laufkommando, Loslauf-Schaltkreis, fünf **Tonus-Kerne**, die ganze Reflexgruppen verstärken | Tonus wird **gelernt** |
 | Erkundungs-Kern | probiert Varianten aus, indem er Tonus und Reflexe zufällig etwas verstellt | – |
 | Dopamin-Kern | feuert bei „besser als erwartet", pausiert bei „schlechter als erwartet" | – |
+| Sehrinde | vier Neuronengruppen, die auf Hindernisse in 0,3 / 0,6 / 0,9 / 1,3 m Entfernung ansprechen | angeboren |
+| Basalganglien | Striatum, Pallidum, Thalamus: entscheiden, ob der Befehl „Füße anheben" gegeben wird | Entscheidung wird **gelernt** |
 | Kleinhirn (optional) | Körnerzellen, Purkinje-Zellen, Kletterfasern: lernt Korrekturen vorwegzunehmen | gelernt, noch experimentell |
 
 ### Wie es lernt
@@ -69,8 +75,22 @@ zu bleiben als nach bisheriger Erfahrung zu erwarten war. Ein Sturz tut weh.
 | Serenin | Serotonin | ruhigen, schmerzfreien Phasen | dämpft Erkundung und Stress |
 | Stressin | Cortisol | Stürzen, Misserfolg | bremst das Lernen, wenn dauerhaft hoch |
 | Ergin | Hungerhormon | leerer Energiereserve | macht Cookies wertvoller |
-| Somnin | Adenosin | langer Wachzeit | Schlafdruck (Schlaf ist noch nicht eingebaut) |
+| Somnin | Adenosin | langer Wachzeit | Schlafdruck; nach etwa 15 Minuten schläft das Wesen ein |
 | Plastin | BDNF | Erfolg | verstärkt das Lernen |
+
+### Schlaf
+
+Ist das Somnin hoch genug, erschlaffen die Muskeln und das Wesen legt sich hin (etwa 45
+Sekunden). Im Wachen folgt ein langsamer Mittelwert den gelernten Tonus-Synapsen; im Schlaf
+werden die Synapsen zu diesem Mittelwert zurückgezogen. Das glättet das Hin und Her des Tages.
+Ein Wiederabspielen von Erlebnissen (Replay) gibt es noch nicht.
+
+### Sehen und Entscheiden
+
+Das Auge meldet die Entfernung zum nächsten Hindernis. Ein Basalganglien-Schaltkreis kann den
+Befehl „Füße anheben" auslösen: Feuert das Striatum stark genug, verstummt das Pallidum, der
+Thalamus wird frei und treibt den Befehl. Welche Seheindrücke das Striatum antreiben, wird mit
+derselben Dopamin-Regel gelernt. Das Wesen wird unentschlossen geboren (halbe Stärke).
 
 ## Was angeboren ist und was gelernt wird
 
@@ -88,8 +108,8 @@ Ehrlich aufgeschlüsselt:
 
 ## Gemessen
 
-Headless mit `tools/learn-test.ts` (Neugeborenes mit 60 % Tonus, ohne Kleinhirn, 5.160 Neuronen,
-190.720 Synapsen):
+Headless mit `tools/learn-test.ts` (Neugeborenes mit 60 % Tonus, ohne Kleinhirn, damals 5.160
+Neuronen und 190.720 Synapsen, vor dem Einbau von Sehrinde und Basalganglien):
 
 | | Stürze je 3 min, im Verlauf von 21 min | Strecke je 3 min |
 |---|---|---|
@@ -98,15 +118,38 @@ Headless mit `tools/learn-test.ts` (Neugeborenes mit 60 % Tonus, ohne Kleinhirn,
 | Kontrolle (Dopamin um 17 s verzögert) | 69 · 70 · 70 · 75 · 74 · 72 · 71 | 73 m → 62 m |
 
 Die Kontrolle bekommt dasselbe Dopaminsignal, nur zeitlich verschoben, sodass es nichts mehr
-über das eben Getane aussagt. Sie lernt nichts.
+über das eben Getane aussagt. Sie lernt nichts. Wie schnell ein einzelnes Leben lernt, schwankt:
+Im Browser war ein Lauf nach etwa 10 Minuten so weit, andere brauchen über 20.
+
+Hindernisse (5–10 cm hohe Stufen, `tools/obstacle-learn.ts`, gereiftes Wesen, je 2 Minuten):
+
+| | geschafft / gestolpert | sonstige Stürze |
+|---|---|---|
+| Entscheidung eingefroren auf „halb anheben" | 0–3 / 6–10 | 25–31 |
+| mit Lernen, nach 10 Minuten | 10–12 / 1–2 | 4–11 |
+
+Gelernt hat es dabei, die Füße **nicht** anzuheben: Der Hochschritt bringt diesen Körper
+häufiger aus dem Tritt, als er nützt. In einem zweiten Lauf stieg die Bereitschaft zuerst auf
+das Maximum und sank erst danach.
 
 ## Was noch nicht geht
 
-- Augen, Hindernisse, Entscheidungen, Gedächtnis und Schlaf sind geplant, aber noch nicht gebaut.
+- Ein Gedächtnis (Hippocampus), Replay im Schlaf, Arbeitsgedächtnis und inneres Durchspielen
+  sind nicht gebaut. „Denken" im Sinne des Plans gibt es damit noch nicht; es gibt eine gelernte
+  Entscheidung.
+- Das Auge ist ein Entfernungsmesser für das nächste Hindernis, kein Bildsehen.
+- Der Befehl „Füße anheben" hilft nicht zuverlässig über Stufen. Mit Hindernissen stürzt das
+  Wesen deutlich öfter als ohne.
+- Das Kleinhirn ist verdrahtet und seine Synapsen lernen, aber es verbessert das Laufen bisher
+  nicht messbar. Deshalb ist es abgeschaltet, solange man es nicht einschaltet.
+- Das voreingestellte Gehirn hat rund 5.500 Neuronen und 205.000 Synapsen, mit Kleinhirn rund
+  18.000 und 646.000. Das ist weit unter den anfangs angepeilten 100.000 Neuronen.
 - Das Stehen ist verkrampft (rund 650 W) und das Loslaufen aus dem Stand gelingt nicht.
 - Das Lernen einzelner Reflexbahnen ist zu langsam, um in Minuten sichtbar zu sein.
-- Auf einem Kern schafft JavaScript etwa 15–30 ns pro Neuron und Millisekunde. Rund 5.000
-  Neuronen laufen damit mehrfach schneller als Echtzeit, 100.000 nicht.
+- Auf einem Kern schafft JavaScript etwa 15–30 ns pro Neuron und Millisekunde. Rund 5.500
+  Neuronen liefen auf der Entwicklungsmaschine mit etwa 3,7-facher Echtzeit, 18.000 mit etwa
+  0,7-facher. 100.000 Neuronen bräuchten einen schnelleren Rechenkern (WebAssembly mit SIMD
+  oder WebGPU), den es noch nicht gibt.
 
 ## Werkzeuge für die Entwicklung
 
@@ -114,6 +157,7 @@ Die Kontrolle bekommt dasselbe Dopaminsignal, nur zeitlich verschoben, sodass es
 |---|---|
 | `npx tsx tools/learn-test.ts <min> 0 1` mit `TONE=0.6` | ein Leben ohne Browser, druckt den Fortschritt je Minute (`SHAM=1` für die Kontrolle) |
 | `npx tsx tools/spinal-test.ts out/x.json 0 20` | prüft die angeborene Verschaltung |
+| `npx tsx tools/obstacle-learn.ts <min> 1` | Hindernisse: lernt es, wann es die Füße hebt? |
 | `npx tsx tools/tune-reflex.ts`, `tools/shadow.ts`, `tools/tune-spinal.ts` | die „Evolution": Referenzregler optimieren, Rückenmark dagegen kalibrieren, im geschlossenen Kreis feinabstimmen |
 | `node tools/shot.cjs out.png`, `node tools/shot-series.cjs` | Screenshots der laufenden Seite |
 

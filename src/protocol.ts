@@ -1,7 +1,7 @@
 import type { BrainInfo, ControlMode, Frame, SimOptions, SimState } from './sim/sim';
 
 export type ToWorker =
-  | { type: 'start'; options?: SimOptions; state?: SimState }
+  | { type: 'start'; options?: SimOptions; state?: SimState; mainThread?: boolean }
   | { type: 'save' }
   | { type: 'pause'; paused: boolean }
   | { type: 'speed'; speed: number }

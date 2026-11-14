@@ -26,8 +26,16 @@ body {
 #app {
   display: grid;
   grid-template-rows: 48px 1fr;
-  height: 100vh;
+  height: 100%;
   min-height: 0;
+}
+button.warn {
+  background: #4a1f1f;
+  border-color: #a04848;
+}
+button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 header {
   display: flex;
@@ -419,6 +427,15 @@ body.manual .mbar .knob {
   white-space: nowrap;
   cursor: pointer;
 }
+.toggle.inl {
+  display: inline-flex;
+  float: right;
+  margin-right: 14px;
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 400;
+  font-size: 11px;
+}
 .ebar {
   display: block;
   width: 100%;
@@ -483,7 +500,59 @@ body.manual .mbar .knob {
 @media (max-width: 900px) {
   #app {
     height: auto;
-    min-height: 100vh;
+    min-height: 100%;
+    grid-template-rows: auto 1fr;
+  }
+  header {
+    flex-wrap: wrap;
+    padding-block: 8px;
+    gap: 8px 12px;
+  }
+  .brand {
+    flex: 1 1 auto;
+  }
+  .controls {
+    flex-wrap: wrap;
+  }
+  .hud {
+    top: 44px;
+    right: 14px;
+    white-space: normal;
+  }
+  .strip .stat {
+    flex: 1 1 28%;
+    border-top: 1px solid var(--line);
+  }
+  .strip .cookieBox {
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+    border-top: 0;
+    padding-block: 10px;
+  }
+  .hrow {
+    grid-template-columns: 78px minmax(30px, 1fr) 80px 22px;
+  }
+  .hspark {
+    width: 80px;
+  }
+  .learn {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+  .learnWrap {
+    height: 90px;
+    flex: none;
+  }
+  .toneBox {
+    border-left: 0;
+    border-top: 1px solid var(--line);
+  }
+  .lower {
+    grid-template-columns: 1fr;
+  }
+  .lower .panel + .panel {
+    border-left: 0;
+    border-top: 1px solid var(--line);
   }
   main {
     grid-template-columns: 1fr;

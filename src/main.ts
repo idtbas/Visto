@@ -1,3 +1,5 @@
+import SimWorker from './worker.ts?worker&inline';
+import { createHost } from './simHost';
 import { BodyView } from './ui/bodyView';
 import { BrainView } from './ui/brainView';
 import { HormoneView } from './ui/hormoneView';
@@ -10,9 +12,27 @@ import { saveLife, loadLife, deleteLife } from './ui/store';
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 
-const worker = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' });
-const send = (m: ToWorker): void => worker.postMessage(m);
-worker.onerror = (e) => console.error('worker error:', e.message, e.filename, e.lineno);
+// The simulation normally runs in a web worker. Where workers are blocked it runs on this thread.
+let send: (m: ToWorker) => void = () => undefined;
+let onMainThread = false;
+let worker: Worker | null = null;
+const receive = (m: FromWorker): void => onMessage(m);
+
+function connect(): void {
+  worker?.terminate();
+  worker = null;
+  try {
+    const w = new SimWorker();
+    w.onmessage = (e: MessageEvent<FromWorker>): void => receive(e.data);
+    w.onerror = (e) => console.error('worker error:', e.message, e.filename, e.lineno);
+    worker = w;
+    send = (m) => w.postMessage(m);
+  } catch {
+    onMainThread = true;
+    const handle = createHost((m) => receive(m));
+    send = (m) => handle(m);
+  }
+}
 
 const bodyView = new BodyView($<HTMLCanvasElement>('world'));
 const brainView = new BrainView($<HTMLCanvasElement>('brain'), $('brainTip'));
@@ -147,8 +167,7 @@ for (const b of Array.from($('speedSeg').querySelectorAll('button'))) {
 }
 
 let brainMeta = '';
-worker.onmessage = (e: MessageEvent<FromWorker>): void => {
-  const m = e.data;
+function onMessage(m: FromWorker): void {
   if (m.type === 'frame') {
     const f = m.frame;
     const dt = Math.max(0, f.time - lastFrameTime);
@@ -169,10 +188,12 @@ worker.onmessage = (e: MessageEvent<FromWorker>): void => {
   } else if (m.type === 'attempts') {
     learnView.setAttempts(m.list);
   } else if (m.type === 'state') {
-    void saveLife(SAVE_KEY, m.state);
-    $('saveNote').textContent = `gespeichert ${new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`;
+    saveLife(saveKey(), m.state).then(
+      () => ($('saveNote').textContent = `gespeichert ${new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`),
+      () => ($('saveNote').textContent = 'Speichern hier nicht möglich'),
+    );
   }
-};
+}
 
 function raf(): void {
   if (latest) {
@@ -185,21 +206,83 @@ function raf(): void {
 requestAnimationFrame(raf);
 
 // ---------- life: restore the saved brain, save regularly ----------
-const SAVE_KEY = 'life-1';
 const query = new URLSearchParams(location.search);
-void (async () => {
-  const state = query.has('fresh') ? undefined : await loadLife<SimState>(SAVE_KEY);
+const pref = {
+  get(key: string): string | null {
+    try {
+      return localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  },
+  set(key: string, value: string): void {
+    try {
+      localStorage.setItem(key, value);
+    } catch {
+      /* preferences are a convenience only */
+    }
+  },
+};
+const CEREBELLUM_GRANULES = 12000;
+let withCerebellum = query.has('granules') || pref.get('visto-cerebellum') === '1';
+$<HTMLInputElement>('chkCb').checked = withCerebellum;
+const saveKey = (): string => (withCerebellum ? 'life-1-cb' : 'life-1');
+
+/** starts (or restarts) the simulation; `fresh` begins a new life instead of restoring the saved one */
+async function boot(fresh: boolean): Promise<void> {
+  if (onMainThread) {
+    // the loop on this thread cannot be stopped; start over with a clean page
+    location.reload();
+    return;
+  }
+  connect();
+  latest = null;
+  lastFrameTime = 0;
+  const state = fresh || query.has('fresh') ? undefined : await loadLife<SimState>(saveKey());
   // a newborn starts with weak descending tone; "?tone=1" starts with a mature one instead
   const newbornTone = query.has('tone') ? Number(query.get('tone')) : 0.6;
-  send({ type: 'start', state, options: { newbornTone, sleep: !query.has('nosleep') } });
-  setInterval(() => send({ type: 'save' }), 30000);
-})();
+  const granules = query.has('granules') ? Number(query.get('granules')) : withCerebellum ? CEREBELLUM_GRANULES : 0;
+  send({ type: 'start', state, mainThread: onMainThread, options: { newbornTone, granules, sleep: !query.has('nosleep') } });
+  // bring the new simulation in line with the controls on the page
+  const speedBtn = $('speedSeg').querySelector<HTMLElement>('button.on');
+  send({ type: 'speed', speed: Number(speedBtn?.dataset.speed ?? 1) });
+  send({ type: 'autoReward', on: $<HTMLInputElement>('chkAuto').checked });
+  send({ type: 'obstacles', on: $<HTMLInputElement>('chkObst').checked });
+  send({ type: 'wantsToWalk', on: $('goSeg').querySelector<HTMLElement>('button.on')?.dataset.go === '1' });
+  if (paused) send({ type: 'pause', paused });
+}
+void boot(false);
+setInterval(() => send({ type: 'save' }), 30000);
 window.addEventListener('pagehide', () => send({ type: 'save' }));
+
+// two clicks instead of a dialog: the second one within three seconds confirms
+let armed = 0;
 $('btnNewLife').addEventListener('click', async () => {
-  if (!confirm('Wirklich neu beginnen? Das bisher Gelernte geht verloren.')) return;
-  await deleteLife(SAVE_KEY);
-  location.reload();
+  const btn = $('btnNewLife');
+  if (Date.now() - armed > 3000) {
+    armed = Date.now();
+    btn.textContent = 'Wirklich? Nochmal klicken';
+    btn.classList.add('warn');
+    setTimeout(() => {
+      btn.textContent = 'Neues Leben';
+      btn.classList.remove('warn');
+    }, 3000);
+    return;
+  }
+  armed = 0;
+  btn.textContent = 'Neues Leben';
+  btn.classList.remove('warn');
+  await deleteLife(saveKey());
+  $('saveNote').textContent = '';
+  await boot(true);
+});
+$<HTMLInputElement>('chkCb').addEventListener('change', async (e) => {
+  send({ type: 'save' });
+  withCerebellum = (e.target as HTMLInputElement).checked;
+  pref.set('visto-cerebellum', withCerebellum ? '1' : '0');
+  // give the save a moment to arrive before the brain is rebuilt
+  setTimeout(() => void boot(false), 150);
 });
 
 // small hook for automated screenshots / tests
-(window as unknown as { visto: unknown }).visto = { send, frame: () => latest };
+(window as unknown as { visto: unknown }).visto = { send: (m: ToWorker) => send(m), frame: () => latest };
