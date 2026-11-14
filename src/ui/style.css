@@ -813,3 +813,69 @@ button.mini {
   border-color: #ff6b6b;
   color: #ffb0a8;
 }
+
+#gl3d {
+  cursor: grab;
+  /* a finger moving up or down scrolls the page; sideways it turns the brain */
+  touch-action: pan-y;
+  border-radius: 8px;
+}
+.legend3d {
+  position: absolute;
+  left: 12px;
+  bottom: 10px;
+  display: grid;
+  gap: 3px;
+  pointer-events: none;
+  font-size: 10px;
+  color: #7f8fab;
+  opacity: 0.8;
+  text-shadow: 0 0 6px #000;
+}
+.legend3d .lg {
+  display: grid;
+  grid-template-columns: 7px auto 34px;
+  gap: 6px;
+  align-items: center;
+}
+.legend3d .lg i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+.legend3d .lg b {
+  height: 2px;
+  background: #ffffff14;
+  border-radius: 2px;
+  overflow: hidden;
+}
+.legend3d .lg u {
+  display: block;
+  height: 100%;
+  width: 0;
+  opacity: 0.85;
+  transition: width 0.25s linear;
+}
+.views3d {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  opacity: 0.75;
+}
+.views3d button {
+  padding: 2px 9px;
+  font-size: 11px;
+}
+@media (max-width: 900px) {
+  /* on a small screen the key shrinks to its dots and live bars */
+  .legend3d {
+    left: 8px;
+    bottom: 6px;
+  }
+  .legend3d .lg {
+    grid-template-columns: 7px 30px;
+  }
+  .legend3d .lg span {
+    display: none;
+  }
+}

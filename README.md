@@ -22,14 +22,26 @@ Nichts davon behauptet, dass Visto etwas erlebt.
 
 - **Links** die Welt: der Körper mit Knochen, 14 Muskeln und Sehnen. Rot heißt angespannt.
   Wo es wehtut, leuchtet die Körperstelle rot auf.
-- **Rechts** das Nervensystem, anatomisch angeordnet: oben das Gehirn von der Seite, darunter
-  Hirnstamm und Rückenmark mit linker und rechter Hälfte, außen die Sinnes- und Bewegungsnerven
-  der Beine. Jeder Punkt ist ein Neuron und blitzt bei jedem seiner Spikes auf (blau = hemmend).
-  Die Linien sind Nervenbahnen; sie werden mit der Feuerrate ihrer Quellneuronen heller, und die
-  Lichtpunkte darauf sind eine Zufallsstichprobe der Spikes, die gerade hindurchlaufen
-  (höchstens etwa jeder 250.; wie schnell sie wandern, ist frei gewählt). Der blasse Umriss von
-  Gehirn und Rückenmark dahinter ist reine Orientierungshilfe. Mit der Maus über eine
-  Zellgruppe fahren zeigt Name und Feuerrate.
+- **Rechts** das Nervensystem als leuchtendes Gehirn in 3D: Jedes Neuron ist ein Lichtpunkt an
+  der Stelle seines biologischen Vorbilds und blitzt bei jedem seiner Spikes auf – die
+  Körperfühlrinde hinter der Zentralfurche (das linke Bein in der rechten Hirnhälfte), die
+  Sehrinde am Hinterkopf, Hippocampus und Mandelkern tief im Schläfenlappen, die Dopaminzellen
+  im Mittelhirn, das Rückenmark in der Wirbelsäule, daneben die Nerven der Beine. Die Farben
+  fassen Regionen zu zehn Gruppen zusammen (Schlüssel unten links, mit einem Balken für die
+  aktuelle Feuerrate). Im Bild selbst steht kein Text. Ziehen dreht, Mausrad oder zwei Finger
+  zoomen, „Gesamt / Gehirn / Mark" fährt die Kamera.
+  Echte Aktivität sind: das Aufblitzen der Neuronen, die Helligkeit der feinen Sterne um jede
+  Zellgruppe (ihre Feuerrate), die Helligkeit der Fasern zwischen den Regionen (Feuerrate der
+  Quellzellen) und die Lichtpunkte, die darauf wandern (eine Stichprobe der Spikes, höchstens
+  etwa jeder 250.; ihr Tempo ist frei gewählt). Der feine Staub, der dem Gehirn die Form
+  gibt, trägt keine eigenen Daten; jeder Teil glimmt mit der Feuerrate der Zellen seiner
+  Farbgruppe. Reine Gestaltung sind die Form selbst (aus Formeln, kein vermessenes Gehirn),
+  Wirbel und Rippen, das Netz feiner Linien im Staub und die Tiefenunschärfe. Das Rückenmark
+  ist dicker gezeichnet, als es wäre.
+- **Karte** schaltet auf die flache, beschriftete Ansicht um: oben das Gehirn von der Seite,
+  darunter Hirnstamm und Rückenmark mit linker und rechter Hälfte, außen die Sinnes- und
+  Bewegungsnerven der Beine. Mit der Maus über eine Zellgruppe fahren zeigt Name und
+  Feuerrate.
 - **Botenstoffe**: die Pegel der acht Hormone mit ihrem Verlauf der letzten Minute.
 - **Lernkurve**: wie weit jeder Laufversuch kam. **Tonus-Kerne**: was das Wesen bisher gelernt
   hat. Darunter unter anderem **Gefahr**: wie sicher der Mandelkern gerade Schmerz erwartet.
@@ -40,15 +52,6 @@ Nichts davon behauptet, dass Visto etwas erlebt.
   ein. Beide an ist die Voreinstellung; nur „Schmerz" lässt es allein aus Schmerz lernen.
 - **Hindernisse** legt kleine Stufen in den Weg, hinter jeder wartet ein Cookie. Die gestrichelte
   Linie zeigt, worauf das Auge gerade schaut.
-- **3D-Ansicht** öffnet das Nervensystem in einem eigenen Fenster als drehbares Gehirn:
-  zwei gefaltete Großhirnhälften, Kleinhirn, Hirnstamm und Rückenmark als gläserne Hülle
-  (abschaltbar), darin die Neuronen an den Orten ihrer biologischen Vorbilder – die
-  Körperfühlrinde hinter der Zentralfurche (das linke Bein in der rechten Hirnhälfte), die
-  Sehrinde am Hinterkopf, Hippocampus und Mandelkern tief im Schläfenlappen, die Dopaminzellen
-  im Mittelhirn. Ziehen dreht, Mausrad oder zwei Finger zoomen, die Titelleiste verschiebt
-  das Fenster. Gezeigt werden dieselben echten Spikes und Nervenbahnen wie in der flachen
-  Karte. Die Form ist aus Formeln erzeugt, kein vermessenes Gehirn, und das Rückenmark ist
-  etwa doppelt so dick gezeichnet, wie es wäre, damit man seine Neuronen unterscheiden kann.
 - **Innenleben** öffnet ein Diagnosefenster: welcher Inhalt gerade den globalen Arbeitsraum
   hält (Schreibstreifen der letzten 20 Sekunden), was das Körpermodell für jeden Sinn erwartet
   hat und was gespürt wird, wie viel davon unerklärt ist, welche Bedürfnisse gemeldet werden.

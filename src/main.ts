@@ -41,35 +41,38 @@ const bodyView = new BodyView($<HTMLCanvasElement>('world'));
 const brainView = new BrainView($<HTMLCanvasElement>('brain'), $('brainTip'));
 const hormoneView = new HormoneView($('hormoneRows'));
 const learnView = new LearnView($<HTMLCanvasElement>('learn'));
-const brain3d = new Brain3D($<HTMLCanvasElement>('gl3d'), $<HTMLCanvasElement>('lab3d'));
+const brain3d = new Brain3D($<HTMLCanvasElement>('gl3d'), $('legend3d'));
 {
-  // the 3D view lives in a window of its own that can be moved, resized and closed
-  const win = $('win3d');
-  const head = $('win3dHead');
-  $('noGl').hidden = brain3d.supported;
-  const show = (on: boolean): void => {
-    win.hidden = !on;
-    brain3d.open = on;
-    $('btn3d').classList.toggle('on', on);
+  // the nervous system is shown as the glowing brain; the flat map is the alternative view
+  let map = !brain3d.supported;
+  const apply = (): void => {
+    $('gl3d').hidden = map;
+    $('legend3d').hidden = map;
+    $('views3d').hidden = map;
+    $('brain').hidden = !map;
+    brain3d.open = !map;
+    brainView.visible = map;
+    $('btnMap').classList.toggle('on', map);
+    $('btnMap').textContent = map ? 'Gehirn' : 'Karte';
+    $('brainLegend').textContent = map
+      ? 'Jeder Punkt ist ein Neuron und blitzt bei einem echten Spike auf (blau = hemmend). Linien sind Nervenbahnen; die Lichtpunkte darauf sind eine Stichprobe der Spikes, die gerade hindurchlaufen.'
+      : brain3d.supported
+        ? 'Jeder helle Punkt ist ein Neuron an seinem anatomischen Ort und blitzt bei einem echten Spike auf. Sterne und Fasern leuchten mit der Feuerrate ihrer Zellen. Der feine Staub gibt nur die Form; er glimmt mit der Aktivität seiner Region. Ziehen dreht, Mausrad oder zwei Finger zoomen.'
+        : 'Dieser Browser stellt kein WebGL bereit, deshalb gibt es hier nur die Karte.';
   };
-  $('btn3d').addEventListener('click', () => show(win.hidden !== false));
-  $('btn3dClose').addEventListener('click', () => show(false));
-  window.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !win.hidden) show(false);
+  $('btnMap').addEventListener('click', () => {
+    if (!brain3d.supported) return;
+    map = !map;
+    apply();
   });
-  let grab: [number, number] | null = null;
-  head.addEventListener('pointerdown', (e) => {
-    if ((e.target as HTMLElement).tagName === 'BUTTON') return;
-    const r = win.getBoundingClientRect();
-    grab = [e.clientX - r.left, e.clientY - r.top];
-    head.setPointerCapture(e.pointerId);
-  });
-  head.addEventListener('pointermove', (e) => {
-    if (!grab) return;
-    win.style.left = `${Math.max(-200, Math.min(window.innerWidth - 80, e.clientX - grab[0]))}px`;
-    win.style.top = `${Math.max(0, Math.min(window.innerHeight - 40, e.clientY - grab[1]))}px`;
-  });
-  head.addEventListener('pointerup', () => (grab = null));
+  for (const b of Array.from($('views3d').querySelectorAll('button'))) {
+    b.addEventListener('click', () => {
+      $('views3d').querySelectorAll('button').forEach((x) => x.classList.remove('on'));
+      b.classList.add('on');
+      brain3d.setView(b.dataset.view ?? 'all');
+    });
+  }
+  apply();
 }
 const innerView = new InnerView($('innerBody'), $<HTMLCanvasElement>('innerCanvas'));
 {
@@ -227,7 +230,6 @@ window.addEventListener('keydown', (e) => {
 });
 $<HTMLInputElement>('chkAuto').addEventListener('change', (e) => send({ type: 'autoReward', on: (e.target as HTMLInputElement).checked }));
 $<HTMLInputElement>('chkObst').addEventListener('change', (e) => send({ type: 'obstacles', on: (e.target as HTMLInputElement).checked }));
-$<HTMLInputElement>('chkShell').addEventListener('change', (e) => (brain3d.shell = (e.target as HTMLInputElement).checked));
 $<HTMLInputElement>('chkPain').addEventListener('change', (e) => send({ type: 'pain', on: (e.target as HTMLInputElement).checked }));
 $('world').addEventListener('click', (e) => {
   const x = bodyView.worldX(e.offsetX);

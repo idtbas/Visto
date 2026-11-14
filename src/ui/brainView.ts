@@ -144,6 +144,8 @@ export class BrainView {
   private dot = 1;
   private hover: Cluster | null = null;
   private mouse: [number, number] | null = null;
+  /** false while the map is not shown: nothing is drawn then */
+  visible = true;
 
   constructor(private readonly canvas: HTMLCanvasElement, private readonly tip: HTMLElement) {
     this.ctx = canvas.getContext('2d')!;
@@ -474,6 +476,7 @@ export class BrainView {
 
   /** feed the spike counts of one simulation frame */
   addActivity(act: Uint8Array, dtSim: number): void {
+    if (!this.visible) return;
     const g = this.glow;
     if (act.length !== g.length || !this.info) return;
     for (let i = 0; i < g.length; i++) {
@@ -505,6 +508,7 @@ export class BrainView {
   }
 
   draw(): void {
+    if (!this.visible) return;
     const { ctx, w, h, dpr } = this;
     if (this.backdrop.width !== w || !this.info || this.sprites.length === 0) {
       ctx.fillStyle = '#090c12';

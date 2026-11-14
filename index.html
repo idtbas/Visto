@@ -77,14 +77,21 @@
           <section class="panel brain">
             <h2>Nervensystem <span class="meta" id="brainMeta"></span>
               <button class="mini" id="btnInner" title="Diagnose: was gerade global verfügbar ist, was das Körpermodell erwartet und spürt, welche Bedürfnisse gemeldet werden. Mit Schaltern zum Abschalten einzelner Teile.">Innenleben</button>
-              <button class="mini" id="btn3d" title="Öffnet das Nervensystem als drehbare 3D-Ansicht in einem eigenen Fenster">3D-Ansicht</button>
+              <button class="mini" id="btnMap" title="Wechselt zwischen dem leuchtenden Gehirn in 3D und der flachen Karte mit beschrifteten Regionen">Karte</button>
               <label class="toggle inl" title="Baut zusätzlich ein Kleinhirn mit 12.000 Körnerzellen ein. Experimentell: Es lernt, verbessert das Laufen aber noch nicht messbar und macht die Simulation langsamer. Das Gehirn wird dafür neu aufgebaut."><input type="checkbox" id="chkCb" /> Kleinhirn (experimentell)</label>
             </h2>
             <div class="brainWrap">
-              <canvas id="brain"></canvas>
+              <canvas id="gl3d"></canvas>
+              <canvas id="brain" hidden></canvas>
               <div class="tip" id="brainTip"></div>
+              <div class="legend3d" id="legend3d"></div>
+              <div class="views3d seg" id="views3d">
+                <button data-view="all" class="on" title="Gehirn und Rückenmark">Gesamt</button>
+                <button data-view="brain" title="Nah ans Gehirn">Gehirn</button>
+                <button data-view="cord" title="Nah ans Rückenmark">Mark</button>
+              </div>
             </div>
-            <p class="legend">Jeder Punkt ist ein Neuron und blitzt bei einem echten Spike auf (blau = hemmend). Linien sind Nervenbahnen; die Lichtpunkte darauf sind eine Stichprobe der Spikes, die gerade hindurchlaufen.</p>
+            <p class="legend" id="brainLegend"></p>
           </section>
           <div class="lower">
             <section class="panel" id="hormonePanel">
@@ -98,19 +105,6 @@
           </div>
         </div>
       </main>
-    </div>
-    <div class="win3d" id="win3d" hidden>
-      <div class="winHead" id="win3dHead">
-        <strong>Nervensystem in 3D</strong>
-        <span class="dim">ziehen dreht · Mausrad oder zwei Finger zoomen</span>
-        <label class="toggle" title="Die gläserne Oberfläche von Großhirn, Kleinhirn, Hirnstamm und Rückenmark ein- oder ausblenden"><input type="checkbox" id="chkShell" checked /> Hülle</label>
-        <button id="btn3dClose" title="Schließen" aria-label="3D-Ansicht schließen">✕</button>
-      </div>
-      <div class="winBody">
-        <canvas id="gl3d"></canvas>
-        <canvas id="lab3d"></canvas>
-        <p class="noGl" id="noGl" hidden>Dieser Browser stellt kein WebGL bereit, deshalb gibt es hier keine 3D-Ansicht.</p>
-      </div>
     </div>
     <div class="win3d winInner" id="winInner" hidden>
       <div class="winHead" id="winInnerHead">
