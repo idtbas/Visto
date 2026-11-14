@@ -62,7 +62,7 @@ export interface HormoneEffects {
 const DT = 0.001;
 /** full energy store in joules: enough for roughly ten minutes of walking */
 export const ENERGY_CAPACITY = 250_000;
-const BASAL_POWER = 40; // W, cost of being alive
+const BASAL_POWER = 100; // W, cost of being alive (brain and body at rest)
 // standard deviation of the (smoothed) reward prediction error during smooth walking, and the
 // range above it that counts as fully unpredictable
 const UNCERTAINTY_FLOOR = Number((globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env.UFLOOR ?? 0.45);
@@ -84,6 +84,8 @@ export class Hormones {
   sleepEnabled = false;
   /** energy store 0..1 */
   energy = 0.8;
+  /** false stops the energy from being used up (a world without food) */
+  metabolism = true;
   /** running variance of the reward prediction error: how unpredictable is the world right now? */
   rpeVar = 0.05;
   /** 0 = rewards arrive as expected, 1 = very unpredictable */
@@ -102,7 +104,7 @@ export class Hormones {
     };
 
     // --- energy and hunger ---
-    this.energy += inp.intake - ((inp.power + BASAL_POWER) * DT) / ENERGY_CAPACITY;
+    this.energy += inp.intake - (this.metabolism ? ((inp.power + BASAL_POWER) * DT) / ENERGY_CAPACITY : 0);
     if (this.energy > 1) this.energy = 1;
     if (this.energy < 0) this.energy = 0;
     relax('ergin', 1 - this.energy, 5);

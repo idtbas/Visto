@@ -94,6 +94,13 @@ export class InnerView {
     q('#innerExternal').style.width = pct(inner.external);
     q('#innerMismatch').textContent = `${inner.mismatch.toFixed(1)} Hz`;
     q('#innerBrace').style.width = pct(inner.brace / 80);
+    const d = f.drive;
+    q('#drvSmellF').style.width = pct(d.smell[0]);
+    q('#drvSmellB').style.width = pct(d.smell[1]);
+    q('#drvGo').style.width = pct(d.goRate / 100);
+    q('#drvTurn').style.width = pct(d.turnRate / 100);
+    const w = d.weights.map((v) => Math.round(v * 100));
+    q('#drvLearned').textContent = `Gelernt (100 = voll): Geruch vorn → los ${w[0]} · hinten → los ${w[1]} · vorn → wenden ${w[2]} · hinten → wenden ${w[3]} · bisher ${d.turns}-mal umgedreht`;
     const names = this.info.workspaceNames;
     q('#innerNow').textContent = inner.content >= 0 ? names[inner.content] : '–';
     q('#innerNow').style.color = inner.content >= 0 ? (CONTENT_COLOR[names[inner.content]] ?? '#fff') : '';

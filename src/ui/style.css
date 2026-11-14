@@ -802,3 +802,14 @@ button.mini {
     resize: none;
   }
 }
+
+.ibar .felt.smell {
+  background: #c98b3c;
+}
+.ibar .felt.cmd {
+  background: #ff96c8;
+}
+.state.dead {
+  border-color: #ff6b6b;
+  color: #ffb0a8;
+}

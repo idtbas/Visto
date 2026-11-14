@@ -12,10 +12,11 @@ import { Amygdala } from './amygdala';
 import { BodyModel } from './bodymodel';
 import { Interoception } from './intero';
 import { Workspace } from './workspace';
+import { Drive } from './drive';
 import { Hormones, HORMONES, type HormoneInputs } from './hormones';
 import type { Biped } from '../body/biped';
 
-export const MODULES = ['workspace', 'broadcast', 'bodymodel', 'efference'] as const;
+export const MODULES = ['workspace', 'broadcast', 'bodymodel', 'efference', 'drive'] as const;
 export type ModuleName = (typeof MODULES)[number];
 
 export interface PopInfo {
@@ -89,6 +90,9 @@ export class Brain {
   readonly bodyModel: BodyModel;
   readonly intero: Interoception;
   readonly workspace: Workspace;
+  readonly drive: Drive;
+  /** the body is lying down on purpose (resting): being on the ground does not hurt */
+  lyingDown = false;
   readonly hormones = new Hormones();
   /** set by the simulation before every tick */
   readonly bodyState: HormoneInputs = { rpe: 0, dopamine: 0, pain: 0, surprise: 0, power: 0, intake: 0, asleep: false, activity: 0 };
@@ -128,6 +132,7 @@ export class Brain {
       ],
       [tone('extensor'), tone('trunk'), tone('posture')],
     );
+    this.drive = new Drive(this.net, this.intero.pops[0], { learn: !!opt.learn, lr: Number((globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env.DRV_LR ?? 3e-5) });
     if (opt.wasm === false) this.net.useKernel = false;
     this.net.build();
     this.net.learning = !!opt.learn;
@@ -158,6 +163,7 @@ export class Brain {
       const fx = this.hormones.effects;
       this.spinal.exploreGain = fx.exploration;
       this.decision.exploreGain = Math.max(0.6, fx.exploration);
+      this.drive.exploreGain = Math.max(0.6, fx.exploration);
       // dopamine-gated synapses follow the hormonal learning rate; in sleep they learn from replay
       const lr = asleep ? this.replayGain : fx.learningRate;
       for (const pr of this.net.projs) if (pr.elig) pr.lrGain = lr;
@@ -180,7 +186,7 @@ export class Brain {
     // workspace cut off, the forward model's own alarm is all that is left
     if (this.workspace.enabled ? this.workspace.justIgnited : this.predictor.surprised) this.surpriseNext = 1;
     this.spinal.sense();
-    this.pain.sense(asleep);
+    this.pain.sense(asleep || this.lyingDown);
     this.bodyModel.sense();
     this.amygdala.step(asleep);
     this.bodyModel.step(asleep);
@@ -188,6 +194,8 @@ export class Brain {
     for (const m of this.biped.muscles) fatigue += m.fatigue;
     this.intero.sense(this.hormones.energy, this.hormones.level.somnin, fatigue / this.biped.muscles.length);
     this.workspace.step(this.hormones.effects.arousal, asleep);
+    this.drive.hunger = this.intero.level[0];
+    this.drive.step(asleep);
     this.decision.step();
     this.cerebellum?.step();
     this.net.step();
@@ -265,15 +273,17 @@ export class Brain {
    *   'workspace'  – the global workspace neither receives nor sends
    *   'broadcast'  – contents still ignite but reach nothing
    *   'bodymodel'  – the mismatch between predicted and felt reaches nothing
-   *   'efference'  – the forward model no longer gets the copies of the motor commands */
+   *   'efference'  – the forward model no longer gets the copies of the motor commands
+   *   'drive'      – the loops for "go" and "turn" no longer reach their commands */
   setModule(name: ModuleName, on: boolean): void {
     this.modules[name] = on;
     if (name === 'workspace') this.workspace.setEnabled(on);
     else if (name === 'broadcast') this.workspace.setBroadcast(on);
     else if (name === 'bodymodel') this.bodyModel.setOutput(on);
+    else if (name === 'drive') this.drive.setEnabled(on);
     else this.bodyModel.setEfference(on);
   }
-  readonly modules: Record<ModuleName, boolean> = { workspace: true, broadcast: true, bodymodel: true, efference: true };
+  readonly modules: Record<ModuleName, boolean> = { workspace: true, broadcast: true, bodymodel: true, efference: true, drive: true };
 
   /** a unique name for every learned projection (the same pair of populations can be connected more than once) */
   private plasticNames(projs: { name: string }[]): string[] {

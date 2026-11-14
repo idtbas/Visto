@@ -506,6 +506,8 @@ export class SpinalCord {
 
   /** sleep paralysis: motoneurons no longer reach the muscles */
   atonia = false;
+  /** how much force the muscles can give (drops when the energy store is nearly empty) */
+  strength = 1;
 
   /** motoneuron firing drives the muscles */
   act(): void {
@@ -514,7 +516,7 @@ export class SpinalCord {
       const p = this.mn[i];
       const inst = (p.count * 1000) / (p.n * R_MN);
       this.stimTrace[i] += (inst - this.stimTrace[i]) * (1 / STIM_TAU);
-      b.stim[i] = this.atonia ? 0.01 : this.stimTrace[i];
+      b.stim[i] = this.atonia ? 0.01 : this.stimTrace[i] * this.strength;
     }
   }
 

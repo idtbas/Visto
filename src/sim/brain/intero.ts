@@ -3,7 +3,7 @@
 // Until now the hormone levels acted on the nervous system only as multipliers in code.
 // These cells make three of the internal states available as neural activity, so that they
 // can compete for the global workspace like any other content:
-//   hunger     – the energy store is running low
+//   hunger     – the energy store is below 70 % (full hunger at 20 %)
 //   tiredness  – sleep pressure
 //   exhaustion – the muscles are fatigued
 // Like the pain receptors they are sensors: the body sets their input, the rest is spikes.
@@ -27,7 +27,7 @@ export class Interoception {
   sense(energy: number, sleepPressure: number, fatigue: number): void {
     const lv = this.level;
     // each need starts to be felt only beyond a threshold
-    lv[0] = Math.min(1, Math.max(0, (0.45 - energy) / 0.4));
+    lv[0] = Math.min(1, Math.max(0, (0.7 - energy) / 0.5));
     lv[1] = Math.min(1, Math.max(0, (sleepPressure - 0.55) / 0.4));
     lv[2] = Math.min(1, Math.max(0, (fatigue - 0.35) / 0.5));
     const iext = this.net.iext;

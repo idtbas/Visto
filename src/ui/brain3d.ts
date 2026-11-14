@@ -147,6 +147,8 @@ const PLACE: Record<string, Place> = {
   // of prediction and sensation behind the prediction cells in the parietal lobe
   workspace: { kind: 'cortex', patch: [1.08, 1.5, 0.5, 2.1], sides: 'both', anchor: [0, 2.28, 0.32], split: true },
   bodymodel: { kind: 'cortex', patch: [2.44, 2.6, 0.6, 2.0], sides: 'both', anchor: [0, 2.05, -1.0], split: true },
+  // smell arrives at the olfactory bulbs under the frontal lobes
+  smell: { kind: 'nucleus', c: [0.1, 1.22, 0.82], r: [0.045, 0.035, 0.11], bilateral: true },
   // the body's interior reports to the insula, deep in the side of the brain
   intero: { kind: 'nucleus', c: [0.4, 1.52, 0.22], r: [0.035, 0.08, 0.12], bilateral: true, along: 2 },
   hippocampus: { kind: 'nucleus', c: [0.33, 1.3, -0.2], r: [0.07, 0.06, 0.4], bilateral: true, along: 2 },

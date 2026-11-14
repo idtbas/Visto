@@ -54,6 +54,11 @@ Nichts davon behauptet, dass Visto etwas erlebt.
   hat und was gespürt wird, wie viel davon unerklärt ist, welche Bedürfnisse gemeldet werden.
   „Schubsen" gibt dem Wesen einen Stoß von außen; vier Schalter trennen einzelne Teile der
   Architektur ab. Alle Werte stammen aus den laufenden Neuronen.
+- **Selbst / Laufen / Stehen**: In der Voreinstellung „Selbst" bekommt das Wesen keinen Befehl.
+  Es läuft los, wenn es Hunger hat, riecht die Cookies vor und hinter sich, dreht sich zum
+  näheren um, legt sich satt zur Ruhe – und **stirbt, wenn seine Energie aufgebraucht ist**.
+  Dann hilft nur „Neues Leben". Mit „Cookie geben" kann man es füttern. „Laufen" und „Stehen"
+  sind die alten Befehle von außen.
 - Zeitraffer bis `max`, „Stehen/Laufen", „Neues Leben" (Gehirn zurücksetzen). Das Gehirn wird
   alle 30 Sekunden im Browser gespeichert und beim nächsten Besuch weiterverwendet.
 - **Kleinhirn (experimentell)** baut das Gehirn mit 12.000 zusätzlichen Körnerzellen neu auf.
@@ -95,6 +100,8 @@ gerade läuft, zeigt der Hinweis, wenn man mit der Maus über die Neuronenzahl f
 | Otolithen | spüren, wie stark der Kopf nach vorn oder hinten beschleunigt wird | angeboren |
 | Körpermodell | vergleicht für sechs Sinne Vorhersage und Gespürtes mit eigenen Zellen; was unerklärt bleibt, gilt als Fremdeinwirkung | Vorhersage **gelernt**, Vergleich angeboren |
 | Körperinneres | Zellen, die Hunger, Müdigkeit und Erschöpfung als Feuerrate melden | angeboren |
+| Riechen | zwei Zellgruppen: wie stark riecht ein Cookie vorn, wie stark hinten (satt riecht es kaum) | angeboren |
+| Antrieb (Basalganglien) | zwei Schleifen geben die Befehle „Los" und „Wenden"; Hunger macht unruhig, der Geruch von vorn bremst das Wenden | Hunger → Los und der Vergleich angeboren; was die Gerüche bedeuten, wird **gelernt** |
 | Globaler Arbeitsraum | fünf Inhalte (Körper, Schmerz, Gefahr, Sehen, Bedürfnis) konkurrieren um einen selbsterhaltenden, zeitlich begrenzten Zustand, der an Wachheit und Haltung ausgerufen wird | angeboren; der Zugang gewöhnt sich |
 | Kleinhirn (optional) | Körnerzellen, Purkinje-Zellen, Kletterfasern: lernt Korrekturen vorwegzunehmen | gelernt, noch experimentell |
 
@@ -359,6 +366,12 @@ das Maximum und sank erst danach.
 
 ## Was noch nicht geht
 
+- **Der eigene Antrieb ist echt, aber schmal.** Das Wesen entscheidet selbst, ob es läuft,
+  ruht oder umdreht, und es überlebt dadurch. Aber: Loslaufen, Hinlegen und Umdrehen führt
+  weiter die helfende Hand aus; „der beste Weg" heißt in dieser Welt nur „zum näheren Cookie,
+  vorn oder hinten"; Hindernisse gehen in die Wahl nicht ein; und das Lernsignal dafür ist
+  eine Formel (die Änderung des Geruchs), nicht das Dopamin der Zellen. Vom Tod hat es keinen
+  Begriff – es hat Hunger. Ein schlechter Läufer kann trotz richtigem Antrieb verhungern.
 - **Die Innenperspektive ist ein Anfang, kein Ergebnis.** Es gibt jetzt ein Körpermodell mit
   Vergleichszellen und einen globalen Arbeitsraum, der sich in Tests wie einer verhält. Aber
   das Körpermodell unterscheidet Stöße von außen bisher schlechter von eigener Bewegung als
@@ -392,8 +405,8 @@ das Maximum und sank erst danach.
   Wesen deutlich öfter als ohne.
 - Das Kleinhirn ist verdrahtet und seine Synapsen lernen, aber es verbessert das Laufen bisher
   nicht messbar. Deshalb ist es abgeschaltet, solange man es nicht einschaltet.
-- Das voreingestellte Gehirn hat jetzt 17.024 Neuronen und 966.904 Synapsen (zu Beginn 6.392
-  und 330.080), mit Kleinhirn rund 29.600 Neuronen. Das ist weiter deutlich unter den anfangs
+- Das voreingestellte Gehirn hat jetzt 17.440 Neuronen und rund 977.000 Synapsen (zu Beginn
+  6.392 und 330.080), mit Kleinhirn rund 30.000 Neuronen. Das ist weiter deutlich unter den anfangs
   angepeilten 100.000 Neuronen. Gut die Hälfte der neuen Zellen ist die Körperfühlrinde,
   deren Verschaltung fest ist; sie lernt selbst nichts.
 - Das Stehen ist verkrampft (rund 650 W) und das Loslaufen aus dem Stand gelingt nicht.
@@ -420,6 +433,7 @@ das Maximum und sank erst danach.
 | `npx tsx tools/memory-test.ts`, `tools/predict-test.ts` | Gedächtnis und Replay, Vorwärtsmodell |
 | `npx tsx tools/pain-test.ts`, `tools/cortex-test.ts`, `tools/amygdala-test.ts` | Schmerz je Sturz, Körperfühlrinde und was der Mandelkern lernt, Schaltkreis hinter dem Mandelkern |
 | `node tools/summarize-lives.cjs out/*.log` | wertet Protokolle von `learn-test` aus (`PAIN=fixed|graded|off`, `AMY_DA=0`, `NOREWARD=1` wählen die Bedingung) |
+| `npx tsx tools/exp-autonomy.ts` | eigener Antrieb: läuft es von selbst, findet es die Cookies, überlebt es (`LESION=drive`, `DRV_LR=0`, `TONE=0.6` für Gegenproben und Neugeborene) |
 | `npx tsx tools/exp-workspace.ts`, `tools/exp-self-other.ts`, `tools/exp-ablation.ts` | Experimente zur Innenperspektive: Zündung des Arbeitsraums, Selbst gegen Fremd, Abschalten einzelner Teile (`LESION=…`) |
 | `npm run build:kernel` | übersetzt `asm/kernel.ts` nach WebAssembly und bettet es ein |
 | `npx tsx tools/bench-sim.ts`, `tools/mature-test.ts` | Rechenzeit (`VISTO_JS=1` erzwingt JavaScript), Gang des ausgereiften Wesens |

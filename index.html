@@ -27,8 +27,9 @@
             <button data-speed="0">max</button>
           </div>
           <div class="seg" id="goSeg">
-            <button data-go="1" class="on" title="Mit Starthilfe loslaufen">Laufen</button>
-            <button data-go="0" title="Ruhig stehen bleiben">Stehen</button>
+            <button data-go="self" class="on" title="Das Wesen entscheidet selbst, wann es läuft, ruht und umdreht. Niemand gibt ihm den Befehl.">Selbst</button>
+            <button data-go="1" title="Befehl von außen: laufen (mit Starthilfe)">Laufen</button>
+            <button data-go="0" title="Befehl von außen: ruhig stehen bleiben">Stehen</button>
           </div>
           <button id="btnReset" title="Wieder aufstellen">Aufstellen</button>
           <button id="btnNewLife" title="Gehirn zurücksetzen und von vorn beginnen">Neues Leben</button>
@@ -61,7 +62,7 @@
           <section class="strip" id="lifeStrip">
             <div class="stat cookieBox">
               <button id="btnCookie" title="Belohnung geben (Taste C)">🍪 Cookie geben</button>
-              <label class="toggle" title="Belohnung: Fortschritt fühlt sich gut an, und auf dem Weg liegen Cookies. Ausgeschaltet lernt das Wesen nur noch aus Schmerz."><input type="checkbox" id="chkAuto" checked /> Cookies</label>
+              <label class="toggle" title="Belohnung: Fortschritt fühlt sich gut an, und es liegen Cookies aus. Ausgeschaltet lernt das Wesen nur noch aus Schmerz; in dieser Welt ohne Futter verbraucht es dann auch keine Energie."><input type="checkbox" id="chkAuto" checked /> Cookies</label>
               <label class="toggle" title="Schmerz: Schmerzrezeptoren in Haut und Gelenken melden, wo und wie hart das Wesen aufschlägt oder ein Gelenk überdehnt. Ausgeschaltet tut nichts weh."><input type="checkbox" id="chkPain" checked /> Schmerz</label>
               <label class="toggle" title="Legt kleine Stufen in den Weg. Hinter jeder wartet ein Cookie."><input type="checkbox" id="chkObst" /> Hindernisse</label>
             </div>
@@ -130,6 +131,14 @@
           <p class="inote dim">Abweichungs-Zellen im Mittel: <span id="innerMismatch"></span></p>
         </section>
         <section>
+          <h3>Eigener Antrieb <span class="meta">Geruch der Cookies · Befehle der beiden Schleifen · was es über die Gerüche gelernt hat</span></h3>
+          <div class="irow"><span>Geruch vorn</span><span class="ibar"><span class="felt smell" id="drvSmellF"></span></span></div>
+          <div class="irow"><span>Geruch hinten</span><span class="ibar"><span class="felt smell" id="drvSmellB"></span></span></div>
+          <div class="irow strong"><span>Befehl „Los“</span><span class="ibar"><span class="felt cmd" id="drvGo"></span></span></div>
+          <div class="irow"><span>Befehl „Wenden“</span><span class="ibar"><span class="felt cmd" id="drvTurn"></span></span></div>
+          <p class="inote dim" id="drvLearned"></p>
+        </section>
+        <section>
           <h3>Bedürfnisse und Reaktion</h3>
           <div id="innerNeeds"></div>
           <div class="irow" title="Hirnstamm-Kern, über den ein gezündeter Inhalt (Körper, Gefahr) kurz die Haltung versteift"><span>Stützreaktion</span><span class="ibar"><span class="felt brace" id="innerBrace"></span></span></div>
@@ -142,6 +151,7 @@
             <label class="toggle" title="Inhalte zünden noch, erreichen aber nichts"><input type="checkbox" data-module="broadcast" checked /> Rundruf</label>
             <label class="toggle" title="Die Abweichung zwischen Erwartung und Gespürtem erreicht den Arbeitsraum"><input type="checkbox" data-module="bodymodel" checked /> Körpermodell → Arbeitsraum</label>
             <label class="toggle" title="Das Vorwärtsmodell bekommt Kopien der Befehle an die Muskeln"><input type="checkbox" data-module="efference" checked /> Efferenzkopie</label>
+            <label class="toggle" title="Der Antriebs-Schaltkreis erreicht seine Befehle „Los“ und „Wenden“. Abgeschaltet steht das Wesen in der Betriebsart „Selbst“ nie mehr auf."><input type="checkbox" data-module="drive" checked /> Antrieb</label>
           </div>
         </section>
       </div>

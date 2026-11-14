@@ -13,6 +13,7 @@ export type ToWorker =
   | { type: 'placeCookie'; x: number }
   | { type: 'autoReward'; on: boolean }
   | { type: 'wantsToWalk'; on: boolean }
+  | { type: 'autonomy'; on: boolean }
   | { type: 'obstacles'; on: boolean }
   | { type: 'pain'; on: boolean }
   | { type: 'push'; impulse: number }

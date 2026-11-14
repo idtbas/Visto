@@ -51,6 +51,13 @@ export interface Frame {
   /** what the amygdala expects: 0 = safe, 1 = pain is certain */
   danger: number;
   inner: Inner;
+  /** +1 or -1: which way the creature faces; place in the world = worldOffset + facing × x */
+  facing: number;
+  worldOffset: number;
+  /** its own drive: does it want to walk, how strongly are the commands "go" and "turn" given [Hz],
+   *  what does it smell ahead / behind (0..1), and what it has learned about the smells
+   *  (ahead → go, behind → go, ahead → turn, behind → turn; 1 = fully committed) */
+  drive: { autonomy: boolean; mortal: boolean; go: boolean; goRate: number; turnRate: number; smell: number[]; weights: number[]; turns: number; diedAt: number };
 }
 
 /** diagnostics of the architecture behind an integrated point of view (all values are read from the neurons) */
@@ -103,7 +110,8 @@ export interface Cookie {
 }
 
 export interface LifeStats {
-  state: 'standing' | 'walking' | 'fallen' | 'sleeping';
+  /** 'resting' = lying down awake by its own choice; 'dead' = the energy store ran out */
+  state: 'standing' | 'walking' | 'fallen' | 'sleeping' | 'resting' | 'dead';
   falls: number;
   /** distance covered since the creature was last put on its feet */
   attempt: number;
@@ -112,6 +120,9 @@ export interface LifeStats {
   /** the helping hand is holding the creature right now */
   inHand: boolean;
 }
+
+/** distance over which the smell of a cookie fades to about a third [m] */
+const SMELL_RANGE = 14;
 
 /** how much an average fall hurts, in units of reward */
 const FALL_COST = 1.5;
@@ -130,6 +141,9 @@ export interface SimState {
   attempts?: number[];
   durations?: number[];
   expectedPain?: number;
+  facing?: number;
+  worldOffset?: number;
+  diedAt?: number;
 }
 
 export interface SimOptions {
@@ -151,6 +165,12 @@ export interface SimOptions {
   pain?: PainMode;
   /** false forces the JavaScript neuron loop */
   wasm?: boolean;
+  /** the creature decides by itself when to walk, rest and turn around */
+  autonomy?: boolean;
+  /** it dies when its energy store is empty */
+  mortal?: boolean;
+  /** energy store at birth, 0..1 */
+  energy?: number;
 }
 
 export interface BrainInfo {
@@ -195,6 +215,24 @@ export class Sim {
   cookiesEaten = 0;
   /** keep one cookie waiting ahead of the creature */
   autoCookies = true;
+  /** the creature decides by itself when to walk, rest and turn around (otherwise `wantsToWalk` commands it) */
+  autonomy = false;
+  /** it dies when its energy store is empty */
+  mortal = false;
+  /** +1 or -1: which way the creature faces in the world. The simulation always runs "forwards";
+   *  turning around mirrors everything else about the place where the creature stands. */
+  facing = 1;
+  /** place in the world = worldOffset + facing × (place in the simulation) */
+  worldOffset = 0;
+  turns = 0;
+  private lastTurn = -10;
+  /** smell of the cookies: ahead plus half of what is behind, and how fast it is changing */
+  private smell = 0;
+  private smellRate = 0;
+  private smellEvent = true;
+  private turnOutcome = 0;
+  /** when it died [s] (-1 = alive) */
+  diedAt = -1;
   private lastImpact = 0;
 
   /** hand the creature a cookie right now (the user's reward button) */
@@ -211,14 +249,85 @@ export class Sim {
 
   private cookieTick(): void {
     const x = this.physics.biped.hipX();
+    const rng = this.brain.net.rng;
     for (let i = this.cookies.length - 1; i >= 0; i--) {
       const c = this.cookies[i];
       if (Math.abs(c.x - x) < 0.25 && this.life.state !== 'fallen') {
         this.cookies.splice(i, 1);
         this.giveCookie(c.size);
-      } else if (c.x < x - 6) this.cookies.splice(i, 1);
+        this.smellEvent = true;
+      } else if (this.autonomy ? Math.abs(c.x - x) > 30 : c.x < x - 6) this.cookies.splice(i, 1);
     }
-    if (this.autoCookies && !this.obstaclesOn && !this.cookies.some((c) => c.x > x)) this.cookies.push({ x: x + 4 + 3 * this.brain.net.rng(), size: 1 });
+    if (this.autoCookies && !this.obstaclesOn) {
+      if (!this.autonomy) {
+        if (!this.cookies.some((c) => c.x > x)) this.cookies.push({ x: x + 4 + 3 * rng(), size: 1 });
+      } else if (this.cookies.length === 0) {
+        // A creature that cannot walk yet is fed like an infant: the next cookie lies ahead.
+        // Once it has walked 20 m in one go, cookies may also lie behind it, and sometimes
+        // there are two to choose from.
+        const competent = this.life.bestAttempt > 20;
+        const behind = competent && rng() < 0.45;
+        const d = 7 + 6 * rng();
+        this.cookies.push({ x: x + (behind ? -d : d), size: 1 });
+        if (competent && rng() < 0.3) this.cookies.push({ x: x + (behind ? 1 : -1) * (5 + 12 * rng()), size: 1 });
+        this.smellEvent = true;
+      }
+    }
+    // smell: stronger when nearer; what is behind smells half as strong
+    const s = this.updateSmell();
+    const rate = this.smellEvent ? 0 : (s - this.smell) / 0.05;
+    this.smellRate += (rate - this.smellRate) * 0.3;
+    this.smell = s;
+    this.smellEvent = false;
+  }
+
+  private updateSmell(): number {
+    const x = this.physics.biped.hipX();
+    let front = 0;
+    let back = 0;
+    for (const c of this.cookies) {
+      const d = c.x - x;
+      const v = Math.exp(-Math.abs(d) / SMELL_RANGE);
+      if (d >= -0.1) front = Math.max(front, v);
+      else back = Math.max(back, v);
+    }
+    this.brain.drive.smellFront = front;
+    this.brain.drive.smellBack = back;
+    return front + 0.5 * back;
+  }
+
+  /** The creature turns around (the helping hand turns it, as it puts it on its feet). The
+   *  simulation keeps running forwards: instead of the body, everything else is mirrored
+   *  about the place where it stands. */
+  turnAround(): void {
+    const b = this.physics.biped;
+    const x0 = b.hipX();
+    const before = this.smell;
+    for (const c of this.cookies) c.x = 2 * x0 - c.x;
+    const terrain = this.physics.terrain;
+    const blocks = terrain.obstacles.map((o) => ({ ...o }));
+    terrain.clearObstacles();
+    for (const o of blocks) terrain.addBlock(2 * x0 - o.x - o.w, o.w, o.h);
+    this.encounters.clear();
+    this.nextObstacleX = x0 + 4 + 4 * this.brain.net.rng();
+    this.worldOffset += 2 * this.facing * x0;
+    this.facing = -this.facing;
+    this.turns++;
+    this.lastTurn = this.time;
+    if (this.life.state === 'walking') {
+      // the walking attempt goes on: only the direction has changed
+      const attempt = this.life.attempt;
+      const since = this.stateSince;
+      const surprise = this.attemptSurprise;
+      this.placeStride();
+      this.attemptX0 = b.hipX() - attempt;
+      this.stateSince = since;
+      this.attemptSurprise = surprise;
+    }
+    this.smell = this.updateSmell();
+    this.smellEvent = true;
+    // what the turn did to the smell teaches the drive circuit
+    this.turnOutcome += this.smell - before;
   }
 
   /** blocks appear on the path every few metres */
@@ -305,6 +414,9 @@ export class Sim {
       { scale: opt.brainScale ?? 1, seed: opt.seed ?? 1, learn: opt.learn ?? true, learningRate: opt.learningRate, exploreW: opt.exploreW, newborn: opt.newborn ?? 0, newbornTone: opt.newbornTone, granules: opt.granules, decisionLr: opt.decisionLr, wasm: opt.wasm },
     );
     this.brain.hormones.sleepEnabled = this.sleepOption;
+    this.autonomy = opt.autonomy ?? false;
+    this.mortal = opt.mortal ?? false;
+    if (opt.energy !== undefined) this.brain.hormones.energy = opt.energy;
     this.setPainMode(opt.pain ?? 'graded');
     this.place();
     // at birth the nervous system needs a little longer to settle before the hand lets go
@@ -332,7 +444,7 @@ export class Sim {
   /** automatic reward: staying upright and making progress feels good */
   private autoReward(): number {
     const b = this.physics.biped;
-    if (this.life.state === 'fallen' || this.life.state === 'sleeping') return 0;
+    if (this.life.state !== 'walking' && this.life.state !== 'standing') return 0;
     const v = b.velX();
     const speed = v < -0.5 ? -0.5 : v > 1.4 ? 1.4 : v;
     const tilt = Math.abs(b.theta - 0.1) - 0.2;
@@ -376,7 +488,7 @@ export class Sim {
   }
 
   saveState(): SimState {
-    return { brain: this.brain.saveState(), time: this.physics.time, life: { ...this.life }, cookiesEaten: this.cookiesEaten, x: this.physics.biped.hipX(), attempts: this.attempts.slice(), durations: this.fallExpectation.save(), expectedPain: this.expectedPain };
+    return { brain: this.brain.saveState(), time: this.physics.time, life: { ...this.life }, cookiesEaten: this.cookiesEaten, x: this.physics.biped.hipX(), attempts: this.attempts.slice(), durations: this.fallExpectation.save(), expectedPain: this.expectedPain, facing: this.facing, worldOffset: this.worldOffset, diedAt: this.diedAt };
   }
 
   loadState(st: SimState): boolean {
@@ -389,8 +501,17 @@ export class Sim {
     this.attemptCount = this.attempts.length;
     this.fallExpectation.load(st.durations ?? []);
     this.expectedPain = st.expectedPain ?? FALL_COST;
+    this.facing = st.facing === -1 ? -1 : 1;
+    this.worldOffset = st.worldOffset ?? 0;
+    this.diedAt = st.diedAt ?? -1;
     this.physics.biped.setPose(staggeredStandPose(undefined, st.x));
     this.place();
+    if (this.diedAt >= 0) {
+      // a creature that has died stays dead
+      this.life.state = 'dead';
+      this.brain.spinal.atonia = true;
+      this.brain.lyingDown = true;
+    }
     return true;
   }
 
@@ -413,6 +534,8 @@ export class Sim {
     b.setPose(staggeredStandPose(undefined, b.hipX()));
     this.brain.spinal.reset();
     this.brain.bodyModel.reset();
+    this.brain.spinal.atonia = false;
+    this.brain.lyingDown = false;
     this.life.state = 'standing';
     this.stateSince = this.time;
     this.attemptX0 = b.hipX();
@@ -429,6 +552,8 @@ export class Sim {
     b.setPose(pose);
     this.brain.spinal.reset();
     this.brain.bodyModel.reset();
+    this.brain.spinal.atonia = false;
+    this.brain.lyingDown = false;
     this.brain.spinal.go = 1;
     this.life.state = 'walking';
     this.stateSince = this.time;
@@ -441,8 +566,35 @@ export class Sim {
 
   /** put the creature back on its feet in the way that suits what it is about to do */
   place(): void {
-    if (this.wantsToWalk && this.startInStride) this.placeStride();
+    if (this.autonomy) {
+      // its own decision: it is helped up only if it wants to walk, otherwise it stays down and rests
+      if (this.brain.drive.go) this.placeStride();
+      else this.lieDown();
+    } else if (this.wantsToWalk && this.startInStride) this.placeStride();
     else this.placeStanding();
+  }
+
+  /** rest: the muscles let go and the creature lies down, awake */
+  private lieDown(): void {
+    this.life.state = 'resting';
+    this.stateSince = this.time;
+    this.brain.spinal.go = 0;
+    this.brain.spinal.atonia = true;
+    this.brain.lyingDown = true;
+  }
+
+  private endAttempt(): void {
+    this.fallExpectation.record(Math.max(this.time - this.stateSince, this.fallExpectation.mean));
+    this.attempts.push(Math.max(0, this.life.attempt));
+    this.attemptCount++;
+  }
+
+  /** switch between deciding for itself and being commanded */
+  setAutonomy(on: boolean): void {
+    if (this.autonomy === on) return;
+    this.autonomy = on;
+    this.smellEvent = true;
+    if (this.mode === 'brain' && this.life.state !== 'fallen' && this.life.state !== 'sleeping' && this.life.state !== 'dead') this.place();
   }
 
   /** the hand steadies trunk position and tilt (it does not carry the weight) and lets go gradually */
@@ -467,6 +619,43 @@ export class Sim {
     const life = this.life;
     const sp = this.brain.spinal;
     const since = this.time - this.stateSince;
+    if (life.state === 'dead') {
+      sp.go = 0;
+      sp.atonia = true;
+      return;
+    }
+    const energy = this.brain.hormones.energy;
+    this.brain.hormones.metabolism = !this.mortal || this.autoCookies;
+    sp.strength = this.mortal ? this.brain.hormones.effects.strength : 1;
+    if (this.mortal && energy <= 0) {
+      // starved
+      if (life.state === 'walking') this.endAttempt();
+      life.state = 'dead';
+      this.diedAt = this.time;
+      this.stateSince = this.time;
+      this.brain.lyingDown = true;
+      this.brain.bodyState.asleep = false;
+      return;
+    }
+    if (this.autonomy && this.brain.drive.turn && life.state === 'walking' && this.time - this.lastTurn > 5 && this.time >= this.frozenUntil) {
+      this.turnAround();
+    }
+    if (life.state === 'resting') {
+      sp.go = 0;
+      sp.atonia = true;
+      this.brain.lyingDown = true;
+      if (this.brain.hormones.effects.wantsSleep) {
+        life.state = 'sleeping';
+        this.stateSince = this.time;
+      } else if (since > 1 && (this.autonomy ? this.brain.drive.go : true)) this.place();
+      return;
+    }
+    if (this.autonomy && life.state === 'walking' && !this.brain.drive.go && since > 1.5 && this.time >= this.frozenUntil) {
+      // it no longer wants to walk: it lies down
+      this.endAttempt();
+      this.lieDown();
+      return;
+    }
     if (life.state === 'standing') {
       sp.go = 0;
       if (since > this.standBeforeGo && this.wantsToWalk) {
@@ -482,6 +671,7 @@ export class Sim {
       sp.go = 0;
       sp.atonia = true;
       this.brain.bodyState.asleep = true;
+      this.brain.lyingDown = true;
       if (!fx.wantsSleep) {
         sp.atonia = false;
         this.brain.bodyState.asleep = false;
@@ -490,11 +680,7 @@ export class Sim {
       return;
     }
     if (fx.wantsSleep && this.time >= this.frozenUntil) {
-      if (life.state === 'walking') {
-        this.fallExpectation.record(Math.max(this.time - this.stateSince, this.fallExpectation.mean));
-        this.attempts.push(Math.max(0, life.attempt));
-        this.attemptCount++;
-      }
+      if (life.state === 'walking') this.endAttempt();
       life.state = 'sleeping';
       this.stateSince = this.time;
       return;
@@ -569,6 +755,19 @@ export class Sim {
       this.lifeTick();
       this.holdTick();
       const st = this.life.state;
+      // teaching signals of the drive circuit: the change of the smell
+      // (the outcome of a turn is signalled at once, while the synapses still remember what was
+      // smelled before it; after the turn everything that was behind is ahead)
+      const paid = this.turnOutcome / 150;
+      this.turnOutcome -= paid;
+      this.brain.drive.turnTeach = paid * 1000;
+      this.brain.drive.goTeach = st === 'walking' ? this.smellRate : 0;
+      if (st === 'dead') {
+        // nothing happens in the nervous system any more
+        this.physics.biped.stim.fill(0.01);
+        this.physics.step();
+        return;
+      }
       const b2 = this.physics.biped;
       const bs = this.brain.bodyState;
       bs.power = b2.power;
@@ -630,6 +829,19 @@ export class Sim {
       painNow: this.brain.pain.intensity,
       expectedPain: this.painMode === 'off' ? 0 : this.painMode === 'fixed' ? FALL_COST : this.expectedPain,
       danger: this.brain.amygdala.danger,
+      facing: this.facing,
+      worldOffset: this.worldOffset,
+      drive: {
+        autonomy: this.autonomy,
+        mortal: this.mortal,
+        go: this.brain.drive.go,
+        goRate: this.brain.drive.command[0].rate,
+        turnRate: this.brain.drive.command[1].rate,
+        smell: [this.brain.drive.smellFront, this.brain.drive.smellBack],
+        weights: this.brain.drive.weights(),
+        turns: this.turns,
+        diedAt: this.diedAt,
+      },
       inner: {
         workspace: this.brain.workspace.pools.map((p) => p.rate),
         content: this.brain.workspace.content,

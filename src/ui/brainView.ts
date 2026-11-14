@@ -34,11 +34,12 @@ export const REGIONS: RegionDef[] = [
   { key: 'workspace', title: 'Globaler Arbeitsraum', x: 0.31, y: 0.02, w: 0.325, h: 0.135, color: [255, 255, 255] },
   { key: 'cortex', title: 'Scheitelrinde · Vorhersage', x: 0.645, y: 0.02, w: 0.325, h: 0.075, color: [255, 236, 170] },
   { key: 'explore', title: 'Erkundungs-Kern', x: 0.645, y: 0.103, w: 0.325, h: 0.089, color: [200, 160, 255] },
-  { key: 'visual', title: 'Sehrinde', x: 0.03, y: 0.165, w: 0.13, h: 0.105, color: [120, 220, 255] },
+  { key: 'visual', title: 'Sehrinde', x: 0.03, y: 0.165, w: 0.13, h: 0.05, color: [120, 220, 255] },
+  { key: 'smell', title: 'Riechen', x: 0.03, y: 0.22, w: 0.13, h: 0.05, color: [201, 139, 60] },
   { key: 'hippocampus', title: 'Hippocampus · Gedächtnis', x: 0.17, y: 0.165, w: 0.25, h: 0.105, color: [140, 240, 210] },
   { key: 'bodymodel', title: 'Körpermodell · Abgleich', x: 0.43, y: 0.165, w: 0.205, h: 0.105, color: [159, 232, 255] },
-  { key: 'basal', title: 'Basalganglien', x: 0.645, y: 0.2, w: 0.16, h: 0.07, color: [255, 150, 200] },
-  { key: 'vta', title: 'Dopamin', x: 0.815, y: 0.2, w: 0.155, h: 0.07, color: [255, 180, 84] },
+  { key: 'basal', title: 'Basalganglien · Antrieb', x: 0.645, y: 0.2, w: 0.215, h: 0.07, color: [255, 150, 200] },
+  { key: 'vta', title: 'Dopamin', x: 0.87, y: 0.2, w: 0.1, h: 0.07, color: [255, 180, 84] },
   { key: 'cerebellum_granule', title: 'Kleinhirn · Körner', x: 0.03, y: 0.285, w: 0.115, h: 0.215, color: [170, 200, 255] },
   { key: 'cerebellum', title: 'Kleinhirn · Purkinje', x: 0.155, y: 0.285, w: 0.145, h: 0.13, color: [200, 170, 255] },
   { key: 'amygdala', title: 'Mandelkern', x: 0.31, y: 0.285, w: 0.155, h: 0.062, color: [255, 140, 120] },
@@ -64,6 +65,8 @@ const LEVELS = 4;
 export function regionKeyOf(p: PopInfo): string {
   const m = /_([01])$/.exec(p.name);
   if (m && SPLIT_BY_LEG.has(p.region)) return `${p.region}_${m[1]}`;
+  // the loops of the drive circuit are basal ganglia like the ones that decide about lifting the feet
+  if (p.region === 'drive') return 'basal';
   // spinal-type pools that serve both legs (mode gates, gait initiation, tone context) sit in the brainstem
   return p.region === 'spinal' ? 'brainstem' : p.region;
 }

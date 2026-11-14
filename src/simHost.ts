@@ -91,6 +91,9 @@ export function createHost(post: (m: FromWorker) => void): (m: ToWorker) => void
       case 'placeCookie':
         sim.placeCookie(m.x);
         break;
+      case 'autonomy':
+        sim.setAutonomy(m.on);
+        break;
       case 'wantsToWalk':
         sim.setWantsToWalk(m.on);
         break;

@@ -177,11 +177,20 @@ function updatePanels(f: Frame): void {
   const ss = t % 60;
   $('simTime').textContent = (hh ? `${hh}:${String(mm).padStart(2, '0')}` : `${mm}`) + `:${String(ss).padStart(2, '0')}`;
   $('simSpeed').textContent = `×${f.speed.toFixed(f.speed < 10 ? 1 : 0)}`;
-  $('hud').textContent = `Strecke ${de(f.body[0], 1)} m   Tempo ${de(f.velX)} m/s   Neigung ${((f.lean * 180) / Math.PI).toFixed(0)}°   Leistung ${f.power.toFixed(0)} W`;
+  $('hud').textContent = `Ort ${de(f.worldOffset + f.facing * f.body[0], 1)} m   Tempo ${de(f.velX)} m/s   Neigung ${((f.lean * 180) / Math.PI).toFixed(0)}°   Leistung ${f.power.toFixed(0)} W`;
   const life = f.life;
   const mind = f.mind;
   $('lifeState').textContent =
-    f.mode !== 'brain' ? (f.mode === 'manual' ? 'Handsteuerung' : 'Referenz-Reflexe (ohne Gehirn)') : life.state === 'sleeping' ? (mind.dream ? 'schläft und träumt' : 'schläft') : life.state === 'fallen' ? 'gestürzt – wird gleich aufgehoben' : life.inHand ? 'in der helfenden Hand' : life.state === 'standing' ? 'steht' : 'läuft';
+    f.mode !== 'brain' ? (f.mode === 'manual' ? 'Handsteuerung' : 'Referenz-Reflexe (ohne Gehirn)') : life.state === 'dead'
+        ? `verhungert nach ${Math.max(1, Math.round(f.drive.diedAt / 60))} min – „Neues Leben" beginnt von vorn`
+        : life.state === 'sleeping'
+          ? mind.dream ? 'schläft und träumt' : 'schläft'
+          : life.state === 'resting'
+            ? f.drive.autonomy ? 'ruht – steht auf, wenn es Hunger bekommt' : 'ruht'
+            : life.state === 'fallen'
+              ? f.drive.autonomy && !f.drive.go ? 'gestürzt – bleibt liegen' : 'gestürzt – wird gleich aufgehoben'
+              : life.inHand ? 'in der helfenden Hand' : life.state === 'standing' ? 'steht' : f.drive.autonomy ? 'läuft aus eigenem Antrieb' : 'läuft';
+  $('lifeState').classList.toggle('dead', life.state === 'dead');
   $('stFalls').textContent = String(life.falls);
   $('stBest').textContent = life.bestAttempt >= 100 ? `${Math.round(life.bestAttempt)} m` : `${de(life.bestAttempt)} m`;
   $('memNote').textContent = `${mind.attempts} Läufe · ${mind.encounters} Hind. · ${mind.dreams} Träume`;
@@ -224,11 +233,16 @@ $('world').addEventListener('click', (e) => {
   const x = bodyView.worldX(e.offsetX);
   send({ type: 'placeCookie', x });
 });
+/** 'self' = the creature decides; '1' / '0' = it is commanded to walk / to stand */
+function sendGoMode(mode: string): void {
+  if (mode !== 'self') send({ type: 'wantsToWalk', on: mode === '1' });
+  send({ type: 'autonomy', on: mode === 'self' });
+}
 for (const b of Array.from($('goSeg').querySelectorAll('button'))) {
   b.addEventListener('click', () => {
     $('goSeg').querySelectorAll('button').forEach((x) => x.classList.remove('on'));
     b.classList.add('on');
-    send({ type: 'wantsToWalk', on: b.dataset.go === '1' });
+    sendGoMode(b.dataset.go ?? 'self');
   });
 }
 for (const b of Array.from($('speedSeg').querySelectorAll('button'))) {
@@ -323,14 +337,14 @@ async function boot(fresh: boolean): Promise<void> {
   // a newborn starts with weak descending tone; "?tone=1" starts with a mature one instead
   const newbornTone = query.has('tone') ? Number(query.get('tone')) : 0.6;
   const granules = query.has('granules') ? Number(query.get('granules')) : withCerebellum ? CEREBELLUM_GRANULES : 0;
-  send({ type: 'start', state, mainThread: onMainThread, options: { newbornTone, granules, sleep: !query.has('nosleep'), wasm: !query.has('js') } });
+  send({ type: 'start', state, mainThread: onMainThread, options: { newbornTone, granules, sleep: !query.has('nosleep'), wasm: !query.has('js'), autonomy: true, mortal: !query.has('immortal'), energy: 0.6 } });
   // bring the new simulation in line with the controls on the page
   const speedBtn = $('speedSeg').querySelector<HTMLElement>('button.on');
   send({ type: 'speed', speed: Number(speedBtn?.dataset.speed ?? 1) });
   send({ type: 'autoReward', on: $<HTMLInputElement>('chkAuto').checked });
   send({ type: 'obstacles', on: $<HTMLInputElement>('chkObst').checked });
   send({ type: 'pain', on: $<HTMLInputElement>('chkPain').checked });
-  send({ type: 'wantsToWalk', on: $('goSeg').querySelector<HTMLElement>('button.on')?.dataset.go === '1' });
+  sendGoMode($('goSeg').querySelector<HTMLElement>('button.on')?.dataset.go ?? 'self');
   if (paused) send({ type: 'pause', paused });
 }
 void boot(false);

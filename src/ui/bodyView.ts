@@ -63,18 +63,28 @@ export class BodyView {
 
   setFrame(f: Frame): void {
     this.frame = f;
-    const hipX = f.body[0];
+    this.facing = f.facing;
+    this.offset = f.worldOffset;
+    const hipX = this.offset + this.facing * f.body[0];
     // the camera leads slightly ahead and follows smoothly
-    const target = hipX + 0.25;
+    const target = hipX + 0.25 * this.facing;
     if (Math.abs(target - this.camX) > 5) this.camX = target;
     this.camX += (target - this.camX) * 0.12;
     this.trail.push(hipX, f.body[1]);
     if (this.trail.length > 240) this.trail.splice(0, 2);
   }
 
-  /** world coordinate under a horizontal canvas position (CSS pixels) */
+  /** simulation coordinate under a horizontal canvas position (CSS pixels) */
   worldX(px: number): number {
-    return this.camX + (px - this.w / 2) / this.scale;
+    return (this.camX + (px - this.w / 2) / this.scale - this.offset) * this.facing;
+  }
+
+  // The simulation always runs "forwards". Which way that is in the world can change when the
+  // creature turns around: place in the world = offset + facing × place in the simulation.
+  private facing = 1;
+  private offset = 0;
+  private sxWorld(x: number): number {
+    return this.w / 2 + (x - this.camX) * this.scale;
   }
 
   private drawCookie(x: number, size: number): void {
@@ -107,7 +117,7 @@ export class BodyView {
   }
 
   private sx(x: number): number {
-    return this.w / 2 + (x - this.camX) * this.scale;
+    return this.sxWorld(this.offset + this.facing * x);
   }
   private sy(y: number): number {
     return this.groundY - y * this.scale;
@@ -128,7 +138,7 @@ export class BodyView {
       c.fillStyle = '#2a3445';
       c.strokeStyle = '#51607a';
       c.lineWidth = 1.5;
-      const x = this.sx(o.x);
+      const x = Math.min(this.sx(o.x), this.sx(o.x + o.w));
       const y = this.sy(o.h);
       c.beginPath();
       c.rect(x, y, o.w * this.scale, o.h * this.scale);
@@ -275,7 +285,7 @@ export class BodyView {
     c.font = '11px ui-monospace, SFMono-Regular, Menlo, monospace';
     c.textAlign = 'center';
     for (let m = x0; m <= x1; m++) {
-      const x = this.sx(m);
+      const x = this.sxWorld(m);
       c.strokeStyle = m % 5 === 0 ? '#5d6d88' : '#33405380';
       c.beginPath();
       c.moveTo(x, groundY);

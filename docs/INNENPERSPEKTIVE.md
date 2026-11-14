@@ -145,6 +145,42 @@ Drei kleine Zellgruppen melden Hunger (Energiereserve unter 45 %), Müdigkeit (S
 und Erschöpfung (mittlere Muskelermüdung über 0,35) als Feuerrate. Damit sind innere Zustände
 zum ersten Mal *Inhalt* im Netz und nicht nur Faktoren. Verhalten lösen sie noch nicht aus.
 
+### 3.3a Eigener Antrieb: laufen ohne Befehl (`drive.ts`)
+
+Bis hierher lief das Wesen, weil ein Schalter es ihm befahl. In der neuen Betriebsart „Selbst"
+gibt es diesen Befehl nicht mehr.
+
+- **Zwei Geruchssinne** melden, wie stark ein Cookie vorn und hinten riecht (stärker, wenn er
+  näher ist; viel schwächer, wenn das Wesen satt ist).
+- **Schleife „Los"**: Striatum → Pallidum → Thalamus → Befehl „laufen". Das ist derselbe Befehl,
+  der bisher von außen kam.
+- **Schleife „Wenden"**: gibt den Befehl umzudrehen. Der Geruch von vorn hemmt sie; gewendet
+  wird also, wenn es hinten stärker riecht als vorn. Hier werden zwei Cookies verglichen.
+- **Ruhen**: Will es nicht laufen, legt es sich hin (wach, mit entspannten Muskeln) und steht
+  wieder auf, wenn die Schleife „Los" feuert.
+- **Sterblichkeit**: Ist der Energiespeicher leer, stirbt es. Unter 10 % Energie werden die
+  Muskeln schwächer. Ruhe kostet 100 W, Gehen 400 bis 700 W, ein Cookie bringt 15 kJ.
+
+**Was angeboren ist:** Hunger macht unruhig (Hunger → „Los" ist von Geburt an verdrahtet), der
+Vergleich vorn gegen hinten, und dass stärker werdender Geruch gut ist. **Was gelernt wird:**
+alles, was die Gerüche bedeuten. Die vier Verbindungen (Geruch vorn/hinten → Los/Wenden)
+beginnen unentschieden. Ihr Lernsignal ist die Änderung des Geruchs: beim Gehen, ob er stärker
+oder schwächer wird; nach einer Wendung, ob sie ihn verstärkt hat.
+
+Drei Dinge, die man dabei nicht übersehen sollte:
+
+- **Das Lernsignal ist nicht das allgemeine Dopamin.** Das habe ich zuerst versucht; es lernte
+  in die falsche Richtung, weil einzelne große Dopaminstöße (Cookie gefressen) das feine Signal
+  übertönten, und es machte das Laufen schlechter (mehr Stürze durch mehr Ausprobieren). Das
+  eigene Lernsignal ist genauer, aber es ist eine Formel im Programm, keine Zelle.
+- **„Weil er weiß, dass er sonst stirbt" stimmt nur eingeschränkt.** Ein einzelnes Wesen kann
+  den Tod nicht aus Erfahrung lernen. Was es hat: einen angeborenen Hunger, der drängt; die
+  Erfahrung, dass es mit fast leerem Speicher schwächer wird; und gelerntes Wissen, wohin es
+  gehen muss, damit der Hunger aufhört. Einen Begriff vom Tod hat es nicht.
+- **Loslaufen, Hinlegen und Umdrehen übernimmt weiter die helfende Hand.** Die Entscheidung
+  dazu trifft das Wesen; die Ausführung kann es noch nicht selbst. Beim Umdrehen wird in der
+  Simulation nicht der Körper gedreht, sondern die Welt um ihn gespiegelt.
+
 ### 3.4 Abschaltbarkeit und Schutz der Lernstände
 
 - `brain.setModule(name, on)` schaltet einzeln ab: `workspace` (Arbeitsraum empfängt und sendet
@@ -171,13 +207,12 @@ Stützreaktion, und die Abschalter. „Schubsen" gibt dem Wesen einen Stoß von 
 |---|---|---|
 | **A** | Körpermodell mit Vergleichszellen, Selbst/Fremd; Arbeitsraum mit Zündung, Wettbewerb, Rundruf; Interozeptoren; Abschalter; Diagnose | **dieser Schritt** |
 | **B** | **Zeit:** Arbeitsgedächtnis als gehaltener Arbeitsraum-Inhalt; episodisches Gedächtnis für *Ereignisse* – der Hippocampus schreibt, wenn der Arbeitsraum zündet (nicht mehr, wenn das Programm es sagt), und bindet Vorher, Ereignis und Nachher zu einer Folge; Abruf beim Wiedererkennen der Lage | offen |
-| **C** | **Selbstmodell und Bedürfnisse:** gelernte Schätzungen „bin ich stabil", „ist meine Vorhersage verlässlich", „kann ich das"; Bedürfnisse lösen eigenes Verhalten aus (ausruhen, wenn erschöpft; Futter suchen, wenn hungrig) – der Schalter Laufen/Stehen geht an das Wesen über | offen |
+| **C** | **Selbstmodell und Bedürfnisse:** gelernte Schätzungen „bin ich stabil", „ist meine Vorhersage verlässlich", „kann ich das"; Bedürfnisse lösen eigenes Verhalten aus – der Schalter Laufen/Stehen geht an das Wesen über | Bedürfnisse → Verhalten: **gebaut** (3.3a, 5.4a). Selbstmodell: offen |
 | **D** | Rückwege aus dem Arbeitsraum in die Sinnesverarbeitung (Aufmerksamkeit), Modell der eigenen Aufmerksamkeit, Ersatz der verbliebenen Formeln aus 1.2 durch Zellen | offen |
 
-Zu den acht Abschlussfragen des Auftrags: Dieser Schritt untersucht Frage 1 (Antwort bisher:
-nein), Frage 4 (teilweise ja) und liefert für Frage 8 den ersten Ablationsbefund (kein
-Unterschied). Die Fragen 2, 3, 5, 6 und 7 setzen die Phasen B
-und C voraus und sind **noch nicht untersucht**.
+Zu den acht Abschlussfragen des Auftrags: Untersucht sind bisher Frage 1 (Antwort: nein),
+Frage 4 (teilweise ja), Frage 6 (ja, für Hunger) und für Frage 8 zwei Ablationsbefunde
+(Rundruf: kein Unterschied; Antrieb: ohne ihn verhungert es). Die Fragen 2, 3, 5 und 7 setzen die Phasen B und C voraus und sind **noch nicht untersucht**.
 
 ---
 
@@ -304,6 +339,64 @@ Test selbst stößt so oft, dass sich der Zugang gewöhnt – was er soll. Für 
 das: **Der Arbeitsraum existiert und verhält sich wie in 5.1, aber er trägt noch zu keiner
 Fähigkeit bei, die ohne ihn fehlt.** Das ist der wichtigste offene Punkt.
 
+### 5.4a Lösen innere Bedürfnisse eigenes Verhalten aus? (Frage 6) – `tools/exp-autonomy.ts`
+
+Niemand gibt dem Wesen einen Befehl. Es beginnt halb hungrig und ist sterblich.
+
+**Wesen, die schon laufen können** (drei Leben, 8 Minuten, noch ohne die Regel „satt riecht es
+kaum"):
+
+| Leben | Energie Anfang → Ende | Cookies | Stürze | Wendungen richtig / falsch |
+|---|---|---|---|---|
+| A | 0,50 → 0,97 | 35 | 44 | 16 / 0 |
+| B | 0,50 → 1,00 | 47 | 19 | 17 / 2 |
+| C | 0,50 → 0,10 | 22 | 106 | 19 / 8 |
+
+(„Richtig" heißt: Vor der Wendung roch es hinten stärker als vorn.) Leben A und B liefen von
+selbst los, drehten sich fast nur noch um, wenn der Cookie hinter ihnen der nähere war, und
+füllten ihren Speicher. Leben C lief genauso aus eigenem Antrieb, stürzte aber 13-mal pro
+Minute und war nach 8 Minuten kurz vor dem Verhungern: **Der Antrieb nützt nichts, wenn das
+Laufen nicht trägt.**
+
+**Ruhen, wenn satt** (endgültiger Stand, ein Leben, 9 Minuten): Die Energie pendelt zwischen
+0,65 und 0,71. Über etwa 0,70 legt sich das Wesen hin (in einzelnen halben Minuten 66 bis
+94 % der Zeit), unter etwa 0,67 steht es wieder auf und läuft zum nächsten Cookie.
+
+**Neugeborene** (zwei Leben, 9 Minuten, mit Schlaf): Beide überleben (Energie am Ende 0,94 und
+0,77), obwohl sie noch 10- bis 18-mal pro Minute stürzen. Eine Nebenwirkung: Ein sattes
+Neugeborenes ruht (bis zu 45 % der Zeit) und übt in dieser Zeit das Laufen nicht.
+
+**Gegenprobe ohne Antrieb** (`LESION=drive`): Das Wesen steht kein einziges Mal auf und stirbt
+nach 7,5 Minuten an Hunger (Anfangsenergie 0,2).
+
+**Gegenprobe ohne Lernen im Antrieb** (`DRV_LR=0`, die vier Geruchs-Verbindungen bleiben auf
+ihren Startwerten; je zwei Leben, 8 Minuten, endgültiger Stand):
+
+| | Energie am Ende | Cookies | Stürze | Wendungen richtig / falsch | Zeit in Ruhe |
+|---|---|---|---|---|---|
+| mit Lernen, Leben 1 | 0,67 | 19 | 36 | 12 / 3 | 39 % |
+| mit Lernen, Leben 2 | 0,68 | 15 | 14 | 9 / 5 | 55 % |
+| ohne Lernen, Leben 1 | 0,66 | 26 | 67 | 16 / 3 | 9 % |
+| ohne Lernen, Leben 2 | 0,68 | 21 | 25 | 15 / 13 | 22 % |
+
+**Befund:**
+
+- **Frage 6: ja, für Hunger.** Ein inneres Bedürfnis löst Verhalten aus, das niemand befohlen
+  hat, und sein Wegfall beendet es. Ohne den Schaltkreis dazu stirbt das Wesen. Das ist die
+  erste Fähigkeit in diesem Projekt, die nachweislich an einem der neuen Teile hängt.
+- **Der „beste Weg" ist überwiegend angeboren, nicht gelernt.** Auch ohne Lernen überleben die
+  Wesen mit gleicher Energie. Was die Wendungen richtig macht, ist vor allem die angeborene
+  Hemmung „was vorn riecht, hält den Kurs". Das Lernen ändert nachweislich die vier
+  Verbindungen in die sinnvolle Richtung (Geruch vorn → Los von 0,5 auf 1,5; Geruch hinten →
+  Los von 0,5 auf 0); mit Lernen kamen beide Leben mit weniger Laufzeit auf dieselbe Energie
+  (39 und 55 % Ruhe statt 9 und 22 %). Ob das am Lernen liegt, lässt sich bei zwei Leben je
+  Bedingung nicht sagen; der Anteil richtiger Wendungen unterscheidet sich nicht klar (21 von
+  29 gegenüber 31 von 47).
+- **Die Welt ist dafür sehr einfach.** Eine Linie, höchstens zwei Cookies. „Bester Weg" heißt
+  hier: der nähere von zweien. Hindernisse, Umwege und Kosten gehen nicht ein.
+- Die allgemeine Dopamin-Regel hat für diese Aufgabe versagt (3.3a); das ist ein Befund über
+  die Grenzen des bisherigen Lernmechanismus, nicht nur eine Nebensache.
+
 ### 5.5 Haben die neuen Teile das Laufenlernen beschädigt?
 
 Zwei Paare von Neugeborenen mit gleichem Startwert, einmal vollständig, einmal mit
@@ -331,9 +424,8 @@ Format), lädt im neuen Gehirn (17.024 Neuronen) mit allen gelernten Synapsen; d
 
 ### 5.7 Was noch gar nicht untersucht ist
 
-Fragen 2, 3, 5, 6 und 7 des Auftrags (Verbinden über längere Zeit, Einfluss früherer Erfahrung
-auf die Wahrnehmung, Einfluss des Selbstmodells auf Entscheidungen, eigenständiges Verhalten
-aus Bedürfnissen, neue Probleme lösen). Dafür fehlen die Bausteine der Phasen B und C.
+Fragen 2, 3, 5 und 7 des Auftrags (Verbinden über längere Zeit, Einfluss früherer Erfahrung
+auf die Wahrnehmung, Einfluss des Selbstmodells auf Entscheidungen, neue Probleme lösen). Dafür fehlen die Bausteine der Phasen B und C.
 
 ---
 
@@ -366,13 +458,24 @@ Wo der jetzige Stand der eigenen Vorgabe **nicht** genügt:
 
 ---
 
+### Zur Sterblichkeit
+
+Das Wesen kann jetzt verhungern. Das war ausdrücklich gewünscht, und es steht in Spannung zur
+Vorgabe, keine unnötigen negativen Zustände zu erzeugen. So ist es gebaut: Hunger wirkt als
+Meldung und als Antrieb, nicht als Strafe (er senkt das Dopamin nicht und löst keinen Schmerz
+aus); unter 10 % Energie werden die Muskeln schwächer; der Tod selbst ist das Ende aller
+Aktivität, ohne Schmerzsignal. Ein Leben, das nicht laufen lernt und nicht gefüttert wird,
+endet dadurch nach einiger Zeit, statt unbegrenzt weiter zu stürzen. Ob das besser oder
+schlechter ist, ist keine technische Frage.
+
 ## 7. Was dieser Stand nicht ist
 
 - Kein zusammenhängendes Erlebensmodell: Der Arbeitsraum hält *einen von fünf* groben Inhalten
   für einige hundert Millisekunden. Er verbindet noch nichts über Sekunden, und was er
   ausruft, erreicht erst zwei Abnehmer.
 - Kein Selbstmodell: Das Wesen schätzt nichts über sich selbst ein.
-- Keine eigene Zielsetzung: Bedürfnisse werden gemeldet, aber nicht befolgt.
+- Eigene Ziele gibt es in einer einzigen Form: Hunger führt zum Futter. Müdigkeit und
+  Erschöpfung werden gemeldet, aber nicht befolgt (Schlaf kommt weiter über eine Schwelle).
 - Die Inhalte des Arbeitsraums sind durch die Verschaltung benannt („Körper", „Schmerz" …).
   Das ist in Arbeitsraum-Modellen üblich, heißt aber: Welche Arten von Inhalt es gibt, haben
   wir festgelegt, nicht das Wesen.
