@@ -879,3 +879,104 @@ button.mini {
     display: none;
   }
 }
+
+/* ---------- the cinema page: the brain alone, full screen ---------- */
+#kino {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: #000;
+  overflow: hidden;
+}
+#kino[hidden] {
+  display: none;
+}
+body.kinoOpen {
+  overflow: hidden;
+}
+#kinoStage,
+#kino .brainWrap {
+  position: absolute;
+  inset: 0;
+}
+#kino #gl3d {
+  border-radius: 0;
+  touch-action: none;
+}
+#kino.idle {
+  cursor: none;
+}
+#kino.idle #gl3d {
+  cursor: none;
+}
+/* no words on this page unless they are asked for */
+#kino .views3d,
+#kino .tip {
+  display: none;
+}
+#kino .legend3d {
+  left: 26px;
+  bottom: 24px;
+  font-size: 11px;
+  opacity: 0;
+  transition: opacity 0.6s;
+}
+#kino.key .legend3d {
+  opacity: 0.85;
+}
+#kino.key .legend3d .lg {
+  grid-template-columns: 7px auto 46px;
+}
+#kino.key .legend3d .lg span {
+  display: inline;
+}
+.kinoHud {
+  position: absolute;
+  top: 18px;
+  right: 20px;
+  display: flex;
+  gap: 6px;
+  transition: opacity 0.6s;
+}
+#kino.idle .kinoHud {
+  opacity: 0;
+  pointer-events: none;
+}
+.kinoHud button {
+  background: #0a101acc;
+  border: 1px solid #ffffff1f;
+  color: #9fb0cc;
+  border-radius: 999px;
+  padding: 6px 13px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+}
+.kinoHud button:hover {
+  color: #fff;
+  border-color: #ffffff55;
+}
+.kinoHud button.on {
+  color: #dff3ff;
+  border-color: #78dcff88;
+  box-shadow: 0 0 12px #78dcff33;
+}
+#kinoPip {
+  position: absolute;
+  right: 22px;
+  bottom: 22px;
+  width: min(300px, 34vw);
+  border-radius: 10px;
+  border: 1px solid #ffffff1c;
+  opacity: 0.82;
+  box-shadow: 0 8px 40px #000c;
+  pointer-events: none;
+  transition: opacity 0.6s;
+}
+#kino.idle #kinoPip {
+  opacity: 0.5;
+}
+#kino.noPip #kinoPip {
+  display: none;
+}

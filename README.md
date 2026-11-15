@@ -33,11 +33,35 @@ Nichts davon behauptet, dass Visto etwas erlebt.
   Echte Aktivität sind: das Aufblitzen der Neuronen, die Helligkeit der feinen Sterne um jede
   Zellgruppe (ihre Feuerrate), die Helligkeit der Fasern zwischen den Regionen (Feuerrate der
   Quellzellen) und die Lichtpunkte, die darauf wandern (eine Stichprobe der Spikes, höchstens
-  etwa jeder 250.; ihr Tempo ist frei gewählt). Der feine Staub, der dem Gehirn die Form
-  gibt, trägt keine eigenen Daten; jeder Teil glimmt mit der Feuerrate der Zellen seiner
-  Farbgruppe. Reine Gestaltung sind die Form selbst (aus Formeln, kein vermessenes Gehirn),
-  Wirbel und Rippen, das Netz feiner Linien im Staub und die Tiefenunschärfe. Das Rückenmark
-  ist dicker gezeichnet, als es wäre.
+  etwa jeder 250.; ihr Tempo ist frei gewählt, sie ziehen einen kurzen Schweif). Ein
+  **Lichtring**, der sich durch die Wolke ausbreitet, markiert ein echtes Ereignis an dem Ort,
+  an dem es geschieht: ein Inhalt zündet im Arbeitsraum (Ring vom Stirnhirn, in der Farbe des
+  Inhalts, höchstens alle 2,5 s gezeigt), ein Schmerz setzt ein (roter Ring von den Nerven der
+  schmerzenden Körperstelle), ein Cookie wurde gegessen (goldener Ring von den Dopaminzellen).
+  Der feine Staub, der dem Gehirn die Form gibt, trägt keine eigenen Daten; jeder Teil glimmt
+  mit der Feuerrate der Zellen seiner Farbgruppe.
+  Reine Gestaltung sind: die Form selbst (aus Formeln, kein vermessenes Gehirn), Wirbel und
+  Rippen, das Netz feiner Linien im Staub, die schwebenden Staubkörner im Raum, das leichte
+  Treiben und Funkeln des Staubs, die Art, wie sich ein Ring ausbreitet (das ist keine
+  gemessene Aktivitätswelle), die Lichtpulse, die auf den Fasern entlanglaufen (Richtung und
+  Helligkeit sind echt, ihr Takt nicht), das Zusammenfliegen der Wolke beim Start und alles,
+  was Kamera und „Film" tun: Tiefenunschärfe, Lichthof um Helles, Randabdunklung, Korn. Das
+  Rückenmark ist dicker gezeichnet, als es wäre.
+- **Vollbild** öffnet das Gehirn als eigene Seite (Adresse endet auf `#kino`, „Zurück" oder
+  `Esc` verlässt sie). Dort steht gar kein Text. Die Kamera fährt von selbst durch sechs
+  Einstellungen und zieht dabei die Schärfe nach; bei Schmerz schneidet sie zum Rückenmark,
+  bei einem Cookie zum Gehirn. Anfassen übernimmt die Kamera, nach ein paar Sekunden fährt
+  sie wieder selbst. Die Leiste oben rechts erscheint bei Mausbewegung: **Regie** (Leertaste)
+  schaltet die Kamerafahrt, **Farben** blendet den Farbschlüssel ein, **Körper** das kleine
+  Bild des Wesens unten rechts, `↻` lässt die Wolke noch einmal zusammenfliegen, `⛶` (Taste
+  `F`) schaltet das echte Vollbild des Browsers. Die Tasten `1`–`6` wählen eine Einstellung,
+  `C` gibt weiter einen Cookie. Es ist dasselbe lebende Gehirn wie im Fenster, keine zweite
+  Simulation.
+  Technik: Das Bild wird zuerst in einen Puffer mit 16 Bit je Farbe gezeichnet, in dem sich
+  Licht wirklich addiert, und danach wie ein Film entwickelt. Kann ein Gerät das nicht, wird
+  auf 8 Bit ausgewichen (`?ldr` erzwingt das). Läuft die Anzeige mit weniger als etwa 22
+  Bildern pro Sekunde, wird stufenweise mit weniger Bildpunkten gerechnet, nie mit weniger
+  Neuronen (`?hq` schaltet das ab).
 - **Karte** schaltet auf die flache, beschriftete Ansicht um: oben das Gehirn von der Seite,
   darunter Hirnstamm und Rückenmark mit linker und rechter Hälfte, außen die Sinnes- und
   Bewegungsnerven der Beine. Mit der Maus über eine Zellgruppe fahren zeigt Name und
@@ -425,6 +449,13 @@ das Maximum und sank erst danach.
 - Ob WebAssembly in der veröffentlichten Seite überall zugelassen ist, habe ich nicht prüfen
   können. Wenn nicht, läuft automatisch die langsamere JavaScript-Schleife; der Hinweis über
   der Neuronenzahl zeigt, welche es ist.
+- Wie flüssig die neue Gehirn-Ansicht auf echten Geräten läuft, habe ich nicht messen können:
+  Die Entwicklungsmaschine hat keine Grafikkarte und rechnet jedes Bild in Software (mehrere
+  Sekunden pro Bild in voller Auflösung). Für schwache Geräte gibt es deshalb die
+  automatische Verringerung der Bildpunkte; ob sie auf einem älteren Handy reicht, ist
+  ungeprüft.
+- Das echte Vollbild des Browsers braucht dessen Erlaubnis. Ist die Seite in eine andere
+  eingebettet, die es nicht erlaubt, füllt die Kino-Seite nur ihren Rahmen.
 
 ## Werkzeuge für die Entwicklung
 

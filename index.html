@@ -77,6 +77,7 @@
           <section class="panel brain">
             <h2>Nervensystem <span class="meta" id="brainMeta"></span>
               <button class="mini" id="btnInner" title="Diagnose: was gerade global verfügbar ist, was das Körpermodell erwartet und spürt, welche Bedürfnisse gemeldet werden. Mit Schaltern zum Abschalten einzelner Teile.">Innenleben</button>
+              <button class="mini" id="btnKino" title="Öffnet das Gehirn als eigene Seite im Vollbild: die Kamera fährt von selbst, ohne Beschriftung">Vollbild</button>
               <button class="mini" id="btnMap" title="Wechselt zwischen dem leuchtenden Gehirn in 3D und der flachen Karte mit beschrifteten Regionen">Karte</button>
               <label class="toggle inl" title="Baut zusätzlich ein Kleinhirn mit 12.000 Körnerzellen ein. Experimentell: Es lernt, verbessert das Laufen aber noch nicht messbar und macht die Simulation langsamer. Das Gehirn wird dafür neu aufgebaut."><input type="checkbox" id="chkCb" /> Kleinhirn (experimentell)</label>
             </h2>
@@ -151,5 +152,18 @@
       </div>
     </div>
     <script type="module" src="/src/main.ts"></script>
+    <!-- the cinema page: the brain alone, full screen -->
+    <div id="kino" hidden>
+      <div id="kinoStage"></div>
+      <canvas id="kinoPip" title="Visto in diesem Moment"></canvas>
+      <div class="kinoHud" id="kinoHud">
+        <button id="kinoRegie" class="on" title="Die Kamera fährt von selbst von Einstellung zu Einstellung (Leertaste)">Regie</button>
+        <button id="kinoKey" title="Farbschlüssel der Regionen ein- oder ausblenden">Farben</button>
+        <button id="kinoPipBtn" class="on" title="Kleines Bild von Visto ein- oder ausblenden">Körper</button>
+        <button id="kinoIntro" title="Das Gehirn noch einmal zusammenfliegen lassen" aria-label="Aufbau wiederholen">↻</button>
+        <button id="kinoFull" title="Echtes Vollbild des Browsers (F)" aria-label="Vollbild">⛶</button>
+        <button id="kinoClose" title="Zurück (Esc)" aria-label="Zurück">✕</button>
+      </div>
+    </div>
   </body>
 </html>

@@ -4,13 +4,14 @@ import { BodyView } from './ui/bodyView';
 import { BrainView } from './ui/brainView';
 import { HormoneView } from './ui/hormoneView';
 import { LearnView } from './ui/learnView';
-import { Brain3D } from './ui/brain3d';
+import { Brain3D, SHOT_BRAIN, SHOT_CORD } from './ui/brain3d';
 import { InnerView } from './ui/innerView';
 import type { ModuleName } from './sim/brain/brain';
 import { TONE_GROUPS } from './sim/brain/spinal';
 import { MUSCLE_NAMES, MUSCLE_LABELS, NM } from './sim/body/biped';
 import type { FromWorker, ToWorker } from './protocol';
 import type { Frame, SimState } from './sim/sim';
+import { PAIN_SITES } from './sim/brain/pain';
 import { saveLife, loadLife, deleteLife } from './ui/store';
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
@@ -41,7 +42,16 @@ const bodyView = new BodyView($<HTMLCanvasElement>('world'));
 const brainView = new BrainView($<HTMLCanvasElement>('brain'), $('brainTip'));
 const hormoneView = new HormoneView($('hormoneRows'));
 const learnView = new LearnView($<HTMLCanvasElement>('learn'));
-const brain3d = new Brain3D($<HTMLCanvasElement>('gl3d'), $('legend3d'));
+const viewQuery = new URLSearchParams(location.search);
+const brain3d = new Brain3D($<HTMLCanvasElement>('gl3d'), $('legend3d'), {
+  // ?ldr: without the deep colour buffer; ?hq: never lower the resolution by itself;
+  // ?simclock: animations run in simulated time (for recording clips frame by frame)
+  ldr: viewQuery.has('ldr'),
+  fullQuality: viewQuery.has('hq'),
+  clock: viewQuery.has('simclock') ? () => latest?.time ?? 0 : undefined,
+});
+/** leaves the flat map, if it is shown (set below) */
+let showBrain3d: () => void = () => {};
 {
   // the nervous system is shown as the glowing brain; the flat map is the alternative view
   let map = !brain3d.supported;
@@ -57,7 +67,7 @@ const brain3d = new Brain3D($<HTMLCanvasElement>('gl3d'), $('legend3d'));
     $('brainLegend').textContent = map
       ? 'Jeder Punkt ist ein Neuron und blitzt bei einem echten Spike auf (blau = hemmend). Linien sind Nervenbahnen; die Lichtpunkte darauf sind eine Stichprobe der Spikes, die gerade hindurchlaufen.'
       : brain3d.supported
-        ? 'Jeder helle Punkt ist ein Neuron an seinem anatomischen Ort und blitzt bei einem echten Spike auf. Sterne und Fasern leuchten mit der Feuerrate ihrer Zellen. Der feine Staub gibt nur die Form; er glimmt mit der Aktivität seiner Region. Ziehen dreht, Mausrad oder zwei Finger zoomen.'
+        ? 'Jeder helle Punkt ist ein Neuron an seinem anatomischen Ort und blitzt bei einem echten Spike auf. Sterne und Fasern leuchten mit der Feuerrate ihrer Zellen. Ein Lichtring markiert ein echtes Ereignis: eine Zündung im Arbeitsraum, einsetzenden Schmerz (rot) oder einen gegessenen Cookie (gold). Der feine Staub gibt nur die Form; er glimmt mit der Aktivität seiner Region. Ziehen dreht, Mausrad oder zwei Finger zoomen, „Vollbild“ öffnet die Kino-Seite.'
         : 'Dieser Browser stellt kein WebGL bereit, deshalb gibt es hier nur die Karte.';
   };
   $('btnMap').addEventListener('click', () => {
@@ -65,6 +75,12 @@ const brain3d = new Brain3D($<HTMLCanvasElement>('gl3d'), $('legend3d'));
     map = !map;
     apply();
   });
+  showBrain3d = () => {
+    if (map && brain3d.supported) {
+      map = false;
+      apply();
+    }
+  };
   for (const b of Array.from($('views3d').querySelectorAll('button'))) {
     b.addEventListener('click', () => {
       $('views3d').querySelectorAll('button').forEach((x) => x.classList.remove('on'));
@@ -73,6 +89,136 @@ const brain3d = new Brain3D($<HTMLCanvasElement>('gl3d'), $('legend3d'));
     });
   }
   apply();
+}
+let drawPip: () => void = () => {};
+{
+  // The cinema page: the brain alone, as large as the screen. It is a page of its own
+  // (address ending in #kino, the back button leaves it) but shows the same living brain.
+  const kino = $('kino');
+  const wrap = document.querySelector<HTMLElement>('.brainWrap')!;
+  const home = wrap.parentElement!;
+  const after = wrap.nextElementSibling;
+  const pip = $<HTMLCanvasElement>('kinoPip');
+  let on = false;
+  let pushed = false;
+  let idleTimer = 0;
+  let ownExit = false;
+  const wake = (): void => {
+    kino.classList.remove('idle');
+    clearTimeout(idleTimer);
+    idleTimer = window.setTimeout(() => kino.classList.add('idle'), 2800);
+  };
+  const fullscreen = (want: boolean): void => {
+    try {
+      if (want && !document.fullscreenElement) void kino.requestFullscreen?.().catch(() => {});
+      else if (!want && document.fullscreenElement) {
+        ownExit = true;
+        void document.exitFullscreen().catch(() => {});
+      }
+    } catch {
+      /* not allowed here (for example inside an embedded frame): the page still fills its window */
+    }
+  };
+  const open = (): void => {
+    if (on || !brain3d.supported) return;
+    on = true;
+    showBrain3d();
+    kino.hidden = false;
+    $('kinoStage').appendChild(wrap);
+    document.body.classList.add('kinoOpen');
+    brain3d.cinema = true;
+    brain3d.intro();
+    wake();
+  };
+  const close = (): void => {
+    if (!on) return;
+    on = false;
+    fullscreen(false);
+    home.insertBefore(wrap, after);
+    kino.hidden = true;
+    document.body.classList.remove('kinoOpen');
+    brain3d.cinema = false;
+    brain3d.setView(document.querySelector<HTMLElement>('#views3d button.on')?.dataset.view ?? 'all');
+  };
+  const leave = (): void => {
+    if (pushed) {
+      pushed = false;
+      try {
+        history.back();
+        return;
+      } catch {
+        /* fall through */
+      }
+    }
+    try {
+      history.replaceState(null, '', location.pathname + location.search);
+    } catch {
+      /* the address cannot be changed here; closing still works */
+    }
+    close();
+  };
+  $('btnKino').hidden = !brain3d.supported;
+  $('btnKino').addEventListener('click', () => {
+    fullscreen(true);
+    try {
+      if (location.hash !== '#kino') {
+        location.hash = 'kino';
+        pushed = true;
+      }
+    } catch {
+      /* no address to change */
+    }
+    open();
+  });
+  window.addEventListener('hashchange', () => {
+    if (location.hash === '#kino') open();
+    else {
+      pushed = false;
+      close();
+    }
+  });
+  $('kinoClose').addEventListener('click', leave);
+  $('kinoFull').addEventListener('click', () => fullscreen(!document.fullscreenElement));
+  $('kinoIntro').addEventListener('click', () => brain3d.intro());
+  const toggle = (id: string, set: (v: boolean) => void): void => {
+    $(id).addEventListener('click', () => set($(id).classList.toggle('on')));
+  };
+  toggle('kinoRegie', (v) => (brain3d.director = v));
+  toggle('kinoKey', (v) => kino.classList.toggle('key', v));
+  toggle('kinoPipBtn', (v) => kino.classList.toggle('noPip', !v));
+  kino.addEventListener('pointermove', wake);
+  kino.addEventListener('pointerdown', wake);
+  // leaving the browser's full screen with Esc also leaves the cinema page
+  // (but not when the page itself ended the full screen, which can arrive late)
+  document.addEventListener('fullscreenchange', () => {
+    if (document.fullscreenElement) return;
+    if (ownExit) ownExit = false;
+    else if (on) leave();
+  });
+  window.addEventListener('keydown', (e) => {
+    if (!on) return;
+    // (in the browser's own full screen Esc usually never arrives here; it ends the full screen, see above)
+    if (e.key === 'Escape') leave();
+    else if (e.key === ' ') {
+      e.preventDefault();
+      $('kinoRegie').click();
+    } else if (e.key === 'f' || e.key === 'F') fullscreen(!document.fullscreenElement);
+    else if (e.key >= '1' && e.key <= '6') brain3d.cut(Number(e.key) - 1);
+  });
+  // a small live picture of the body in the corner
+  const world = $<HTMLCanvasElement>('world');
+  const pc = pip.getContext('2d');
+  drawPip = () => {
+    if (!on || !pc || kino.classList.contains('noPip') || world.width < 2) return;
+    const w = 520;
+    const h = Math.round((w * world.height) / world.width);
+    if (pip.width !== w || pip.height !== h) {
+      pip.width = w;
+      pip.height = h;
+    }
+    pc.drawImage(world, 0, 0, w, h);
+  };
+  if (location.hash === '#kino') open();
 }
 const innerView = new InnerView($('innerBody'), $<HTMLCanvasElement>('innerCanvas'));
 {
@@ -255,6 +401,40 @@ for (const b of Array.from($('speedSeg').querySelectorAll('button'))) {
   });
 }
 
+// Real events are marked in the brain view by a ring of light at the place where they happen.
+const CONTENT_LIGHT: Record<string, [number, number, number]> = { Körper: [120, 190, 255], Schmerz: [255, 70, 96], Gefahr: [255, 150, 70], Sehen: [130, 222, 255], Bedürfnis: [255, 200, 80] };
+let workspaceNames: string[] = [];
+const seen = { content: -1, eaten: -1, hurting: false, painRing: 0, ring: 0, count: [0, 0, 0] };
+function announce(f: Frame): void {
+  const nowMs = performance.now();
+  // a content has just entered the global workspace
+  const c = f.inner.content;
+  // (shown at most every 2.5 s, otherwise the picture never comes to rest)
+  if (c >= 0 && c !== seen.content && nowMs - seen.ring > 2500) {
+    seen.ring = nowMs;
+    seen.count[0]++;
+    brain3d.pulse('workspace', CONTENT_LIGHT[workspaceNames[c]] ?? [255, 118, 190], 0.6);
+  }
+  seen.content = c;
+  // pain has just set in: the ring starts at the part of the body that hurts
+  if (f.painNow > 0.25 && !seen.hurting && nowMs - seen.painRing > 1500) {
+    seen.hurting = true;
+    seen.painRing = nowMs;
+    seen.count[1]++;
+    let site = 0;
+    for (let i = 1; i < f.pain.length; i++) if (f.pain[i] > f.pain[site]) site = i;
+    const where = PAIN_SITES[site] ?? '';
+    brain3d.pulse(where.includes('links') ? 'pain_0' : where.includes('rechts') ? 'pain_1' : 'pain_c', [255, 60, 80], Math.min(1.5, 0.7 + f.painNow), SHOT_CORD);
+  }
+  if (f.painNow < 0.08) seen.hurting = false;
+  // a cookie has been eaten: the dopamine cells answer
+  if (seen.eaten >= 0 && f.cookiesEaten > seen.eaten) {
+    seen.count[2]++;
+    brain3d.pulse('vta', [255, 200, 90], 1.3, SHOT_BRAIN);
+  }
+  seen.eaten = f.cookiesEaten;
+}
+
 let brainMeta = '';
 function onMessage(m: FromWorker): void {
   if (m.type === 'frame') {
@@ -264,6 +444,7 @@ function onMessage(m: FromWorker): void {
     latest = f;
     bodyView.setFrame(f);
     innerView.update(f);
+    announce(f);
     if (f.activity) {
       brainView.addActivity(f.activity, dt);
       brain3d.addActivity(f.activity, dt);
@@ -276,6 +457,8 @@ function onMessage(m: FromWorker): void {
   } else if (m.type === 'ready') {
     brainView.setInfo(m.brain);
     brain3d.setInfo(m.brain);
+    workspaceNames = m.brain.workspaceNames;
+    seen.eaten = -1;
     innerView.setInfo(m.brain);
     brainMeta = `${nf.format(m.brain.neurons)} Neuronen · ${nf.format(m.brain.synapses)} Synapsen`;
     $('brainMeta').title = m.brain.engine === 'wasm' ? 'Rechenkern: WebAssembly mit SIMD' : 'Rechenkern: JavaScript (WebAssembly mit SIMD steht hier nicht zur Verfügung, deshalb langsamer)';
@@ -295,6 +478,7 @@ function raf(): void {
     bodyView.draw();
     brainView.draw();
     brain3d.draw();
+    drawPip();
     if (latest) innerView.draw(latest.time);
     updatePanels(latest);
   }
@@ -383,4 +567,4 @@ $<HTMLInputElement>('chkCb').addEventListener('change', async (e) => {
 });
 
 // small hook for automated screenshots / tests
-(window as unknown as { visto: unknown }).visto = { send: (m: ToWorker) => send(m), frame: () => latest };
+(window as unknown as { visto: unknown }).visto = { send: (m: ToWorker) => send(m), frame: () => latest, brain3d, rings: seen.count };
