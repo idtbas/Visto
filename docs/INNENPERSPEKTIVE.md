@@ -447,6 +447,108 @@ Ein Leben, das mit dem Stand vor diesem Schritt gespeichert wurde (15.696 Neuron
 Format), lädt im neuen Gehirn (17.024 Neuronen) mit allen gelernten Synapsen; das neue Format
 übersteht Speichern und Laden unverändert (geprüft an den Tonus-Synapsen).
 
+### 5.8 Die fünf Selbst-Areale (`tools/exp-self.ts`)
+
+Alle Messungen an einem Wesen, das schon laufen kann (ausgereifter Tonus), Startwert 1, wenn
+nicht anders gesagt. Bedürfnisse wurden für die Tests von Hand gesetzt.
+
+**Befinden (Inselrinde).** Das Wesen liegt wach, die Schleifen „Los" und „Ruhen" sind dafür
+gekappt.
+
+| Zustand, von Hand gesetzt | „unwohl" nach 1 s | nach 15 s | nach 60 s | „wohl" |
+|---|---|---|---|---|
+| nichts | 0 Hz | | | 0 Hz |
+| Hunger 0,3 | 2 Hz | | | 0 Hz |
+| Hunger 0,8, bleibt | 25 Hz | 13 Hz | 12 Hz | 0 Hz |
+| Hunger, Müdigkeit, Erschöpfung je 0,8, bleibt | 109 Hz | 61 Hz | 54 Hz | 0 Hz |
+| satt | 0 Hz | | | 58 Hz, bleibt |
+
+Die Meldung folgt dem Zustand, die beiden Gruppen schließen einander aus, und ein Dauerzustand
+wird nach etwa 15 Sekunden nur noch halb so stark gemeldet. Ganz verschwindet er nicht. Ein
+Cookie im Liegen änderte in diesem Test nichts Messbares an „wohl" (im Laufen ist der
+Dopamin-Stoß eines Cookies deutlich; im Liegen nicht geprüft, warum er ausblieb).
+
+**Ruhen aus eigenem Antrieb.** Je 15 Sekunden pro Zeile, das Wesen entscheidet selbst.
+
+| Hunger | Erschöpfung | Zeit im Laufen | Zeit im Ruhen | Befehl „Ruhen" | Befehl „Los" |
+|---|---|---|---|---|---|
+| 0,4 | 0 | 63–93 % | 7 % | 0 Hz | 83 Hz |
+| 0,4 | 0,8 | 3 % | 97 % | 83 Hz | 6 Hz |
+| 0,4 | wieder 0 | 79 % | 11 % | 0 Hz | 89 Hz |
+| 0,9 | 0,5 | 90 % | 0 % | 0 Hz | 84 Hz |
+| 0,1 | 0,5 | 1 % | 99 % | 87 Hz | 0 Hz |
+| 0,2, dazu Schlafdruck 0,8 | 0 | 0 % | 15 %, dann 85 % Schlaf | | |
+
+Mit gekappter Ruhe-Schleife läuft dasselbe Wesen bei Erschöpfung 0,8 einfach weiter (0 % Ruhen).
+Erschöpfung lässt es also ruhen, starker Hunger überstimmt sie, und müde schläft es von selbst
+ein, lange bevor die Schwelle für erzwungenen Schlaf (Somnin 0,9) erreicht wäre. **Das ist ein
+funktionaler Hinweis darauf, dass innere Zustände gegeneinander abgewogen werden** – nicht mehr.
+Die Abwägung ist verdrahtet, nicht gelernt.
+
+**Urheberschaft.** Alle zwei bis drei Sekunden ein Stoß (15–60 N·s), nichts, oder im Laufen eine
+eigene Handlung (Füße hoch heben). Trennschärfe (AUC) aller Stöße gegen „nichts", gemessen am
+Spitzenwert in den 300 ms danach. Zwei Läufe (90 und 120 Ereignisse je Lage):
+
+| Lage | „ich werde bewegt" | Otolithen allein | „Fremdeinwirkung" (Körpermodell) | Zweifel |
+|---|---|---|---|---|
+| im Stehen | 0,95 / 0,82 | 0,96 / 0,92 | 0,79 / 0,75 | 0,92 / 0,76 |
+| im Laufen | 0,71 / 0,49 | 0,74 / 0,48 | 0,60 / 0,48 | 0,59 / 0,48 |
+
+Ruhewert ohne Ereignis im Laufen: Otolithen 41–58 Hz, „ich werde bewegt" 3–11 Hz, „ich bewege
+mich" 14–16 Hz (im Stehen 0 Hz). Eigene hohe Schritte lösen „ich werde bewegt" nicht aus.
+
+Ehrlich gelesen: Die Zellen **übersetzen** den Gleichgewichtssinn in zwei Aussagen – bei eigener
+Bewegung ist „ich bewege mich" an und „ich werde bewegt" fast still, obwohl der Sinn selbst
+kräftig feuert. Aber sie erkennen einen Stoß **nicht besser** als der bloße Sinn, im Stehen wie
+im Laufen, und im Laufen in einem der beiden Läufe gar nicht (alles auf Zufallsniveau; in
+diesem Lauf stürzte das Wesen ungewöhnlich oft). Die Antwort auf Frage 1 des Auftrags bleibt:
+im Stehen ja, im Laufen kaum.
+
+**Ich-Kern.** (a) Aus dem Muster des Kerns in einem Fenster von 250 ms (nächstes mittleres
+Muster, die Hälfte der Fenster zum Prüfen zurückgehalten) lässt sich ablesen, was das Wesen
+gerade tut: 276 von 292 richtig (95 %; die häufigste Lage raten gäbe 45 %) – Laufen 131/131,
+Ruhen 65/66, gestürzt 28/29, Schlafen 52/66. Das ist nicht überraschend, weil der Kern genau
+diese Dinge als Eingang hat; es zeigt, dass er sie zu *einem* ablesbaren Muster verbindet.
+(b) Werden im Laufen alle Eingänge des Kerns gekappt (40-mal), dann gleicht sein Muster dem
+davor noch mit 0,49 (erste 50 ms), 0,34 (150–200 ms), 0,25 (250–300 ms), 0,10 (400–450 ms) und
+ist nach 550 ms verschwunden. Ohne das Plateau-Potential der Zellen: 0,03 in den ersten 50 ms,
+danach nichts. **Der Kern trägt einen Augenblick also gut eine halbe Sekunde weiter** – das ist
+die Zeitspanne, über die hier irgendetwas „zusammenhängt". Mehr nicht.
+
+**Zweifel und Verhalten.** Im ungestörten Laufen (200 s) feuern die Zweifel-Zellen im Mittel mit
+0,5 Hz, die Zuversicht mit 22 Hz. Stürze: 8 mit allem, 11 ohne gelernten Zweifel, 11 mit
+gekappter Zweifel-Wirkung, 11 ohne Plateau – **kein Unterschied**. Unter Stößen (90 Ereignisse,
+Laufen): 35, 31 und 29 Stürze – ebenfalls kein Unterschied. Die gelernten Synapsen vom Kern auf
+den Zweifel wachsen dabei auf das 42-fache ihres Anfangswerts, aber weder erkennt der Zweifel
+Stöße dadurch besser (0,59 gegen 0,46 ohne Lernen, bei so wenigen Ereignissen nicht zu
+unterscheiden), noch stürzt das Wesen seltener. **Die Selbstüberwachung ist gebaut und reagiert,
+sie nützt bisher nichts Messbares.**
+
+**Speicherstände.** Ein Leben, das die Version davor gespeichert hat (17.440 Neuronen, 419
+gelernte Bahnen), lässt sich in das Gehirn mit 22.816 Neuronen laden; die Antriebsgewichte sind
+danach dieselben, das Wesen läuft weiter.
+
+**Tempo.** Auf der Entwicklungsmaschine (ein Kern) läuft das neue Gehirn mit etwa 1,65-facher
+Echtzeit, davor waren es 2,6.
+
+**Neugeborene, alte gegen neue Version.** Nur die ersten Minuten sind gemessen, weil die Läufe
+auf der Entwicklungsmaschine zu langsam waren; **ob das Laufenlernen über ein ganzes Leben
+gelitten oder gewonnen hat, ist nicht gemessen.**
+
+| Lauf | Version | Stürze je Minute, Minute 1 bis 5 | weitester Lauf |
+|---|---|---|---|
+| befohlenes Laufen, Startwert 1 | alt | 22, 20, 20, 20, 20 | 2,3 m |
+| | neu | 22, 20, 21, 19, 16 | 2,7 m |
+| befohlenes Laufen, Startwert 2 | alt | 19, 18, 17, 18, 17 | 2,4 m |
+| | neu | 13, 15, 18, 10, 17 | 18,2 m |
+| eigener Antrieb, Startwert 1, erste 2,5 min | alt | 20, 20 (je Minute), 0–7 % Ruhen | |
+| | neu | 17, 18 (je Minute), 0–3 % Ruhen | |
+
+In den ersten Minuten ist kein Schaden zu erkennen. Und ein zweiter, ernüchternder Befund: Das
+Neugeborene, das im Sekundentakt stürzt, legt sich **nicht** von selbst hin – die Bahn von
+„unwohl" zur Ruhe-Schleife ist da, aber bei leichtem Hunger und kurzen Schmerzstößen reicht sie
+in diesem Lauf nicht, um eine Pause auszulösen.
+
 ### 5.7 Was noch gar nicht untersucht ist
 
 Fragen 2, 3 und 7 des Auftrags (Verbinden über längere Zeit, Einfluss früherer Erfahrung auf
@@ -478,10 +580,11 @@ Wo der jetzige Stand der eigenen Vorgabe **nicht** genügt:
   in 10 Minuten 27-mal bei 120 Stürzen). Das Lernsignal über das Dopamin bleibt davon
   unberührt. Vorschlag aus der ersten Fassung dieses Dokuments: Das Wesen bekommt die
   Möglichkeit, bei anhaltendem Misserfolg von sich aus aufzuhören und auszuruhen. **Das ist
-  jetzt gebaut**, als Verschaltung: Die Unwohl-Zellen der Inselrinde bitten die Ruhe-Schleife
-  um eine Pause, Hunger hält dagegen (3.6; was es in einem Neugeborenen-Leben bewirkt, steht in
-  5.8). Noch nicht gebaut: dass die Seite ein festhängendes Leben erkennt und es dem Benutzer
-  sagt.
+  jetzt als Verschaltung gebaut** – die Unwohl-Zellen der Inselrinde bitten die Ruhe-Schleife um
+  eine Pause, Hunger hält dagegen (3.6) –, **wirkt aber in der Messung nicht**: Ein Neugeborenes,
+  das im Sekundentakt stürzt, ruhte in den ersten zweieinhalb Minuten so wenig wie vorher
+  (5.8). Der Missstand besteht also weiter. Ebenfalls nicht gebaut: dass die Seite ein
+  festhängendes Leben erkennt und es dem Benutzer sagt.
 - Die neue Inselrinde ist ein weiterer als negativ bewerteter Zustand. Sie ist deshalb so
   gebaut, dass sie nichts bestraft (keine Bahn zu Dopamin oder Schmerz) und dass ein
   Dauerzustand von selbst schwächer gemeldet wird: gemessen fällt die Meldung eines

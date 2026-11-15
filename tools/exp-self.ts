@@ -155,7 +155,7 @@ if (test === 'agency') {
     }
     b.spinal.highStep = 0;
     const sham = trials.filter((t) => t.kind === 'nothing');
-    console.log(`\n${setting}${process.env.LESION ? ' (without ' + process.env.LESION + ')' : ''}: ${trials.length} events, ${sham.length} times nothing, falls ${sim.life.falls}`);
+    console.log(`\n${setting}${process.env.LESION ? ' (without ' + process.env.LESION + ')' : ''}: ${trials.length} events, ${sham.length} times nothing, falls ${sim.life.falls}, learned doubt synapses at ${(s.learned.meanWeight() / 0.002).toFixed(2)} times their starting strength`);
     console.log('event             n | "being moved"       | "I am moving" | doubt             | otolith cells alone | "Fremdeinwirkung" (body model) | fell');
     const row = (name: string, ts: Trial[]): void => {
       const col = (f: (t: Trial) => number): string => `${mean(ts.map(f)).toFixed(0).padStart(3)} Hz${ts === sham ? '         ' : ' AUC ' + auc(ts.map(f), sham.map(f)).toFixed(2)}`;

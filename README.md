@@ -104,8 +104,8 @@ Nichts davon behauptet, dass Visto etwas erlebt.
   Architektur ab. Alle Werte stammen aus den laufenden Neuronen.
 - **Selbst / Laufen / Stehen**: In der Voreinstellung „Selbst" bekommt das Wesen keinen Befehl.
   Es läuft los, wenn es Hunger hat, riecht die Cookies vor und hinter sich, dreht sich zum
-  näheren um, legt sich satt zur Ruhe. Ist es müde oder erschöpft (oder geht es ihm nach
-  vielen Stürzen schlecht), legt es sich ebenfalls von selbst hin und schläft müde auch ein;
+  näheren um, legt sich satt zur Ruhe. Ist es müde oder erschöpft, legt es sich ebenfalls von
+  selbst hin und schläft müde auch ein;
   starker Hunger hält es auf den Beinen. Und es **stirbt, wenn seine Energie aufgebraucht ist**.
   Dann hilft nur „Neues Leben". Mit „Cookie geben" kann man es füttern. „Laufen" und „Stehen"
   sind die alten Befehle von außen.
