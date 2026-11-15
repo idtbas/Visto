@@ -184,6 +184,9 @@ export interface BrainInfo {
   projs: [number, number, number][];
   neurons: number;
   synapses: number;
+  /** a sample of real synapses for the display, four numbers each: sending neuron, receiving
+   *  neuron, axonal delay [ms], 1 if inhibitory */
+  wires: Int32Array;
 }
 
 export class Sim {
@@ -515,6 +518,42 @@ export class Sim {
     return true;
   }
 
+  /** Picks about `budget` synapses that really exist, spread over all projections (more from
+   *  the large ones), so that the display can show impulses on real connections. It has its
+   *  own random numbers and leaves those of the simulation untouched. */
+  private sampleWires(budget: number): Int32Array {
+    const net = this.brain.net;
+    let seed = 0x51ed270b;
+    const rnd = (): number => {
+      seed = (seed + 0x6d2b79f5) >>> 0;
+      let t = seed;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+    let weight = 0;
+    for (const p of net.projs) weight += Math.sqrt(p.target.length);
+    const out: number[] = [];
+    for (const p of net.projs) {
+      const nSyn = p.target.length;
+      if (nSyn === 0) continue;
+      const k = Math.min(nSyn, Math.max(3, Math.round((budget * Math.sqrt(nSyn)) / weight)));
+      for (let j = 0; j < k; j++) {
+        const s = Math.min(nSyn - 1, Math.floor(rnd() * nSyn));
+        // the sending neuron is the one whose row of the table this synapse lies in
+        let lo = 0;
+        let hi = p.pre.n;
+        while (hi - lo > 1) {
+          const mid = (lo + hi) >> 1;
+          if (p.rowPtr[mid] <= s) lo = mid;
+          else hi = mid;
+        }
+        out.push(p.pre.start + lo, p.target[s], p.delay[s], p.channel === 'I' ? 1 : 0);
+      }
+    }
+    return Int32Array.from(out);
+  }
+
   brainInfo(): BrainInfo {
     const net = this.brain.net;
     return {
@@ -525,6 +564,7 @@ export class Sim {
       projs: net.projs.map((p) => [p.pre.id, p.post.id, p.channel === 'I' ? 1 : 0]),
       neurons: net.n,
       synapses: net.nSynapses,
+      wires: this.sampleWires(5200),
     };
   }
 

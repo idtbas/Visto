@@ -67,7 +67,7 @@ let showBrain3d: () => void = () => {};
     $('brainLegend').textContent = map
       ? 'Jeder Punkt ist ein Neuron und blitzt bei einem echten Spike auf (blau = hemmend). Linien sind Nervenbahnen; die Lichtpunkte darauf sind eine Stichprobe der Spikes, die gerade hindurchlaufen.'
       : brain3d.supported
-        ? 'Jeder helle Punkt ist ein Neuron an seinem anatomischen Ort und blitzt bei einem echten Spike auf. Sterne und Fasern leuchten mit der Feuerrate ihrer Zellen. Ein Lichtring markiert ein echtes Ereignis: eine Zündung im Arbeitsraum, einsetzenden Schmerz (rot) oder einen gegessenen Cookie (gold). Der feine Staub gibt nur die Form; er glimmt mit der Aktivität seiner Region. Ziehen dreht, Mausrad oder zwei Finger zoomen, „Vollbild“ öffnet die Kino-Seite.'
+        ? 'Jeder helle Punkt ist ein Neuron an seinem anatomischen Ort und flammt bei einem echten Spike auf. Die Fasern sind rund 5.000 echte Synapsen: Feuert die sendende Zelle, leuchtet die Faser auf und ein Impuls läuft zur empfangenden Zelle (stark verlangsamt gezeichnet). Der feine Staub gibt die Form und glimmt mit der momentanen Feuerrate der Zellgruppe daneben. Ein Lichtring markiert ein Ereignis: Zündung im Arbeitsraum, einsetzenden Schmerz (rot), gegessenen Cookie (gold). Ziehen dreht, Mausrad oder zwei Finger zoomen, „Vollbild“ öffnet die Kino-Seite.'
         : 'Dieser Browser stellt kein WebGL bereit, deshalb gibt es hier nur die Karte.';
   };
   $('btnMap').addEventListener('click', () => {

@@ -7,22 +7,28 @@
 // running down inside the vertebrae with the nerves of the legs beside it.
 //
 // What is real activity:
-//  - a neuron's point flashes when that neuron fires
+//  - a neuron's point flares up when that neuron fires and fades within about a tenth of a second
+//  - the fibres are a sample of about 5000 synapses that really exist, each drawn from its
+//    sending cell to its receiving cell; a fibre lights up at the moment its sending cell fires
+//  - an impulse (a point with a short tail) is one real spike travelling along one of those
+//    real synapses, started in the frame the spike arrives from the simulation; it ends in a
+//    small flash at the receiving cell
+//  - the faint dust that gives the brain its shape carries no data of its own; each grain
+//    glows with the present firing rate of the group of cells it lies next to
 //  - the star of fine lines around a group of cells brightens with that group's firing rate
-//  - the fibres between regions are the real nerve tracts; they brighten with the firing
-//    of their source cells, and the sparks on them are a sample of the spikes on their way
-//  - the faint dust that gives the brain its shape carries no data of its own; each part of
-//    it glows with the firing rate of the cells of that part
-//
 //  - a ring of light that spreads through the cloud marks a real event (a content entering the
 //    global workspace, the onset of pain, a cookie eaten) at the place where it happens
 //
-// What is decoration: the shape itself (made from formulas, not a scanned brain), the
-// vertebrae and ribs, the web of fine lines in the dust, the specks floating in the room,
-// the slow drift and twinkling of the dust, the way a ring spreads, the pulses of light that
-// run along the fibres (their direction and brightness are real, their rhythm is not), the
-// gathering of the cloud at the start, and everything the camera and the "film" do: depth of
-// field, glow around bright light, vignette, grain, and the camera moving by itself.
+// What is not shown as it is: an impulse takes 1-8 ms in the simulation and is drawn about a
+// hundred times slower; a synapse shows at most one impulse every 0.3 s and at most 1500 are
+// under way at once, so at high firing rates only a part of the spikes gets an impulse.
+//
+// What is decoration: the shape itself (made from formulas, not a scanned brain), the course
+// a fibre takes between its two cells, the vertebrae and ribs, the web of fine lines in the
+// dust, the specks floating in the room, the slow drift and twinkling of the dust, the way a
+// ring spreads, the gathering of the cloud at the start, and everything the camera and the
+// "film" do: depth of field, glow around bright light, vignette, grain, and the camera
+// moving by itself.
 //
 // Coordinates: x = left/right, y = up, z = front (the creature looks towards +z).
 import type { BrainInfo } from '../sim/sim';
@@ -223,15 +229,23 @@ const F_TEMPORAL = 4;
 const F_CEREBELLUM = 5;
 const F_CORD = 6;
 
-const SEG = 12; // line segments per fibre
+const SEG = 8; // line segments per fibre
 /** cells per unit of area (as seen on screen) up to which a group is shown at full brightness */
 const DENSITY = 2600;
-const MAX_SPARKS = 700;
+/** at most this many impulses are shown on their way at the same time */
+const MAX_SPARKS = 1500;
+/** an impulse is drawn as it travels along its synapse at this speed [units/s]; in the
+ *  simulation the trip takes 1–8 ms, so this is slowed down roughly a hundredfold */
+const IMPULSE_SPEED = 2.4;
+/** a synapse shows a new impulse at the earliest this long after its last one [s] */
+const IMPULSE_GAP = 0.3;
+/** how long the flash at the receiving end of a synapse lasts [s] */
+const BURST = 0.14;
 
 const VS = `
 attribute vec3 aPos; attribute vec3 aCol; attribute float aGlow;
 uniform mat4 uMVP;
-uniform float uScale, uBase, uGain, uPulse, uHalo, uFocus, uAperture, uTime, uAssemble, uDrift, uWaves;
+uniform float uScale, uBase, uGain, uPulse, uHalo, uFocus, uAperture, uTime, uAssemble, uDrift, uWaves, uBoost;
 uniform vec4 uWaveO[4];
 uniform vec4 uWaveC[4];
 varying vec3 vCol; varying float vA, vBlur, vFlash;
@@ -261,12 +275,17 @@ void main() {
     }
   }
   float twinkle = 0.78 + 0.22 * sin(uTime * (0.8 + 2.2 * h) + h * 50.0);
-  float bright = uGain * mix(g * twinkle, 0.13 + 0.87 * min(g, 1.0), uPulse) + 0.55 * wave * (1.0 - 0.6 * uPulse);
+  // a cell at rest is a dim point; at a spike it flares up to several times that
+  // (a little less where cells are packed densely, so that a nucleus does not burn out)
+  float flash = clamp(g - 1.0, 0.0, 2.0);
+  float dens = clamp(max(aCol.r, max(aCol.g, aCol.b)) * 1.1, 0.3, 1.0);
+  float lit = 0.1 + 0.9 * min(g, 1.0) + uBoost * flash * dens;
+  float bright = uGain * mix(g * twinkle, lit, uPulse) + 0.55 * wave * (1.0 - 0.6 * uPulse);
   // A point of light does not grow as much as a solid thing would when the camera comes
   // close: it stays a fine point and becomes brighter instead.
   float q = min(1.0, p.w / (0.42 * p.w + 2.3));
   bright *= inversesqrt(q);
-  float size = q * uScale * (uBase + uPulse * 0.55 * min(g, 1.6) + 0.3 * min(wave, 1.5)) / p.w;
+  float size = q * uScale * (uBase + uPulse * (0.5 * min(g, 1.0) + 0.38 * flash * dens) + 0.3 * min(wave, 1.5)) / p.w;
   // second pass over the neurons: a wide soft glow around the ones that are firing
   if (uHalo > 0.0) { bright = uHalo * max(0.0, min(g, 2.5) - 0.4); size *= 6.0; }
   // depth of field: away from the plane of focus a point spreads into a dim disc
@@ -277,7 +296,7 @@ void main() {
   // while the cloud is still gathering it is dimmer, so that the crowd of grains does not turn into one white patch
   vA = bright * spread * spread * min(1.0, size * size + 0.15) * smoothstep(0.0, 0.25, e) * mix(0.4, 1.0, e * e);
   vBlur = clamp(coc / max(s, 1.0), 0.0, 1.0);
-  vFlash = uPulse * (1.0 - step(0.001, uHalo)) * clamp((g - 1.3) * 0.2, 0.0, 0.32);
+  vFlash = uPulse * (1.0 - step(0.001, uHalo)) * clamp((g - 0.9) * 0.3, 0.0, 0.45) * dens;
   vCol = mix(aCol, wcol / max(wave, 0.001), clamp(wave * 0.8, 0.0, 0.8));
 }`;
 const FS = `
@@ -296,28 +315,20 @@ void main() {
   gl_FragColor = vec4(c * a, a);
 }`;
 const LVS = `
-attribute vec3 aPos; attribute vec4 aCol; attribute vec2 aFlow;
+attribute vec3 aPos; attribute vec3 aCol; attribute float aGlow;
 uniform mat4 uMVP; uniform float uFocus, uGain, uAssemble;
-varying vec4 vCol; varying vec2 vFlow;
+varying vec4 vCol;
 void main() {
   vec4 p = uMVP * vec4(aPos, 1.0);
   gl_Position = p;
   // lines fade a little with distance from the plane of focus
   float fade = clamp(1.25 - 0.9 * abs(p.w - uFocus) / uFocus, 0.25, 1.0);
-  vCol = vec4(aCol.rgb, aCol.a * fade * uGain * smoothstep(0.55, 1.0, uAssemble));
-  vFlow = aFlow;
+  vCol = vec4(aCol, aGlow * fade * uGain * smoothstep(0.55, 1.0, uAssemble));
 }`;
 const LFS = `
 precision mediump float;
-uniform float uFlowT, uFlow;
-varying vec4 vCol; varying vec2 vFlow;
-void main() {
-  // light runs along the fibres in the direction the signals travel
-  float x = fract(vFlow.x - uFlowT + vFlow.y);
-  float f = mix(1.0, 0.28 + 2.0 * exp(-(x - 0.5) * (x - 0.5) * 60.0), uFlow);
-  float a = vCol.a * f;
-  gl_FragColor = vec4(vCol.rgb * a, a);
-}`;
+varying vec4 vCol;
+void main() { gl_FragColor = vec4(vCol.rgb * vCol.a, vCol.a); }`;
 // ---- the picture is drawn into a buffer first and then developed like film ----
 const QVS = `
 attribute vec2 aPos; varying vec2 vUv;
@@ -376,22 +387,6 @@ void main() {
   gl_FragColor = vec4(c, 1.0);
 }`;
 
-interface Fibre {
-  a: V3;
-  c: V3;
-  b: V3;
-}
-interface Tract3 {
-  inh: boolean;
-  family: number;
-  sources: number[];
-  n: number;
-  fibres: Fibre[];
-  /** index of its first vertex in the dynamic line buffer */
-  first: number;
-  rate: number;
-  spikes: number;
-}
 interface Star {
   pop: number;
   first: number;
@@ -407,11 +402,6 @@ function rand(seed: number): () => number {
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
-}
-
-function bezier(f: Fibre, s: number): V3 {
-  const u = 1 - s;
-  return [u * u * f.a[0] + 2 * u * s * f.c[0] + s * s * f.b[0], u * u * f.a[1] + 2 * u * s * f.c[1] + s * s * f.b[1], u * u * f.a[2] + 2 * u * s * f.c[2] + s * s * f.b[2]];
 }
 
 /** the dust that gives brain, brainstem and cord their shape, sorted by colour family */
@@ -598,8 +588,8 @@ export const SHOT_BRAIN = 1;
 export const SHOT_CORD = 3;
 
 /** number of points drawn for one spark: its head and the tail behind it */
-const TRAIL = 6;
-const TRAIL_GLOW = [2.4, 1.0, 0.7, 0.46, 0.28, 0.15];
+const TRAIL = 7;
+const TRAIL_GLOW = [2.2, 0.8, 0.55, 0.38, 0.25, 0.15, 0.08];
 /** the picture is never rendered with more pixels than this (about 2560 × 1440) */
 const MAX_PIXELS = 3_700_000;
 
@@ -620,7 +610,13 @@ export class Brain3D {
   private finalProg: WebGLProgram | null = null;
   private readonly locs = new Map<WebGLProgram, Map<string, WebGLUniformLocation | null>>();
   private readonly buf: Record<string, WebGLBuffer | null> = {};
-  private dustRanges: [number, number][] = [];
+  // the dust: where each grain is, how bright it is by itself, which group of cells it lies
+  // next to (-1 = none) and which colour family it belongs to
+  private dustPos: Float32Array = new Float32Array(0);
+  private dustBase: Float32Array = new Float32Array(0);
+  private dustLive = new Float32Array(0);
+  private dustPop = new Int16Array(0);
+  private dustFam = new Int8Array(0);
   private motes = 0;
   private staticLines = 0;
   private skeletonFirst = 0;
@@ -631,15 +627,36 @@ export class Brain3D {
   private readonly familyRate = new Float32Array(FAMILIES.length);
   private readonly familyCells = new Float32Array(FAMILIES.length);
   private readonly regionCentre = new Map<string, V3>();
-  private tracts: Tract3[] = [];
   private stars: Star[] = [];
-  private dynCol = new Float32Array(0);
+  private dynA = new Float32Array(0);
   private dynLines = 0;
   private starLines = 0;
-  private sparks: { tract: number; fibre: number; t: number; speed: number }[] = [];
-  private readonly sparkPos = new Float32Array(MAX_SPARKS * TRAIL * 3);
-  private readonly sparkCol = new Float32Array(MAX_SPARKS * TRAIL * 3);
-  private readonly sparkGlow = new Float32Array(MAX_SPARKS * TRAIL);
+  /** firing rate of every group of cells, following within about 70 ms [Hz] */
+  private popFast = new Float32Array(0);
+  private popGain = new Float32Array(0);
+  // the sampled synapses ("fibres"): three control points each, colour of their impulses,
+  // how long an impulse is under way, how far apart the points of its tail are, how brightly
+  // the line glows right now, and when it may show its next impulse
+  private nFibres = 0;
+  private fibreCtl = new Float32Array(0);
+  private fibreCol = new Float32Array(0);
+  private fibreDur = new Float32Array(0);
+  private fibreStep = new Float32Array(0);
+  private fibreGlow = new Float32Array(0);
+  private fibreFree = new Float32Array(0);
+  /** for every neuron: the fibres that start at it (preList[preStart[i] .. preStart[i + 1]]) */
+  private preStart = new Int32Array(1);
+  private preList = new Int32Array(0);
+  // impulses under way: which fibre, and for how long already [s]
+  private readonly spFibre = new Int32Array(MAX_SPARKS);
+  private readonly spAge = new Float32Array(MAX_SPARKS);
+  private nSp = 0;
+  private readonly sparkPos = new Float32Array(MAX_SPARKS * (TRAIL + 1) * 3);
+  private readonly sparkCol = new Float32Array(MAX_SPARKS * (TRAIL + 1) * 3);
+  private readonly sparkGlow = new Float32Array(MAX_SPARKS * (TRAIL + 1));
+  private readonly burstPos = new Float32Array(MAX_SPARKS * 3);
+  private readonly burstCol = new Float32Array(MAX_SPARKS * 3);
+  private readonly burstGlow = new Float32Array(MAX_SPARKS);
   private legendBars: HTMLElement[] = [];
   private frame = 0;
   // time
@@ -806,7 +823,6 @@ export class Brain3D {
       gl.bindAttribLocation(prog, 0, 'aPos');
       gl.bindAttribLocation(prog, 1, 'aCol');
       gl.bindAttribLocation(prog, 2, 'aGlow');
-      gl.bindAttribLocation(prog, 2, 'aFlow');
       gl.linkProgram(prog);
       if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) console.error(gl.getProgramInfoLog(prog));
       return prog;
@@ -816,7 +832,7 @@ export class Brain3D {
     this.downProg = compile(QVS, DOWN_FS);
     this.blurProg = compile(QVS, BLUR_FS);
     this.finalProg = compile(QVS, FINAL_FS);
-    for (const k of ['pos', 'col', 'glow', 'dustPos', 'dustCol', 'dustGlow', 'motePos', 'moteCol', 'moteGlow', 'staticPos', 'staticCol', 'dynPos', 'dynCol', 'dynFlow', 'sparkPos', 'sparkCol', 'sparkGlow', 'quad']) this.buf[k] = gl.createBuffer();
+    for (const k of ['pos', 'col', 'glow', 'dustPos', 'dustCol', 'dustGlow', 'motePos', 'moteCol', 'moteGlow', 'staticPos', 'staticCol', 'staticA', 'dynPos', 'dynCol', 'dynA', 'sparkPos', 'sparkCol', 'sparkGlow', 'quad']) this.buf[k] = gl.createBuffer();
     gl.disable(gl.DEPTH_TEST);
     const fill = (name: string, data: Float32Array, usage: number = gl.STATIC_DRAW): void => {
       gl.bindBuffer(gl.ARRAY_BUFFER, this.buf[name]);
@@ -826,10 +842,15 @@ export class Brain3D {
     fill('quad', new Float32Array([-1, -1, 3, -1, -1, 3]));
     // the dust, its web, the specks in the room and the skeleton never change
     const dust = buildDust();
-    this.dustRanges = dust.ranges;
+    this.dustPos = dust.pos;
+    this.dustBase = dust.glow;
+    this.dustLive = new Float32Array(dust.glow.length);
+    this.dustPop = new Int16Array(dust.glow.length).fill(-1);
+    this.dustFam = new Int8Array(dust.glow.length);
+    dust.ranges.forEach(([first, count], fam) => this.dustFam.fill(fam, first, first + count));
     fill('dustPos', dust.pos);
     fill('dustCol', dust.col);
-    fill('dustGlow', dust.glow);
+    fill('dustGlow', this.dustLive, gl.DYNAMIC_DRAW);
     const motes = buildMotes();
     this.motes = motes.glow.length;
     fill('motePos', motes.pos);
@@ -840,13 +861,16 @@ export class Brain3D {
     lines.push(...buildSkeleton());
     this.staticLines = lines.length / 7;
     const sp = new Float32Array(this.staticLines * 3);
-    const sc = new Float32Array(this.staticLines * 4);
+    const sc = new Float32Array(this.staticLines * 3);
+    const sa = new Float32Array(this.staticLines);
     for (let i = 0; i < this.staticLines; i++) {
       sp.set(lines.slice(i * 7, i * 7 + 3), i * 3);
-      sc.set(lines.slice(i * 7 + 3, i * 7 + 7), i * 4);
+      sc.set(lines.slice(i * 7 + 3, i * 7 + 6), i * 3);
+      sa[i] = lines[i * 7 + 6];
     }
     fill('staticPos', sp);
     fill('staticCol', sc);
+    fill('staticA', sa);
 
     // Can the scene be drawn into a buffer with more than 8 bits per colour? Then light can
     // really add up and is turned into a picture afterwards, as film does.
@@ -915,7 +939,9 @@ export class Brain3D {
     this.familyRate.fill(0);
     this.familyCells.fill(0);
     this.regionCentre.clear();
-    this.sparks = [];
+    this.nSp = 0;
+    this.popFast = new Float32Array(info.pops.length);
+    this.popGain = new Float32Array(info.pops.length);
     this.buildLegend();
     const gl = this.gl;
     if (!gl) return;
@@ -1085,28 +1111,75 @@ export class Brain3D {
     const rnd = rand(777);
     const at = (i: number): V3 => [pos[i * 3], pos[i * 3 + 1], pos[i * 3 + 2]];
     const member = (pi: number): number => info.pops[pi].start + Math.floor(rnd() * info.pops[pi].n);
+    const popOf = new Int16Array(info.neurons);
+    info.pops.forEach((p, pi) => popOf.fill(pi, p.start, p.start + p.n));
+
+    // Which group of cells does each grain of dust lie next to? It will glow with the firing
+    // of that group; grains far from any cell glow with their colour family as a whole.
+    {
+      const cell = 0.11;
+      const reach2 = 0.17 * 0.17;
+      const grid = new Map<number, number[]>();
+      const keyOf = (x: number, y: number, z: number): number => (Math.floor(x / cell) + 64) * 65536 + (Math.floor(y / cell) + 64) * 256 + Math.floor(z / cell) + 64;
+      info.pops.forEach((p, pi) => {
+        if (!regionOfPop[pi]) return;
+        const stride = p.n > 90 ? 3 : 1;
+        for (let i = p.start; i < p.start + p.n; i += stride) {
+          const k = keyOf(pos[i * 3], pos[i * 3 + 1], pos[i * 3 + 2]);
+          let l = grid.get(k);
+          if (!l) grid.set(k, (l = []));
+          l.push(i);
+        }
+      });
+      const dp = this.dustPos;
+      for (let d = 0; d < this.dustPop.length; d++) {
+        const x = dp[d * 3];
+        const y = dp[d * 3 + 1];
+        const z = dp[d * 3 + 2];
+        let best = reach2;
+        let who = -1;
+        for (let dx = -1; dx <= 1; dx++) {
+          for (let dy = -1; dy <= 1; dy++) {
+            for (let dz = -1; dz <= 1; dz++) {
+              const l = grid.get(keyOf(x + dx * cell, y + dy * cell, z + dz * cell));
+              if (!l) continue;
+              for (const i of l) {
+                const r2 = (pos[i * 3] - x) ** 2 + (pos[i * 3 + 1] - y) ** 2 + (pos[i * 3 + 2] - z) ** 2;
+                if (r2 < best) {
+                  best = r2;
+                  who = i;
+                }
+              }
+            }
+          }
+        }
+        this.dustPop[d] = who >= 0 ? popOf[who] : -1;
+      }
+    }
+
     const dyn: number[] = [];
-    /** per vertex: how far along its fibre it lies (0..1) and the fibre's own phase */
-    const flow: number[] = [];
-    const seg = (p: V3, q: V3, s0 = 0, s1 = 0, phase = 0): void => {
+    const dynCol: number[] = [];
+    const seg = (p: V3, q: V3, c: number[]): void => {
       dyn.push(p[0], p[1], p[2], q[0], q[1], q[2]);
-      flow.push(s0, phase, s1, phase);
+      dynCol.push(c[0], c[1], c[2], c[0], c[1], c[2]);
     };
 
     // stars: from one cell of a group to cells of the same group nearby
     this.stars = [];
     info.pops.forEach((p, pi) => {
       if (!regionOfPop[pi]) return;
+      const fc = FAMILIES[this.familyOfPop[pi]].color;
+      const c = [fc[0] / 255, fc[1] / 255, fc[2] / 255];
       const hubs = Math.min(10, Math.max(1, Math.round(p.n / 140)));
       const first = dyn.length / 3;
       for (let h = 0; h < hubs; h++) {
-        const c = at(member(pi));
+        const hub = at(member(pi));
         let made = 0;
         for (let tries = 0; tries < 40 && made < 9; tries++) {
           const q = at(member(pi));
-          const d = Math.hypot(q[0] - c[0], q[1] - c[1], q[2] - c[2]);
+          const d = Math.hypot(q[0] - hub[0], q[1] - hub[1], q[2] - hub[2]);
           if (d > 0.005 && d < 0.3) {
-            seg(c, q);
+            seg(hub, q, c);
             made++;
           }
         }
@@ -1116,57 +1189,60 @@ export class Brain3D {
     });
     this.starLines = dyn.length / 3;
 
-    // tracts between regions, each drawn as a few fibres from cell to cell
-    const bundles = new Map<string, Tract3 & { targets: number[] }>();
-    for (const [pre, post, inh] of info.projs) {
-      const a = regionOfPop[pre];
-      const b = regionOfPop[post];
-      if (!a || !b || a === b) continue;
-      const key = `${a}>${b}>${inh}`;
-      let t = bundles.get(key);
-      if (!t) {
-        t = { inh: inh === 1, family: FAMILY_OF.get(a) ?? 0, sources: [], targets: [], n: 0, fibres: [], first: 0, rate: 0, spikes: 0 };
-        bundles.set(key, t);
-      }
-      if (!t.sources.includes(pre)) {
-        t.sources.push(pre);
-        t.n += info.pops[pre].n;
-      }
-      if (!t.targets.includes(post)) t.targets.push(post);
+    // Fibres: a sample of synapses that really exist, each drawn from its sending cell to its
+    // receiving cell. Long ones run through the brainstem and the cord rather than through the air.
+    const wires = info.wires ?? new Int32Array(0);
+    const keep: number[] = [];
+    for (let w = 0; w < wires.length; w += 4) {
+      if (regionOfPop[popOf[wires[w]]] && regionOfPop[popOf[wires[w + 1]]]) keep.push(w);
     }
-    this.tracts = [...bundles.values()];
-    for (const t of this.tracts) {
-      const k = Math.min(9, Math.max(3, Math.round(t.n / 48)));
-      t.first = dyn.length / 3;
-      for (let f = 0; f < k; f++) {
-        const A = at(member(t.sources[Math.floor(rnd() * t.sources.length)]));
-        const targets = (t as Tract3 & { targets: number[] }).targets;
-        const B = at(member(targets[Math.floor(rnd() * targets.length)]));
-        // long fibres run through the brainstem and the cord rather than through the air
-        const mid: V3 = [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2, (A[2] + B[2]) / 2];
-        const len = Math.hypot(B[0] - A[0], B[1] - A[1], B[2] - A[2]);
-        const pull = Math.min(1, len / 1.5);
-        const s = stemAt(Math.max(-1.6, Math.min(1.3, mid[1])));
-        const j = 0.12 * len;
-        const c: V3 = [mid[0] * (1 - 0.7 * pull) + j * (rnd() - 0.5), mid[1] + j * (rnd() - 0.5), mid[2] * (1 - 0.7 * pull) + s.z * 0.7 * pull + j * (rnd() - 0.5)];
-        const fibre = { a: A, c, b: B };
-        t.fibres.push(fibre);
-        const phase = rnd();
-        // the light on a long fibre moves in several pulses, on a short one in a single one
-        const waves = Math.max(0.5, len * 0.9);
-        let prev = A;
-        for (let i = 1; i <= SEG; i++) {
-          const q = bezier(fibre, i / SEG);
-          seg(prev, q, ((i - 1) / SEG) * waves, (i / SEG) * waves, phase);
-          prev = q;
-        }
+    // sorted by sending cell, so that a spike finds its fibres at once
+    keep.sort((a, b) => wires[a] - wires[b]);
+    const nF = keep.length;
+    this.nFibres = nF;
+    this.fibreCtl = new Float32Array(nF * 9);
+    this.fibreCol = new Float32Array(nF * 3);
+    this.fibreDur = new Float32Array(nF);
+    this.fibreStep = new Float32Array(nF);
+    this.fibreGlow = new Float32Array(nF);
+    this.fibreFree = new Float32Array(nF);
+    this.preStart = new Int32Array(info.neurons + 1);
+    this.preList = new Int32Array(nF);
+    keep.forEach((w, f) => {
+      const pre = wires[w];
+      const inh = wires[w + 3] === 1;
+      this.preStart[pre + 1]++;
+      this.preList[f] = f;
+      const A = at(pre);
+      const B = at(wires[w + 1]);
+      const mid: V3 = [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2, (A[2] + B[2]) / 2];
+      const len = Math.max(0.02, Math.hypot(B[0] - A[0], B[1] - A[1], B[2] - A[2]));
+      const pull = Math.min(1, Math.max(0, (len - 0.35) / 1.2));
+      const st = stemAt(Math.max(-1.6, Math.min(1.3, mid[1])));
+      const j = 0.14 * len;
+      const C: V3 = [mid[0] * (1 - 0.7 * pull) + j * (rnd() - 0.5), mid[1] + j * (rnd() - 0.5), mid[2] * (1 - 0.7 * pull) + st.z * 0.7 * pull + j * (rnd() - 0.5)];
+      this.fibreCtl.set([A[0], A[1], A[2], C[0], C[1], C[2], B[0], B[1], B[2]], f * 9);
+      this.fibreDur[f] = Math.min(1.1, Math.max(0.16, len / IMPULSE_SPEED));
+      this.fibreStep[f] = Math.min(0.09, 0.03 / len);
+      // excitatory impulses carry the colour of the sending region, inhibitory ones are blue
+      const fc = FAMILIES[this.familyOfPop[popOf[pre]]].color;
+      const line = inh ? [0.4, 0.58, 1.0] : [0.3 + 0.7 * (fc[0] / 255), 0.3 + 0.7 * (fc[1] / 255), 0.3 + 0.7 * (fc[2] / 255)];
+      this.fibreCol.set(inh ? [0.42, 0.64, 1.0] : [0.5 + 0.5 * (fc[0] / 255), 0.5 + 0.5 * (fc[1] / 255), 0.5 + 0.5 * (fc[2] / 255)], f * 3);
+      let prev = A;
+      for (let i = 1; i <= SEG; i++) {
+        const t = i / SEG;
+        const u = 1 - t;
+        const q: V3 = [u * u * A[0] + 2 * u * t * C[0] + t * t * B[0], u * u * A[1] + 2 * u * t * C[1] + t * t * B[1], u * u * A[2] + 2 * u * t * C[2] + t * t * B[2]];
+        seg(prev, q, line);
+        prev = q;
       }
-    }
+    });
+    for (let i = 0; i < info.neurons; i++) this.preStart[i + 1] += this.preStart[i];
     this.dynLines = dyn.length / 3;
-    this.dynCol = new Float32Array(this.dynLines * 4);
+    this.dynA = new Float32Array(this.dynLines);
     fill('dynPos', new Float32Array(dyn));
-    fill('dynFlow', new Float32Array(flow));
-    fill('dynCol', this.dynCol, gl.DYNAMIC_DRAW);
+    fill('dynCol', new Float32Array(dynCol));
+    fill('dynA', this.dynA, gl.DYNAMIC_DRAW);
   }
 
   /** a small key to the colours, with a live bar for each family */
@@ -1195,32 +1271,48 @@ export class Brain3D {
   addActivity(act: Uint8Array, dtSim: number): void {
     if (!this.open || !this.info || act.length !== this.glow.length) return;
     const g = this.glow;
+    const ps = this.preStart;
+    const fg = this.fibreGlow;
+    const free = this.fibreFree;
+    const now = this.time;
+    let n = this.nSp;
+    // When very many impulses are under way already, only a part of the new ones is shown
+    // (chosen by chance, the same for all regions).
+    const full = n / MAX_SPARKS;
+    const accept = full < 0.4 ? 1 : Math.max(0.03, (1 - full) / 0.6);
     for (let i = 0; i < g.length; i++) {
       const a = act[i];
       if (a > 0) {
         const v = (g[i] < 1 ? 1 : g[i]) + a;
         g[i] = v > 6 ? 6 : v;
+        // the synapses of this cell light up, and an impulse sets off along each
+        for (let f = ps[i]; f < ps[i + 1]; f++) {
+          fg[f] = 1;
+          if (now >= free[f] && n < MAX_SPARKS && (accept >= 1 || Math.random() < accept)) {
+            this.spFibre[n] = f;
+            this.spAge[n] = 0;
+            n++;
+            free[f] = now + IMPULSE_GAP;
+          }
+        }
       }
     }
+    this.nSp = n;
     if (dtSim <= 0) return;
     const pops = this.info.pops;
     const fam = new Float32Array(FAMILIES.length);
+    const quick = 1 - Math.exp(-dtSim / 0.07);
     for (let p = 0; p < pops.length; p++) {
       let s = 0;
       const end = pops[p].start + pops[p].n;
       for (let i = pops[p].start; i < end; i++) s += act[i];
-      this.popSpikes[p] = s;
-      this.popRate[p] += (s / pops[p].n / dtSim - this.popRate[p]) * 0.25;
+      const rate = s / pops[p].n / dtSim;
+      this.popRate[p] += (rate - this.popRate[p]) * 0.25;
+      this.popFast[p] += (rate - this.popFast[p]) * quick;
       if (this.familyOfPop[p] >= 0) fam[this.familyOfPop[p]] += s;
     }
     for (let f = 0; f < fam.length; f++) {
       if (this.familyCells[f] > 0) this.familyRate[f] += (fam[f] / this.familyCells[f] / dtSim - this.familyRate[f]) * 0.15;
-    }
-    for (const t of this.tracts) {
-      let s = 0;
-      for (const p of t.sources) s += this.popSpikes[p];
-      t.spikes += s;
-      t.rate += (s / t.n / dtSim - t.rate) * 0.2;
     }
   }
 
@@ -1371,62 +1463,39 @@ export class Brain3D {
     gl.uniformMatrix4fv(this.u(lp, 'uMVP'), false, this.mvp);
     gl.uniform1f(this.u(lp, 'uFocus'), focus);
     gl.uniform1f(this.u(lp, 'uAssemble'), assemble);
-    gl.uniform1f(this.u(lp, 'uFlowT'), (this.time * 0.5) % 1);
-    gl.uniform1f(this.u(lp, 'uFlow'), 0);
     // the web in the dust, then the skeleton (a little brighter when the cord is busy)
-    gl.disableVertexAttribArray(2);
-    gl.vertexAttrib2f(2, 0, 0);
     this.attrib(lp, 'aPos', this.buf.staticPos, 3);
-    this.attrib(lp, 'aCol', this.buf.staticCol, 4);
+    this.attrib(lp, 'aCol', this.buf.staticCol, 3);
+    this.attrib(lp, 'aGlow', this.buf.staticA, 1);
     gl.uniform1f(this.u(lp, 'uGain'), 1);
     gl.drawArrays(gl.LINES, 0, this.skeletonFirst);
     gl.uniform1f(this.u(lp, 'uGain'), 0.75 + Math.min(0.6, this.familyRate[F_CORD] / 60));
     gl.drawArrays(gl.LINES, this.skeletonFirst, this.staticLines - this.skeletonFirst);
-    // stars and fibres: brightness is firing rate
-    const dc = this.dynCol;
-    for (const st of this.stars) {
-      const c = FAMILIES[this.familyOfPop[st.pop]].color;
-      const a = 0.025 + 0.4 * Math.min(1, this.popRate[st.pop] / 70);
-      for (let k = st.first; k < st.first + st.count; k++) {
-        dc[k * 4] = c[0] / 255;
-        dc[k * 4 + 1] = c[1] / 255;
-        dc[k * 4 + 2] = c[2] / 255;
-        // bright at the hub, fading along the ray
-        dc[k * 4 + 3] = k % 2 === 0 ? a : a * 0.25;
-      }
-    }
-    this.tracts.forEach((t, ti) => {
-      const c = FAMILIES[t.family].color;
-      const a = 0.025 + 0.3 * Math.min(1, t.rate / 60);
-      const r = t.inh ? 0.4 : 0.3 + 0.7 * (c[0] / 255);
-      const g = t.inh ? 0.58 : 0.3 + 0.7 * (c[1] / 255);
-      const b = t.inh ? 1.0 : 0.3 + 0.7 * (c[2] / 255);
-      const end = t.first + t.fibres.length * SEG * 2;
-      for (let k = t.first; k < end; k++) {
-        dc[k * 4] = r;
-        dc[k * 4 + 1] = g;
-        dc[k * 4 + 2] = b;
-        dc[k * 4 + 3] = a;
-      }
-      if (t.spikes > 0 && this.sparks.length < MAX_SPARKS) {
-        const expected = t.spikes * 0.004;
-        let k = Math.floor(expected);
-        if (Math.random() < expected - k) k++;
-        for (let j = 0; j < k && j < 3; j++) this.sparks.push({ tract: ti, fibre: Math.floor(Math.random() * t.fibres.length), t: 0, speed: 1.3 + Math.random() * 1.1 });
-      }
-      t.spikes = 0;
-    });
     if (this.dynLines > 0) {
+      const da = this.dynA;
+      // stars: as bright as their group of cells is firing right now
+      for (const st of this.stars) {
+        const a = 0.02 + 0.5 * (1 - Math.exp(-this.popFast[st.pop] / 25));
+        // bright at the hub, fading along the ray
+        for (let k = st.first; k < st.first + st.count; k++) da[k] = k % 2 === 0 ? a : a * 0.25;
+      }
+      // fibres: each lights up when its sending cell fires and fades within a quarter of a second
+      const fg = this.fibreGlow;
+      const fade = Math.exp(-dt / 0.22);
+      let k = this.starLines;
+      for (let f = 0; f < this.nFibres; f++) {
+        const v = fg[f];
+        const a = 0.006 + 0.06 * v;
+        for (const e = k + SEG * 2; k < e; k++) da[k] = a;
+        fg[f] = v < 0.01 ? 0 : v * fade;
+      }
       this.attrib(lp, 'aPos', this.buf.dynPos, 3);
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.buf.dynCol);
-      gl.bufferSubData(gl.ARRAY_BUFFER, 0, dc);
-      this.attrib(lp, 'aCol', this.buf.dynCol, 4);
-      this.attrib(lp, 'aFlow', this.buf.dynFlow, 2);
+      this.attrib(lp, 'aCol', this.buf.dynCol, 3);
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.buf.dynA);
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, da);
+      this.attrib(lp, 'aGlow', this.buf.dynA, 1);
       gl.uniform1f(this.u(lp, 'uGain'), 1);
-      gl.drawArrays(gl.LINES, 0, this.starLines);
-      // on the tracts light runs from the sending cells to the receiving ones
-      gl.uniform1f(this.u(lp, 'uFlow'), 1);
-      gl.drawArrays(gl.LINES, this.starLines, this.dynLines - this.starLines);
+      gl.drawArrays(gl.LINES, 0, this.dynLines);
     }
 
     // ---- points ----
@@ -1443,6 +1512,7 @@ export class Brain3D {
     gl.uniform1f(U('uScale'), scale);
     gl.uniform1f(U('uPulse'), 0);
     gl.uniform1f(U('uHalo'), 0);
+    gl.uniform1f(U('uBoost'), 0);
     // specks in the room
     gl.uniform1f(U('uBase'), 0.55);
     gl.uniform1f(U('uDrift'), 7);
@@ -1452,22 +1522,36 @@ export class Brain3D {
     this.attrib(pp, 'aCol', this.buf.moteCol, 3);
     this.attrib(pp, 'aGlow', this.buf.moteGlow, 1);
     gl.drawArrays(gl.POINTS, 0, this.motes);
-    // the dust: every colour family glows with the firing rate of its cells
-    gl.uniform1f(U('uBase'), 0.36);
-    gl.uniform1f(U('uDrift'), 0.6);
-    gl.uniform1f(U('uWaves'), 1);
-    this.attrib(pp, 'aPos', this.buf.dustPos, 3);
-    this.attrib(pp, 'aCol', this.buf.dustCol, 3);
-    this.attrib(pp, 'aGlow', this.buf.dustGlow, 1);
-    this.dustRanges.forEach(([first, count], fam) => {
-      gl.uniform1f(U('uGain'), (this.hdr ? 1.1 : 1) * (0.8 + 1.3 * Math.min(1, this.familyRate[fam] / (fam === F_PARIETAL ? 4 : 30))));
-      gl.drawArrays(gl.POINTS, first, count);
-    });
+    // The dust: dim where nothing fires. Every grain glows with the firing rate of the group
+    // of cells it lies next to (or, far from any cell, of its colour family), right now.
+    {
+      const k0 = this.hdr ? 1.1 : 1;
+      const level = (rate: number): number => k0 * (0.6 + 2.2 * (1 - Math.exp(-rate / 14)));
+      const pg = this.popGain;
+      for (let p = 0; p < pg.length; p++) pg[p] = level(this.popFast[p]);
+      const fgain = FAMILIES.map((_, f) => level(this.familyRate[f]));
+      const dl = this.dustLive;
+      const db = this.dustBase;
+      const dpop = this.dustPop;
+      const dfam = this.dustFam;
+      for (let i = 0; i < dl.length; i++) dl[i] = db[i] * (dpop[i] >= 0 ? pg[dpop[i]] : fgain[dfam[i]]);
+      gl.uniform1f(U('uBase'), 0.36);
+      gl.uniform1f(U('uDrift'), 0.6);
+      gl.uniform1f(U('uWaves'), 1);
+      gl.uniform1f(U('uGain'), 1);
+      this.attrib(pp, 'aPos', this.buf.dustPos, 3);
+      this.attrib(pp, 'aCol', this.buf.dustCol, 3);
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.buf.dustGlow);
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, dl);
+      this.attrib(pp, 'aGlow', this.buf.dustGlow, 1);
+      gl.drawArrays(gl.POINTS, 0, dl.length);
+    }
     // the neurons
     gl.uniform1f(U('uBase'), 0.25);
     gl.uniform1f(U('uDrift'), 0);
     gl.uniform1f(U('uPulse'), 1);
-    gl.uniform1f(U('uGain'), this.hdr ? 0.7 : 1);
+    gl.uniform1f(U('uGain'), this.hdr ? 0.75 : 1);
+    gl.uniform1f(U('uBoost'), this.hdr ? 0.8 : 0.4);
     this.attrib(pp, 'aPos', this.buf.pos, 3);
     this.attrib(pp, 'aCol', this.buf.col, 3);
     gl.bindBuffer(gl.ARRAY_BUFFER, this.buf.glow);
@@ -1478,52 +1562,88 @@ export class Brain3D {
     gl.uniform1f(U('uHalo'), this.hdr ? 0.003 : 0.014);
     gl.drawArrays(gl.POINTS, 0, this.glow.length);
     gl.uniform1f(U('uHalo'), 0);
-    // a spike is a short flash; after it the cell glows on faintly for a moment
+    gl.uniform1f(U('uBoost'), 0);
+    // a spike is a flash of about a tenth of a second; after it the cell glows on faintly for a moment
     const g = this.glow;
-    const fast = Math.exp(-dt / 0.04);
-    const slow = Math.exp(-dt / 0.24);
+    const fast = Math.exp(-dt / 0.075);
+    const slow = Math.exp(-dt / 0.3);
     for (let i = 0; i < g.length; i++) {
       const v = g[i];
-      if (v > 0) g[i] = v < 0.02 ? 0 : v > 0.24 ? v * fast : v * slow;
+      if (v > 0) g[i] = v < 0.02 ? 0 : v > 0.28 ? v * fast : v * slow;
     }
-    // sparks: a sample of the spikes on their way, each with a short tail
+    // Impulses: each one is a real spike on a real synapse, drawn with a short tail on its way
+    // from the sending to the receiving cell, where it ends in a small flash.
     let ns = 0;
-    for (let i = this.sparks.length - 1; i >= 0; i--) {
-      const s = this.sparks[i];
-      s.t += s.speed * dt;
-      const t = this.tracts[s.tract];
-      if (s.t >= 1.12 || !t || !t.fibres[s.fibre]) {
-        this.sparks[i] = this.sparks[this.sparks.length - 1];
-        this.sparks.pop();
+    let nb = 0;
+    const ctl = this.fibreCtl;
+    const fcol = this.fibreCol;
+    for (let i = this.nSp - 1; i >= 0; i--) {
+      const f = this.spFibre[i];
+      const age = (this.spAge[i] += dt);
+      const dur = this.fibreDur[f];
+      if (age > dur + BURST || f >= this.nFibres) {
+        const l = --this.nSp;
+        this.spFibre[i] = this.spFibre[l];
+        this.spAge[i] = this.spAge[l];
         continue;
       }
-      if (ns >= MAX_SPARKS * TRAIL) continue;
-      for (let k = 0; k < TRAIL; k++) {
-        const tt = s.t - k * 0.02;
-        if (tt < 0 || tt > 1) continue;
-        this.sparkPos.set(bezier(t.fibres[s.fibre], tt), ns * 3);
-        this.sparkCol[ns * 3] = t.inh ? 0.45 : 1;
-        this.sparkCol[ns * 3 + 1] = t.inh ? 0.66 : 0.9;
-        this.sparkCol[ns * 3 + 2] = t.inh ? 1 : 0.7;
-        this.sparkGlow[ns] = TRAIL_GLOW[k];
-        ns++;
+      const o = f * 9;
+      const cr = fcol[f * 3];
+      const cg = fcol[f * 3 + 1];
+      const cb = fcol[f * 3 + 2];
+      if (age >= dur) {
+        this.burstPos[nb * 3] = ctl[o + 6];
+        this.burstPos[nb * 3 + 1] = ctl[o + 7];
+        this.burstPos[nb * 3 + 2] = ctl[o + 8];
+        this.burstCol[nb * 3] = cr;
+        this.burstCol[nb * 3 + 1] = cg;
+        this.burstCol[nb * 3 + 2] = cb;
+        this.burstGlow[nb++] = 1 - (age - dur) / BURST;
+      }
+      const head = age / dur;
+      const step = this.fibreStep[f];
+      for (let q = 0; q < TRAIL; q++) {
+        const t = head - q * step;
+        if (t < 0) break;
+        if (t > 1) continue;
+        const u = 1 - t;
+        const w0 = u * u;
+        const w1 = 2 * u * t;
+        const w2 = t * t;
+        this.sparkPos[ns * 3] = w0 * ctl[o] + w1 * ctl[o + 3] + w2 * ctl[o + 6];
+        this.sparkPos[ns * 3 + 1] = w0 * ctl[o + 1] + w1 * ctl[o + 4] + w2 * ctl[o + 7];
+        this.sparkPos[ns * 3 + 2] = w0 * ctl[o + 2] + w1 * ctl[o + 5] + w2 * ctl[o + 8];
+        this.sparkCol[ns * 3] = cr;
+        this.sparkCol[ns * 3 + 1] = cg;
+        this.sparkCol[ns * 3 + 2] = cb;
+        this.sparkGlow[ns++] = TRAIL_GLOW[q];
       }
     }
-    if (ns > 0) {
-      const dynFill = (name: string, data: Float32Array): void => {
+    if (ns + nb > 0) {
+      // the flashes at the receiving ends go into the same buffers, behind the impulses
+      this.sparkPos.set(this.burstPos.subarray(0, nb * 3), ns * 3);
+      this.sparkCol.set(this.burstCol.subarray(0, nb * 3), ns * 3);
+      this.sparkGlow.set(this.burstGlow.subarray(0, nb), ns);
+      const dynFill = (name: string, data: Float32Array, len: number): void => {
         gl.bindBuffer(gl.ARRAY_BUFFER, this.buf[name]);
-        gl.bufferData(gl.ARRAY_BUFFER, data, gl.DYNAMIC_DRAW);
+        gl.bufferData(gl.ARRAY_BUFFER, data.subarray(0, len), gl.DYNAMIC_DRAW);
       };
       gl.uniform1f(U('uAssemble'), 1);
       gl.uniform1f(U('uWaves'), 0);
-      gl.uniform1f(U('uGain'), 1);
-      dynFill('sparkPos', this.sparkPos);
+      dynFill('sparkPos', this.sparkPos, (ns + nb) * 3);
       this.attrib(pp, 'aPos', this.buf.sparkPos, 3);
-      dynFill('sparkCol', this.sparkCol);
+      dynFill('sparkCol', this.sparkCol, (ns + nb) * 3);
       this.attrib(pp, 'aCol', this.buf.sparkCol, 3);
-      dynFill('sparkGlow', this.sparkGlow);
+      dynFill('sparkGlow', this.sparkGlow, ns + nb);
       this.attrib(pp, 'aGlow', this.buf.sparkGlow, 1);
+      gl.uniform1f(U('uBase'), 0.24);
+      gl.uniform1f(U('uGain'), this.hdr ? 1.15 : 1);
       gl.drawArrays(gl.POINTS, 0, ns);
+      if (nb > 0) {
+        gl.uniform1f(U('uBase'), 0.6);
+        gl.uniform1f(U('uGain'), this.hdr ? 0.7 : 0.6);
+        gl.drawArrays(gl.POINTS, ns, nb);
+      }
     }
 
     // ---- developing the picture: glow around bright light, lens, film grain ----

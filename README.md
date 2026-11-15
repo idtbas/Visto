@@ -30,23 +30,41 @@ Nichts davon behauptet, dass Visto etwas erlebt.
   fassen Regionen zu zehn Gruppen zusammen (Schlüssel unten links, mit einem Balken für die
   aktuelle Feuerrate). Im Bild selbst steht kein Text. Ziehen dreht, Mausrad oder zwei Finger
   zoomen, „Gesamt / Gehirn / Mark" fährt die Kamera.
-  Echte Aktivität sind: das Aufblitzen der Neuronen, die Helligkeit der feinen Sterne um jede
-  Zellgruppe (ihre Feuerrate), die Helligkeit der Fasern zwischen den Regionen (Feuerrate der
-  Quellzellen) und die Lichtpunkte, die darauf wandern (eine Stichprobe der Spikes, höchstens
-  etwa jeder 250.; ihr Tempo ist frei gewählt, sie ziehen einen kurzen Schweif). Ein
-  **Lichtring**, der sich durch die Wolke ausbreitet, markiert ein echtes Ereignis an dem Ort,
-  an dem es geschieht: ein Inhalt zündet im Arbeitsraum (Ring vom Stirnhirn, in der Farbe des
-  Inhalts, höchstens alle 2,5 s gezeigt), ein Schmerz setzt ein (roter Ring von den Nerven der
-  schmerzenden Körperstelle), ein Cookie wurde gegessen (goldener Ring von den Dopaminzellen).
-  Der feine Staub, der dem Gehirn die Form gibt, trägt keine eigenen Daten; jeder Teil glimmt
-  mit der Feuerrate der Zellen seiner Farbgruppe.
-  Reine Gestaltung sind: die Form selbst (aus Formeln, kein vermessenes Gehirn), Wirbel und
-  Rippen, das Netz feiner Linien im Staub, die schwebenden Staubkörner im Raum, das leichte
-  Treiben und Funkeln des Staubs, die Art, wie sich ein Ring ausbreitet (das ist keine
-  gemessene Aktivitätswelle), die Lichtpulse, die auf den Fasern entlanglaufen (Richtung und
-  Helligkeit sind echt, ihr Takt nicht), das Zusammenfliegen der Wolke beim Start und alles,
-  was Kamera und „Film" tun: Tiefenunschärfe, Lichthof um Helles, Randabdunklung, Korn. Das
-  Rückenmark ist dicker gezeichnet, als es wäre.
+  Echte Aktivität sind:
+  - das **Aufflammen der Neuronen**: ein Punkt wird bei jedem Spike seiner Zelle mehrfach so
+    hell und größer und klingt in rund einer Zehntelsekunde ab;
+  - die **Fasern**: rund 5.000 Synapsen, die es im Gehirn wirklich gibt (eine Stichprobe aus
+    allen 1.083 Bahnen von knapp einer Million), jede von ihrer sendenden zu ihrer
+    empfangenden Zelle gezeichnet. Feuert die sendende Zelle, leuchtet die Faser im selben
+    Bild auf;
+  - die **Impulse**: Jeder Lichtpunkt mit Schweif ist ein echter Spike auf einer dieser echten
+    Synapsen. Er startet in dem Bild, in dem der Spike aus der Simulation ankommt, läuft zur
+    empfangenden Zelle und endet dort in einem kleinen Blitz. Erregende Impulse tragen die
+    Farbe der sendenden Region, hemmende sind blau;
+  - der **Staub**, der dem Gehirn die Form gibt: Er trägt keine eigenen Daten, aber jedes Korn
+    glimmt mit der momentanen Feuerrate (Nachlauf etwa 70 ms) der Zellgruppe, neben der es
+    liegt. Wo nichts feuert, bleibt es dunkel; ganze Areale pulsieren im Takt ihrer Zellen;
+  - die feinen **Sterne** um jede Zellgruppe (Helligkeit = ihre Feuerrate);
+  - ein **Lichtring**, der sich durch die Wolke ausbreitet, markiert ein Ereignis an dem Ort,
+    an dem es geschieht: ein Inhalt zündet im Arbeitsraum (Ring vom Stirnhirn, in der Farbe
+    des Inhalts, höchstens alle 2,5 s gezeigt), ein Schmerz setzt ein (roter Ring von den
+    Nerven der schmerzenden Körperstelle), ein Cookie wurde gegessen (goldener Ring von den
+    Dopaminzellen).
+
+  Nicht maßstäblich ist das Tempo der Impulse: In der Simulation braucht ein Spike 1–8 ms bis
+  zur Zielzelle, gezeichnet wird er etwa hundertmal langsamer, sonst sähe man ihn nicht.
+  Außerdem zeigt eine Synapse höchstens alle 0,3 s einen Impuls und es sind höchstens 1.500
+  gleichzeitig unterwegs; bei hohen Feuerraten bekommt also nur ein Teil der Spikes einen
+  Impuls (per Zufall ausgewählt, für alle Regionen gleich). Die Faser selbst leuchtet bei
+  jedem Spike.
+
+  Reine Gestaltung sind: die Form selbst (aus Formeln, kein vermessenes Gehirn), der Weg, den
+  eine Faser zwischen ihren beiden Zellen nimmt, Wirbel und Rippen, das Netz feiner Linien im
+  Staub, die schwebenden Staubkörner im Raum, das leichte Treiben und Funkeln des Staubs, die
+  Art, wie sich ein Ring ausbreitet (das ist keine gemessene Aktivitätswelle), das
+  Zusammenfliegen der Wolke beim Start und alles, was Kamera und „Film" tun:
+  Tiefenunschärfe, Lichthof um Helles, Randabdunklung, Korn. Das Rückenmark ist dicker
+  gezeichnet, als es wäre.
 - **Vollbild** öffnet das Gehirn als eigene Seite (Adresse endet auf `#kino`, „Zurück" oder
   `Esc` verlässt sie). Dort steht gar kein Text. Die Kamera fährt von selbst durch sechs
   Einstellungen und zieht dabei die Schärfe nach; bei Schmerz schneidet sie zum Rückenmark,
