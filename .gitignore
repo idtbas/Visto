@@ -3,3 +3,6 @@ dist
 *.log
 .DS_Store
 /out
+# test recordings are rebuilt by tools/make-testset.ts and tools/make-realset.py; only notes and manifests are kept
+tests/audio/**/*.mp3
+tests/audio/**/*.wav
