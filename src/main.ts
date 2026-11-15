@@ -335,7 +335,7 @@ function updatePanels(f: Frame): void {
         : life.state === 'sleeping'
           ? mind.dream ? 'schläft und träumt' : 'schläft'
           : life.state === 'resting'
-            ? f.drive.autonomy ? 'ruht – steht auf, wenn es Hunger bekommt' : 'ruht'
+            ? f.drive.autonomy ? (f.inner.self.rest ? 'ruht sich aus – es ist müde oder erschöpft' : 'ruht – steht auf, wenn es Hunger bekommt') : 'ruht'
             : life.state === 'fallen'
               ? f.drive.autonomy && !f.drive.go ? 'gestürzt – bleibt liegen' : 'gestürzt – wird gleich aufgehoben'
               : life.inHand ? 'in der helfenden Hand' : life.state === 'standing' ? 'steht' : f.drive.autonomy ? 'läuft aus eigenem Antrieb' : 'läuft';

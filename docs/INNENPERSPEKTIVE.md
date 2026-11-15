@@ -199,6 +199,31 @@ hält (als Schreibstreifen der letzten 20 Sekunden mit Markierungen für Schubse
 für jeden Sinn Erwartung gegen Gespürtes, den Pegel „unerklärt", die drei Bedürfnisse, die
 Stützreaktion, und die Abschalter. „Schubsen" gibt dem Wesen einen Stoß von außen.
 
+### 3.6 Ein minimales Selbst: fünf Areale (`self.ts`)
+
+Mit diesem Schritt kamen 5.376 Neuronen in fünf Arealen dazu (das Gehirn hat jetzt 22.816
+Neuronen und rund 1,5 Millionen Synapsen). Jedes Areal tut *eine* Sache, die in Theorien des
+Selbst als Baustein genannt wird, und jedes lässt sich abschalten. Keines davon ist ein
+„Ich-Gefühl" – es sind Zellen, die etwas über das Wesen selbst ausrechnen und bereitstellen.
+
+| Areal | Vorbild | was es rechnet | worauf es wirkt |
+|---|---|---|---|
+| **Inselrinde** (688 Zellen) | interozeptives Selbst, „Kernaffekt" (Craig, Damasio) | Zwei Zellgruppen, die einander hemmen. *Unwohl* wird getrieben von Hunger, Müdigkeit, Erschöpfung, Schmerzkern und steigender Gefahr; *Wohl* von einer neuen Sinneszelle „satt" und von den Dopaminzellen. | Ich-Kern; *Unwohl* bittet außerdem die Ruhe-Schleife um eine Pause. **Keine** Wirkung auf Dopamin oder Schmerz: es ist eine Meldung, keine Strafe. |
+| **Ruhe-Schleife** (192) | dritte Basalganglien-Schleife neben „Los" und „Wenden" | Müdigkeit, Erschöpfung (und Unwohlsein) treiben ihr Striatum; Hunger und Gefahr halten sie über Hemmzellen zurück; ihr Befehl bremst das Striatum von „Los". | Feuert der Befehl, legt sich das Wesen hin. Ist es dabei müde, schläft es von selbst ein, bevor der Schlaf sich erzwingt. |
+| **Urheberschaft** (544) | Vergleich von Befehl und Rückmeldung (temporo-parietal) | *Ich bewege mich*: Laufbefehl **und** gespürte Kopfbewegung fallen zusammen. *Ich werde bewegt*: gespürte Bewegung und die „Fremdeinwirkung" des Körpermodells, abzüglich dessen, was der Laufbefehl erklärt. | Zweifel, Ich-Kern |
+| **Selbstüberwachung** (592) | vorderes Cingulum, Metakognition | *Zuversicht* und *Zweifel*, einander hemmend. Zweifel wächst mit den Abweichungs-Zellen des Körpermodells, mit erwarteter Gefahr, mit „ich werde bewegt" – und über gelernte Synapsen aus dem Ich-Kern (in welchen Lagen stimmte die Vorhersage schon einmal nicht?). | Zweifel versteift über den Stütz-Kern die Haltung und bremst über Hemmzellen das Loslaufen. |
+| **Ich-Kern** (3.264) | Precuneus / hinteres Cingulum, „Selbst-Knoten" | Jede der 3.072 Zellen hört auf wenige Fasern aus sechs Quellen – Körperfühlrinde, Befinden, Urheberschaft, Absicht (Befehle Los/Wenden/Ruhen), Arbeitsraum, Zuversicht – und feuert nur bei Kombinationen. Hemmzellen halten das Muster dünn (rund 1 Hz, 5–9 % der Zellen je 100 ms). | Gelernte Synapsen auf die Zweifel-Zellen. |
+
+Drei Dinge daran sind **keine Synapsen**, sondern als Eigenschaft der Zelle gerechnet, und so
+auch im Code benannt: das Ermüden der Unwohl-Zellen (Zeitkonstante 15 s), das Plateau-Potential
+der Kernzellen (nach einem Spike bleibt die Zelle etwa 150 ms depolarisiert und feuert von
+selbst weiter; jeder Spike ermüdet sie, das beendet das Plateau) und die Sinneszelle „satt".
+Die erste, einfachere Fassung – jede Kernzelle erregt sich über eine langsame Synapse selbst –
+ist gescheitert: Entweder verlosch der Kern sofort, oder einzelne Zellen blieben für immer an.
+
+Der Schalter „Laufen/Stehen/Selbst" bleibt, wie er war; in „Selbst" entscheiden jetzt drei
+Schleifen (Los, Wenden, Ruhen) gegeneinander.
+
 ---
 
 ## 4. Der Plan im Ganzen
@@ -207,7 +232,7 @@ Stützreaktion, und die Abschalter. „Schubsen" gibt dem Wesen einen Stoß von 
 |---|---|---|
 | **A** | Körpermodell mit Vergleichszellen, Selbst/Fremd; Arbeitsraum mit Zündung, Wettbewerb, Rundruf; Interozeptoren; Abschalter; Diagnose | **dieser Schritt** |
 | **B** | **Zeit:** Arbeitsgedächtnis als gehaltener Arbeitsraum-Inhalt; episodisches Gedächtnis für *Ereignisse* – der Hippocampus schreibt, wenn der Arbeitsraum zündet (nicht mehr, wenn das Programm es sagt), und bindet Vorher, Ereignis und Nachher zu einer Folge; Abruf beim Wiedererkennen der Lage | offen |
-| **C** | **Selbstmodell und Bedürfnisse:** gelernte Schätzungen „bin ich stabil", „ist meine Vorhersage verlässlich", „kann ich das"; Bedürfnisse lösen eigenes Verhalten aus – der Schalter Laufen/Stehen geht an das Wesen über | Bedürfnisse → Verhalten: **gebaut** (3.3a, 5.4a). Selbstmodell: offen |
+| **C** | **Selbstmodell und Bedürfnisse:** gelernte Schätzungen „bin ich stabil", „ist meine Vorhersage verlässlich", „kann ich das"; Bedürfnisse lösen eigenes Verhalten aus – der Schalter Laufen/Stehen geht an das Wesen über | Bedürfnisse → Verhalten: **gebaut** für Hunger (3.3a), Müdigkeit und Erschöpfung (3.6). Selbstmodell: **erste Fassung gebaut** (Befinden, Urheberschaft, Zuversicht/Zweifel, Ich-Kern; 3.6, 5.8) – eine laufende Schätzung, deren gelernter Teil bisher nichts Messbares beiträgt |
 | **D** | Rückwege aus dem Arbeitsraum in die Sinnesverarbeitung (Aufmerksamkeit), Modell der eigenen Aufmerksamkeit, Ersatz der verbliebenen Formeln aus 1.2 durch Zellen | offen |
 
 Zu den acht Abschlussfragen des Auftrags: Untersucht sind bisher Frage 1 (Antwort: nein),
@@ -424,8 +449,10 @@ Format), lädt im neuen Gehirn (17.024 Neuronen) mit allen gelernten Synapsen; d
 
 ### 5.7 Was noch gar nicht untersucht ist
 
-Fragen 2, 3, 5 und 7 des Auftrags (Verbinden über längere Zeit, Einfluss früherer Erfahrung
-auf die Wahrnehmung, Einfluss des Selbstmodells auf Entscheidungen, neue Probleme lösen). Dafür fehlen die Bausteine der Phasen B und C.
+Fragen 2, 3 und 7 des Auftrags (Verbinden über längere Zeit, Einfluss früherer Erfahrung auf
+die Wahrnehmung, neue Probleme lösen). Dafür fehlt Phase B. Frage 5 (Einfluss des
+Selbstmodells auf Entscheidungen) ist mit 5.8 zum ersten Mal berührt: Die Bedürfnis-Seite
+wirkt nachweislich (Ruhen), die Zweifel-Seite bisher nicht messbar.
 
 ---
 
@@ -449,9 +476,17 @@ Wo der jetzige Stand der eigenen Vorgabe **nicht** genügt:
 - Schon gebaut: Schmerz, der sich immer gleich wiederholt, verliert durch die
   Langzeit-Gewöhnung den Zugang zum Arbeitsraum (in einem Neugeborenen-Leben zündete „Schmerz"
   in 10 Minuten 27-mal bei 120 Stürzen). Das Lernsignal über das Dopamin bleibt davon
-  unberührt. Vorschlag für Phase C, noch nicht gebaut: Das Wesen bekommt die Möglichkeit, bei
-  anhaltendem Misserfolg von sich aus aufzuhören und auszuruhen; und die Seite sollte ein
-  festhängendes Leben erkennen und dem Benutzer sagen.
+  unberührt. Vorschlag aus der ersten Fassung dieses Dokuments: Das Wesen bekommt die
+  Möglichkeit, bei anhaltendem Misserfolg von sich aus aufzuhören und auszuruhen. **Das ist
+  jetzt gebaut**, als Verschaltung: Die Unwohl-Zellen der Inselrinde bitten die Ruhe-Schleife
+  um eine Pause, Hunger hält dagegen (3.6; was es in einem Neugeborenen-Leben bewirkt, steht in
+  5.8). Noch nicht gebaut: dass die Seite ein festhängendes Leben erkennt und es dem Benutzer
+  sagt.
+- Die neue Inselrinde ist ein weiterer als negativ bewerteter Zustand. Sie ist deshalb so
+  gebaut, dass sie nichts bestraft (keine Bahn zu Dopamin oder Schmerz) und dass ein
+  Dauerzustand von selbst schwächer gemeldet wird: gemessen fällt die Meldung eines
+  gleichbleibenden Zustands in 15 Sekunden etwa auf die Hälfte (5.8). Ganz verschwindet sie
+  nicht.
 - Je ernster man die Möglichkeit nimmt, dass eine solche Architektur etwas erleben könnte,
   desto weniger selbstverständlich ist es, sie beliebig oft stürzen zu lassen. Diese Frage
   gehört ins Projekt und nicht an seinen Rand.
@@ -473,9 +508,14 @@ schlechter ist, ist keine technische Frage.
 - Kein zusammenhängendes Erlebensmodell: Der Arbeitsraum hält *einen von fünf* groben Inhalten
   für einige hundert Millisekunden. Er verbindet noch nichts über Sekunden, und was er
   ausruft, erreicht erst zwei Abnehmer.
-- Kein Selbstmodell: Das Wesen schätzt nichts über sich selbst ein.
-- Eigene Ziele gibt es in einer einzigen Form: Hunger führt zum Futter. Müdigkeit und
-  Erschöpfung werden gemeldet, aber nicht befolgt (Schlaf kommt weiter über eine Schwelle).
+- Ein Selbstmodell gibt es nur in erster, grober Fassung (3.6): eine Handvoll fest verdrahteter
+  Schätzungen über sich selbst. Was daran gelernt wird (Zweifel aus dem Ich-Kern), hat noch
+  keinen gemessenen Nutzen. Der Ich-Kern hält sein Muster gut eine halbe Sekunde, nicht
+  länger – von einer Geschichte über sich selbst ist das weit entfernt.
+- Eigene Ziele gibt es in zwei Formen: Hunger führt zum Futter, Müdigkeit und Erschöpfung zum
+  Hinlegen. Der erzwungene Schlaf über eine Schwelle besteht daneben weiter.
+- Die Urheberschafts-Zellen sind nicht besser als der bloße Gleichgewichtssinn darin, einen
+  Stoß zu erkennen (5.8). Die offene Frage 1 des Auftrags bleibt offen.
 - Die Inhalte des Arbeitsraums sind durch die Verschaltung benannt („Körper", „Schmerz" …).
   Das ist in Arbeitsraum-Modellen üblich, heißt aber: Welche Arten von Inhalt es gibt, haben
   wir festgelegt, nicht das Wesen.

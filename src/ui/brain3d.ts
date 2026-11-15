@@ -148,7 +148,7 @@ function stemAt(y: number): { z: number; rx: number; rz: number } {
 
 type Place =
   /** on the cortex: patches given as [a0, a1, b0, b1]; 'cross' puts populations whose name ends in links/_0 into the right hemisphere */
-  | { kind: 'cortex'; patch: [number, number, number, number]; sides: 'both' | 'cross'; anchor: V3; split?: boolean }
+  | { kind: 'cortex'; patch: [number, number, number, number]; sides: 'both' | 'cross'; anchor: V3; split?: boolean; mix?: boolean }
   /** a nucleus: ellipsoid with centre and half-axes; bilateral ones are mirrored to the other side */
   | { kind: 'nucleus'; c: V3; r: V3; bilateral?: boolean; along?: 0 | 1 | 2 }
   | { kind: 'cerebellum'; depth: [number, number] }
@@ -164,6 +164,13 @@ const PLACE: Record<string, Place> = {
   // of prediction and sensation behind the prediction cells in the parietal lobe
   workspace: { kind: 'cortex', patch: [1.08, 1.5, 0.5, 2.1], sides: 'both', anchor: [0, 2.28, 0.32], split: true },
   bodymodel: { kind: 'cortex', patch: [2.44, 2.6, 0.6, 2.0], sides: 'both', anchor: [0, 2.05, -1.0], split: true },
+  // The areas that concern the creature itself lie on the inner wall of the hemispheres:
+  // the core at the back (precuneus), self-monitoring at the front (anterior cingulate).
+  // Agency sits where temporal and parietal lobe meet, the insula deep in the side.
+  selfcore: { kind: 'cortex', patch: [1.72, 2.5, 2.6, 3.7], sides: 'both', anchor: [0, 1.9, -0.6], mix: true },
+  monitor: { kind: 'cortex', patch: [0.72, 1.5, 2.6, 3.7], sides: 'both', anchor: [0, 1.9, 0.5], split: true },
+  agency: { kind: 'cortex', patch: [2.0, 2.45, -0.35, 0.45], sides: 'both', anchor: [0, 1.5, -0.6], split: true },
+  insula: { kind: 'nucleus', c: [0.38, 1.6, -0.1], r: [0.045, 0.1, 0.2], bilateral: true, along: 2 },
   // smell arrives at the olfactory bulbs under the frontal lobes
   smell: { kind: 'nucleus', c: [0.1, 1.22, 0.82], r: [0.045, 0.035, 0.11], bilateral: true },
   // the body's interior reports to the insula, deep in the side of the brain
@@ -218,6 +225,7 @@ export const FAMILIES: { name: string; color: V3; regions: string[] }[] = [
   { name: 'Sinnesnerven', color: [118, 236, 150], regions: ['afferent_0', 'afferent_1'] },
   { name: 'Motoneuronen', color: [255, 122, 92], regions: ['motor_0', 'motor_1'] },
   { name: 'Schmerz', color: [255, 70, 96], regions: ['pain_0', 'pain_1', 'pain_c'] },
+  { name: 'Selbst · Befinden', color: [214, 255, 110], regions: ['selfcore', 'monitor', 'agency', 'insula'] },
 ];
 const FAMILY_OF = new Map<string, number>();
 FAMILIES.forEach((f, i) => f.regions.forEach((r) => FAMILY_OF.set(r, i)));
@@ -987,6 +995,8 @@ export class Brain3D {
               fixedSide = leftBody ? 1 : -1;
               b0 = 1.3;
             } else b1 = 1.3;
+          } else if (pl.mix) {
+            // all groups of this area share the whole patch
           } else if (pl.split) {
             const cj = j % cols;
             const rj = Math.floor(j / cols);

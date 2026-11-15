@@ -94,6 +94,15 @@ export class InnerView {
     q('#innerExternal').style.width = pct(inner.external);
     q('#innerMismatch').textContent = `${inner.mismatch.toFixed(1)} Hz`;
     q('#innerBrace').style.width = pct(inner.brace / 80);
+    const me = inner.self;
+    q('#selfUnwell').style.width = pct(me.unwell / 160);
+    q('#selfWell').style.width = pct(me.well / 160);
+    q('#selfRest').style.width = pct(me.restRate / 100);
+    q('#selfMoving').style.width = pct(me.moving);
+    q('#selfMoved').style.width = pct(me.moved);
+    q('#selfDoubt').style.width = pct(me.doubt / 160);
+    q('#selfConf').style.width = pct(me.confidence / 160);
+    q('#selfCore').textContent = `Ich-Kern: ${(100 * me.core).toFixed(1)} % seiner Zellen in den letzten 100 ms aktiv${me.rest ? ' · will ruhen' : ''}`;
     const d = f.drive;
     q('#drvSmellF').style.width = pct(d.smell[0]);
     q('#drvSmellB').style.width = pct(d.smell[1]);

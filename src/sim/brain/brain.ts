@@ -13,10 +13,11 @@ import { BodyModel } from './bodymodel';
 import { Interoception } from './intero';
 import { Workspace } from './workspace';
 import { Drive } from './drive';
+import { Self } from './self';
 import { Hormones, HORMONES, type HormoneInputs } from './hormones';
 import type { Biped } from '../body/biped';
 
-export const MODULES = ['workspace', 'broadcast', 'bodymodel', 'efference', 'drive'] as const;
+export const MODULES = ['workspace', 'broadcast', 'bodymodel', 'efference', 'drive', 'rest', 'self'] as const;
 export type ModuleName = (typeof MODULES)[number];
 
 export interface PopInfo {
@@ -91,6 +92,7 @@ export class Brain {
   readonly intero: Interoception;
   readonly workspace: Workspace;
   readonly drive: Drive;
+  readonly self: Self;
   /** the body is lying down on purpose (resting): being on the ground does not hurt */
   lyingDown = false;
   readonly hormones = new Hormones();
@@ -133,6 +135,26 @@ export class Brain {
       [tone('extensor'), tone('trunk'), tone('posture')],
     );
     this.drive = new Drive(this.net, this.intero.pops[0], { learn: !!opt.learn, lr: Number((globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env.DRV_LR ?? 3e-5) });
+    this.self = new Self(
+      this.net,
+      {
+        needs: this.intero.pops,
+        painRelay: this.pain.relay,
+        dangerRising: this.amygdala.rising,
+        danger: this.amygdala.cells,
+        vta: this.reward.vta,
+        walkCommand: this.spinal.mlr,
+        otolith: this.bodyModel.otolith,
+        external: this.bodyModel.external,
+        mismatch: [...this.bodyModel.more, ...this.bodyModel.less],
+        body: this.cortex.areas,
+        goStriatum: this.drive.striatum[0],
+        commands: this.drive.command,
+        workspace: this.workspace.pools,
+        brace: this.workspace.brace,
+      },
+      !!opt.learn,
+    );
     if (opt.wasm === false) this.net.useKernel = false;
     this.net.build();
     this.net.learning = !!opt.learn;
@@ -196,6 +218,7 @@ export class Brain {
     this.workspace.step(this.hormones.effects.arousal, asleep);
     this.drive.hunger = this.intero.level[0];
     this.drive.step(asleep);
+    this.self.step(this.hormones.energy, asleep);
     this.decision.step();
     this.cerebellum?.step();
     this.net.step();
@@ -274,16 +297,20 @@ export class Brain {
    *   'broadcast'  – contents still ignite but reach nothing
    *   'bodymodel'  – the mismatch between predicted and felt reaches nothing
    *   'efference'  – the forward model no longer gets the copies of the motor commands
-   *   'drive'      – the loops for "go" and "turn" no longer reach their commands */
+   *   'drive'      – the loops for "go" and "turn" no longer reach their commands
+   *   'rest'       – the loop for "rest" hears nothing and reaches nothing
+   *   'self'       – doubt no longer acts on posture and on setting off */
   setModule(name: ModuleName, on: boolean): void {
     this.modules[name] = on;
     if (name === 'workspace') this.workspace.setEnabled(on);
     else if (name === 'broadcast') this.workspace.setBroadcast(on);
     else if (name === 'bodymodel') this.bodyModel.setOutput(on);
     else if (name === 'drive') this.drive.setEnabled(on);
+    else if (name === 'rest') this.self.setRest(on);
+    else if (name === 'self') this.self.setEnabled(on);
     else this.bodyModel.setEfference(on);
   }
-  readonly modules: Record<ModuleName, boolean> = { workspace: true, broadcast: true, bodymodel: true, efference: true, drive: true };
+  readonly modules: Record<ModuleName, boolean> = { workspace: true, broadcast: true, bodymodel: true, efference: true, drive: true, rest: true, self: true };
 
   /** a unique name for every learned projection (the same pair of populations can be connected more than once) */
   private plasticNames(projs: { name: string }[]): string[] {

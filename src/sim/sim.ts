@@ -81,6 +81,11 @@ export interface Inner {
   modules: boolean[];
   /** time of the last shove from outside [s] (-1 = none yet) */
   lastPush: number;
+  /** the self areas: how it is (-1 unwell .. +1 well) with the rates of the two groups of
+   *  insula cells [Hz]; whether it wants to rest and the rate of that command [Hz]; "I am
+   *  moving" / "I am being moved" 0..1; confidence and doubt [Hz] and their balance (1 = sure);
+   *  share of the core's cells in use right now */
+  self: { mood: number; unwell: number; well: number; rest: boolean; restRate: number; moving: number; moved: number; confidence: number; doubt: number; sureness: number; core: number };
 }
 
 export interface Mind {
@@ -220,6 +225,8 @@ export class Sim {
   autoCookies = true;
   /** the creature decides by itself when to walk, rest and turn around (otherwise `wantsToWalk` commands it) */
   autonomy = false;
+  /** asleep by its own decision, before sleep was forced */
+  napping = false;
   /** it dies when its energy store is empty */
   mortal = false;
   /** +1 or -1: which way the creature faces in the world. The simulation always runs "forwards";
@@ -608,7 +615,7 @@ export class Sim {
   place(): void {
     if (this.autonomy) {
       // its own decision: it is helped up only if it wants to walk, otherwise it stays down and rests
-      if (this.brain.drive.go) this.placeStride();
+      if (this.brain.drive.go && !this.brain.self.rest) this.placeStride();
       else this.lieDown();
     } else if (this.wantsToWalk && this.startInStride) this.placeStride();
     else this.placeStanding();
@@ -684,14 +691,20 @@ export class Sim {
       sp.go = 0;
       sp.atonia = true;
       this.brain.lyingDown = true;
+      const wantsRest = this.autonomy && this.brain.self.rest;
       if (this.brain.hormones.effects.wantsSleep) {
         life.state = 'sleeping';
         this.stateSince = this.time;
-      } else if (since > 1 && (this.autonomy ? this.brain.drive.go : true)) this.place();
+      } else if (wantsRest && since > 3 && this.brain.intero.level[1] > 0.3) {
+        // tired and lying down by its own choice: it falls asleep before sleep would force itself
+        life.state = 'sleeping';
+        this.napping = true;
+        this.stateSince = this.time;
+      } else if (since > 1 && (this.autonomy ? this.brain.drive.go && !wantsRest : true)) this.place();
       return;
     }
-    if (this.autonomy && life.state === 'walking' && !this.brain.drive.go && since > 1.5 && this.time >= this.frozenUntil) {
-      // it no longer wants to walk: it lies down
+    if (this.autonomy && life.state === 'walking' && (!this.brain.drive.go || this.brain.self.rest) && since > 1.5 && this.time >= this.frozenUntil) {
+      // it no longer wants to walk, or it wants to rest: it lies down
       this.endAttempt();
       this.lieDown();
       return;
@@ -712,7 +725,9 @@ export class Sim {
       sp.atonia = true;
       this.brain.bodyState.asleep = true;
       this.brain.lyingDown = true;
-      if (!fx.wantsSleep) {
+      // a sleep it chose itself lasts until the sleep pressure is gone
+      if (!fx.wantsSleep && !(this.napping && this.brain.hormones.level.somnin > 0.15)) {
+        this.napping = false;
         sp.atonia = false;
         this.brain.bodyState.asleep = false;
         this.place();
@@ -894,6 +909,19 @@ export class Sim {
         brace: this.brain.workspace.brace.rate,
         modules: MODULES.map((m) => this.brain.modules[m]),
         lastPush: this.lastPush ? this.lastPush.time : -1,
+        self: {
+          mood: this.brain.self.mood,
+          unwell: this.brain.self.unwell.rate,
+          well: this.brain.self.well.rate,
+          rest: this.brain.self.rest,
+          restRate: this.brain.self.restCommand.rate,
+          moving: this.brain.self.agencySelf,
+          moved: this.brain.self.agencyOther,
+          confidence: this.brain.self.confidence.rate,
+          doubt: this.brain.self.doubt.rate,
+          sureness: this.brain.self.sureness,
+          core: this.brain.self.coreActive,
+        },
       },
     };
   }

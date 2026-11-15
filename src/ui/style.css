@@ -980,3 +980,23 @@ body.kinoOpen {
 #kino.noPip #kinoPip {
   display: none;
 }
+
+/* two bars growing from the middle: left = the unpleasant side, right = the pleasant one */
+.ibar.two {
+  position: relative;
+}
+.ibar.two .felt {
+  position: absolute;
+  top: 0;
+  height: 100%;
+}
+.ibar.two .felt.bad {
+  right: 50%;
+  background: #ff6b6b;
+  border-radius: 3px 0 0 3px;
+}
+.ibar.two .felt.good {
+  left: 50%;
+  background: #7ee0a1;
+  border-radius: 0 3px 3px 0;
+}

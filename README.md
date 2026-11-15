@@ -97,11 +97,16 @@ Nichts davon behauptet, dass Visto etwas erlebt.
 - **Innenleben** öffnet ein Diagnosefenster: welcher Inhalt gerade den globalen Arbeitsraum
   hält (Schreibstreifen der letzten 20 Sekunden), was das Körpermodell für jeden Sinn erwartet
   hat und was gespürt wird, wie viel davon unerklärt ist, welche Bedürfnisse gemeldet werden.
-  „Schubsen" gibt dem Wesen einen Stoß von außen; vier Schalter trennen einzelne Teile der
+  Der Abschnitt **Selbst** zeigt die fünf neuen Areale: Befinden (unwohl links, wohl rechts),
+  den Befehl „Ruhen", „ich bewege mich" und „ich werde bewegt", Zuversicht gegen Zweifel und
+  wie viel vom Ich-Kern gerade in Gebrauch ist.
+  „Schubsen" gibt dem Wesen einen Stoß von außen; sieben Schalter trennen einzelne Teile der
   Architektur ab. Alle Werte stammen aus den laufenden Neuronen.
 - **Selbst / Laufen / Stehen**: In der Voreinstellung „Selbst" bekommt das Wesen keinen Befehl.
   Es läuft los, wenn es Hunger hat, riecht die Cookies vor und hinter sich, dreht sich zum
-  näheren um, legt sich satt zur Ruhe – und **stirbt, wenn seine Energie aufgebraucht ist**.
+  näheren um, legt sich satt zur Ruhe. Ist es müde oder erschöpft (oder geht es ihm nach
+  vielen Stürzen schlecht), legt es sich ebenfalls von selbst hin und schläft müde auch ein;
+  starker Hunger hält es auf den Beinen. Und es **stirbt, wenn seine Energie aufgebraucht ist**.
   Dann hilft nur „Neues Leben". Mit „Cookie geben" kann man es füttern. „Laufen" und „Stehen"
   sind die alten Befehle von außen.
 - Zeitraffer bis `max`, „Stehen/Laufen", „Neues Leben" (Gehirn zurücksetzen). Das Gehirn wird
@@ -147,6 +152,11 @@ gerade läuft, zeigt der Hinweis, wenn man mit der Maus über die Neuronenzahl f
 | Körperinneres | Zellen, die Hunger, Müdigkeit und Erschöpfung als Feuerrate melden | angeboren |
 | Riechen | zwei Zellgruppen: wie stark riecht ein Cookie vorn, wie stark hinten (satt riecht es kaum) | angeboren |
 | Antrieb (Basalganglien) | zwei Schleifen geben die Befehle „Los" und „Wenden"; Hunger macht unruhig, der Geruch von vorn bremst das Wenden | Hunger → Los und der Vergleich angeboren; was die Gerüche bedeuten, wird **gelernt** |
+| Inselrinde | zwei Zellgruppen, die einander hemmen: „unwohl" (Hunger, Müdigkeit, Erschöpfung, Schmerz, steigende Gefahr) und „wohl" (satt, Dopamin). Eine Meldung, keine Strafe; ein Dauerzustand wird schwächer gemeldet | angeboren |
+| Ruhe-Schleife (Basalganglien) | dritte Schleife: Müdigkeit, Erschöpfung und Unwohlsein treiben sie, Hunger und Gefahr halten sie zurück, ihr Befehl bremst „Los". Feuert er, legt sich das Wesen hin | angeboren |
+| Urheberschaft | „ich bewege mich" (Laufbefehl und gespürte Bewegung fallen zusammen) und „ich werde bewegt" (Bewegung, die kein eigener Befehl erklärt) | angeboren |
+| Selbstüberwachung | Zuversicht gegen Zweifel; Zweifel wächst, wenn der Körper sich anders anfühlt als vorhergesagt, bei erwarteter Gefahr und bei Fremdeinwirkung; er versteift die Haltung und lässt zögern | Verschaltung angeboren, ein Eingang aus dem Ich-Kern **gelernt** |
+| Ich-Kern | 3.072 Zellen, die nur für Kombinationen aus Haltung, Befinden, Urheberschaft, Absicht, Arbeitsraum und Zuversicht feuern; ein Plateau-Potential lässt das Muster gut eine halbe Sekunde nachklingen | angeboren |
 | Globaler Arbeitsraum | fünf Inhalte (Körper, Schmerz, Gefahr, Sehen, Bedürfnis) konkurrieren um einen selbsterhaltenden, zeitlich begrenzten Zustand, der an Wachheit und Haltung ausgerufen wird | angeboren; der Zugang gewöhnt sich |
 | Kleinhirn (optional) | Körnerzellen, Purkinje-Zellen, Kletterfasern: lernt Korrekturen vorwegzunehmen | gelernt, noch experimentell |
 
@@ -420,9 +430,16 @@ das Maximum und sank erst danach.
 - **Die Innenperspektive ist ein Anfang, kein Ergebnis.** Es gibt jetzt ein Körpermodell mit
   Vergleichszellen und einen globalen Arbeitsraum, der sich in Tests wie einer verhält. Aber
   das Körpermodell unterscheidet Stöße von außen bisher schlechter von eigener Bewegung als
-  der rohe Sinn, und der Arbeitsraum trägt noch zu keiner messbaren Fähigkeit bei. Gedächtnis
-  für Ereignisfolgen, Selbstmodell und eigenes Handeln aus Bedürfnissen fehlen ganz. Alles
-  dazu in [docs/INNENPERSPEKTIVE.md](docs/INNENPERSPEKTIVE.md).
+  der rohe Sinn, und der Arbeitsraum trägt noch zu keiner messbaren Fähigkeit bei. Ein
+  Gedächtnis für Ereignisfolgen fehlt ganz.
+- **Das „Ich" ist eine Handvoll Schaltkreise, kein Gefühl.** Fünf Areale rechnen jetzt etwas
+  über das Wesen selbst aus (wie es ihm geht, ob es sich selbst bewegt, wie sicher es ist, was
+  alles zusammen gerade der Fall ist). Gemessen ist: Müdigkeit und Erschöpfung lassen es von
+  selbst ruhen; aus dem Ich-Kern lässt sich ablesen, was es gerade tut, und er hält sein Muster
+  gut eine halbe Sekunde. Nicht gezeigt ist: dass Zweifel irgendetwas besser macht, und dass
+  die Urheberschafts-Zellen einen Stoß besser erkennen als der bloße Gleichgewichtssinn. Ob so
+  etwas mit Erleben zu tun hat, kann hier niemand sagen. Alles dazu in
+  [docs/INNENPERSPEKTIVE.md](docs/INNENPERSPEKTIVE.md).
 - **Laufen lernt nicht jedes Leben.** In den Messungen schafften es je nach Reihe null bis zwei
   von vier Leben innerhalb von 15 bis 30 Minuten; die anderen bleiben in einer Schleife aus
   Stürzen und Ausprobieren hängen (Zahlen unter „Gemessen"). Schmerz und Mandelkern haben das
@@ -450,7 +467,8 @@ das Maximum und sank erst danach.
   Wesen deutlich öfter als ohne.
 - Das Kleinhirn ist verdrahtet und seine Synapsen lernen, aber es verbessert das Laufen bisher
   nicht messbar. Deshalb ist es abgeschaltet, solange man es nicht einschaltet.
-- Das voreingestellte Gehirn hat jetzt 17.440 Neuronen und rund 977.000 Synapsen (zu Beginn
+- Das voreingestellte Gehirn hat jetzt 22.816 Neuronen und rund 1,5 Millionen Synapsen (davor
+  17.440 und 977.000, zu Beginn
   6.392 und 330.080), mit Kleinhirn rund 30.000 Neuronen. Das ist weiter deutlich unter den anfangs
   angepeilten 100.000 Neuronen. Gut die Hälfte der neuen Zellen ist die Körperfühlrinde,
   deren Verschaltung fest ist; sie lernt selbst nichts.
@@ -486,6 +504,7 @@ das Maximum und sank erst danach.
 | `npx tsx tools/pain-test.ts`, `tools/cortex-test.ts`, `tools/amygdala-test.ts` | Schmerz je Sturz, Körperfühlrinde und was der Mandelkern lernt, Schaltkreis hinter dem Mandelkern |
 | `node tools/summarize-lives.cjs out/*.log` | wertet Protokolle von `learn-test` aus (`PAIN=fixed|graded|off`, `AMY_DA=0`, `NOREWARD=1` wählen die Bedingung) |
 | `npx tsx tools/exp-autonomy.ts` | eigener Antrieb: läuft es von selbst, findet es die Cookies, überlebt es (`LESION=drive`, `DRV_LR=0`, `TONE=0.6` für Gegenproben und Neugeborene) |
+| `npx tsx tools/exp-self.ts <rates\|mood\|rest\|agency\|core\|walk>` | die fünf Selbst-Areale: Befinden, Ruhen aus eigenem Antrieb, Urheberschaft bei Stößen, Ablesbarkeit und Nachklingen des Ich-Kerns, Stürze mit und ohne (`LESION=rest,self`) |
 | `npx tsx tools/exp-workspace.ts`, `tools/exp-self-other.ts`, `tools/exp-ablation.ts` | Experimente zur Innenperspektive: Zündung des Arbeitsraums, Selbst gegen Fremd, Abschalten einzelner Teile (`LESION=…`) |
 | `npm run build:kernel` | übersetzt `asm/kernel.ts` nach WebAssembly und bettet es ein |
 | `npx tsx tools/bench-sim.ts`, `tools/mature-test.ts` | Rechenzeit (`VISTO_JS=1` erzwingt JavaScript), Gang des ausgereiften Wesens |
