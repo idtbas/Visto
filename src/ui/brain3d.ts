@@ -1494,7 +1494,9 @@ export class Brain3D {
       gl.bindBuffer(gl.ARRAY_BUFFER, this.buf.dynA);
       gl.bufferSubData(gl.ARRAY_BUFFER, 0, da);
       this.attrib(lp, 'aGlow', this.buf.dynA, 1);
-      gl.uniform1f(this.u(lp, 'uGain'), 1);
+      // a line is never thinner than one pixel, so in a small picture the same lines would
+      // add up to far more light; they are dimmed accordingly
+      gl.uniform1f(this.u(lp, 'uGain'), Math.min(1, Math.max(0.25, sh / 1150)));
       gl.drawArrays(gl.LINES, 0, this.dynLines);
     }
 
