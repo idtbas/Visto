@@ -96,6 +96,29 @@ Schlitten, die Maschinen bis „Hydraulikpresse“, komplette Logik, 10 Flüssig
 Defibrillator + Puls-Monitor, alle Bauteile, 2 Karten (≈ 80 Items). Der Rest kommt als Updates –
 das hält das Spiel außerdem lange frisch.
 
+### Option „Früher Start“ (empfohlen)
+
+Die Wettbewerbsanalyse ([11 §12](11_REALISMUS_UND_SPIELGEFUEHL.md#12-wettbewerbsanalyse-stand-20112026))
+zeigt: Das Genre boomt **jetzt** (seit Oktober 2026), die Konkurrenz verliert aber ihre Spieler
+schnell. Wer in 12 Monaten erscheint, kommt womöglich nach der Welle. Darum:
+
+**Labor-Vorschau direkt nach Phase 2** (Team ≈ Monat 3, Solo ≈ Monat 5–6), kostenlos, ohne Shop:
+
+- 1 Dummy-Typ mit **vollem Körpermodell, Reflexen und Telemetrie** – unser Alleinstellungsmerkmal
+  muss vom ersten Tag an sichtbar sein.
+- Crash-Test-Schlitten, Fallturm, Hochgeschwindigkeits-Kamera, Airbag, Helm, ~30 weitere Items.
+- **Geteilte Labore (Multiplayer)** – der Netzwerk-Kern aus Phase 1 wird dafür vorgezogen.
+- Instant-Replay, Speichern von 3 Bauplänen.
+
+**Doppelter Nutzen:** Roblox' Prüfphase (zuerst nur alters-geprüfte 16+, 100 engagierte Spieler
+in 60 Tagen, siehe 01) läuft **parallel zur Weiterentwicklung** ab – statt erst nach dem fertigen
+Spiel. Bis Phase 4 abgeschlossen ist, ist das Spiel für Select (9–15) freigeschaltet, und der
+eigentliche Launch trifft eine bestehende Community. Alle 2–3 Wochen ein sichtbares Update
+(neue Item-Gruppe, neues System) hält die Vorschau im Gespräch.
+
+Risiko: Ein unfertiger erster Eindruck. Gegenmittel: lieber wenig, aber poliert – die Abnahme
+von Phase 2 (inkl. Blindtest) ist die Schwelle, nicht ein Datum.
+
 ---
 
 ## Qualitätssicherung
@@ -160,3 +183,5 @@ unter 13, künstliche Verknappung, „nur heute“-Druck, Handel.
 | Engine-Änderungen (z. B. AJU Phase 3 Ende 2026) brechen Ragdolls | mittel | mittel | Eigener RigBuilder für NPCs (nicht von AJU betroffen), Avatar-Code getrennt, Regressions-Szenen |
 | Rechtliches: zu große Nähe zur Genre-Referenz | niedrig | hoch | Eigener Name, eigene Optik, eigene Item-Namen, keine Erwähnung der Referenz in Titel/Beschreibung/Werbung |
 | Umfang zu groß für Solo | hoch | hoch | 1.0-Kern verkleinern, Rest als Updates |
+| **Genre-Welle ebbt ab, bevor wir erscheinen** | mittel–hoch | hoch | „Früher Start“ nach Phase 2; Positionierung über Bauen/Messen/Multiplayer statt reinem Ragdoll-Spektakel – das bindet auch nach dem Hype |
+| Konkurrenz kopiert unsere Ideen (Telemetrie, Reflexe) | hoch | mittel | Die Tiefe (Labor-Host-Netzwerk, Crash-Puls-Modell, Logik-System) ist schwer schnell nachzubauen; regelmäßige Updates halten den Vorsprung |

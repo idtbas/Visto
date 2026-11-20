@@ -12,7 +12,7 @@ was es auf Roblox schon gibt.
 
 ## 1. Die Klon-Grundlinie und unser Abstand
 
-*(Wettbewerbsanalyse siehe §12; hier die Kurzfassung des typischen Klons)*
+*(Ausführliche Wettbewerbsanalyse mit Zahlen in §12; hier die Kurzfassung des typischen Klons)*
 
 | Typischer Roblox-Klon | Wir |
 |-----------------------|-----|
@@ -384,9 +384,90 @@ deshalb nicht mit Menüs, sondern mit einem inszenierten Moment:
 
 ---
 
-## 12. Wettbewerbsanalyse
+## 12. Wettbewerbsanalyse (Stand 20.11.2026)
 
-*(Wird mit den Ergebnissen der Recherche zu aktuellen Roblox-Klonen gefüllt.)*
+Zahlen direkt aus den öffentlichen Roblox-APIs (CCU = gleichzeitige Spieler, Momentaufnahme);
+Spitzenwerte von Drittanbieter-Trackern sind Näherungen. Gespielt wurde keines der Spiele –
+Aussagen zur Qualität stützen sich auf Beschreibungen, Bewertungen und DevForum-Berichte.
+
+### 12.1 Lage: Ein Boom, der gerade passiert
+
+Fast alle Top-Titel sind zwischen **Ende September und Anfang November 2026** entstanden.
+Vermutlicher Auslöser: Roblox' neue physikalische Gelenke (Avatar Joint Upgrade, Januar 2026;
+stabile AnimationConstraint, Juni 2026).
+
+| Spiel | CCU | Server | Einstufung | Profil |
+|-------|----:|:------:|-----------|--------|
+| Hyper Realistic Ragdoll | 90 500 (Spitze ~200 000) | **1** | Moderate | Trefferzonen-Reaktionen (hinken, kriechen), Röntgen, „Medic spielen“, Events (Tornado, Meteor), sprechende Dummies, 17 Pässe |
+| Bloody Ragdoll Physics | 23 700 | **1** | Mild | 23 Waffen, 14 Spritzen, Zerlegung, Zeitlupe + Zurückspulen; Blut „reduziert, um den Richtlinien zu entsprechen“ |
+| Fling Things and People | 19 400 | 25 | Mild | Seit 2021, 3,75 **Mrd.** Besuche – Beweis für die Lust auf *gemeinsame* Physik |
+| Ragdoll Research | 12 300 | 1 | Moderate | Dummies kämpfen gegeneinander, Mutations-Spritzen, 24 Pässe |
+| Ragdoll Playground (2D) | 10 600 | 6 | Moderate | Sand/Wasser/Feuer/Lava-Simulation, **94 % Likes – bester Wert** |
+| BoneBox Engine | 6 700 | 16 | Mild | 100+ Spielzeuge, Schweißen/Seile, 29 Pässe |
+| Dummy Lab | 6 100 | 6 | Mild | Crash-Test-Thema (Kanone, Raketenschlitten, Fallturm) – **aber keine Messwerte**, nur Röntgen |
+| Realistic Ragdoll Engine | 5 400 (Spitze 41 000) | 1 | – | Knochen/Organe, Defibrillator; **CCU −48 % in einer Woche, Ø-Sitzung 10,6 min** |
+| Blood Lab | 3 500 | 1 | – | fließendes Voxel-Blut, Behandlungs-Werkzeuge, „smarte“ Ragdolls |
+| Ragdoll Physics 2 | 1 900 (Spitze 13 000) | 21 | Moderate | „Wunden aus echter Ballistik“, 140 Waffen – aber **47 Pässe, nur 70 % Likes** |
+| Direkte Melon/People-Playground-Klone | 0–670 | – | – | tot oder schwach; einer musste sein Gore entfernen, die 18+-Abspaltung hat ~1 % der Besuche |
+
+### 12.2 Die Klon-Grundlinie
+
+- R15-Dummies, **Solo-Server** (fast alle Top-10 haben Servergröße 1 – sie umgehen so das
+  Netzwerk-Problem).
+- Hauptverb: greifen und schleudern. Trefferzonen-Reaktionen, Röntgen, „Organe und Knochen“
+  sind Standard-Werbung geworden.
+- Medizin = meist **ein** Heilen-Knopf oder Wiederbeleben.
+- Immer dieselbe Waffenliste und dieselben Events (Tornado, Meteor, Zombies, T-Rex).
+- Kein echtes Bauen über Schweißen/Seile hinaus.
+- Geschäftsmodell: Everything-Paket 499–999, VIP, **bezahlter Sandbox-/Admin-Modus**,
+  „Unlimited Events“, Einzelwaffen-Pässe, Grind-Freischaltungen.
+
+### 12.3 Ihre Schwächen (belegt)
+
+| Schwäche | Beleg | Unsere Antwort |
+|----------|-------|----------------|
+| **Spieler gehen schnell** | CCU −48 %/Woche, 10,6 min Sitzung; ein Entwickler aus dem Trend berichtet 40 % Absprung in 60 s und 2–3 min Spielzeit | Langzeit-Tiefe: Bauen, Logik, Telemetrie, Aufgaben (05 §8); die „ersten 60 Sekunden“ (§11) |
+| **Frühe Bezahlschranken** | „Warum verlangst du nach 30 Sekunden Geld für eine Grundfunktion?“ (DevForum); 47 Pässe ↔ 70 % Likes | Kompletter Kern gratis, keine Sandbox-/Zeitsteuerungs-Pässe (10) |
+| **Handy-Steuerung ungelöst** | „Ziehen ist am Handy schwer, weil es mit der Bewegung kollidiert“ | Lab-Kamera ohne Avatar als Standard, eigener Greifer, Radialmenü (05) |
+| **Kein Multiplayer** (weil Ragdoll-Netzwerk schwer ist) | DevForum voller Berichte über Ruckeln, nachhängende Gliedmaßen, Ownership-Flackern, zufälliges Wegschleudern | Labor-Host-Simulation mit getrennten Laboren (03 §3) – **unser größter technischer Graben** |
+| **Gore stößt an die Moderation** | Blut reduziert, Gore entfernt, 18+-Ableger floppt | Wir holen den Effekt aus Physik und Verhalten (dieses Kapitel) |
+| **Alle klingen gleich** | identische Schlagworte („every hit is real“), Unterschied nur Waffenzahl | Belegbarer Realismus: Messwerte, Telemetrie, Blindtest (§14) |
+| **Medizin flach** | niemand zeigt sichtbare Vitalwerte | Inspektor mit allen Vitalwerten, Telemetrie, Rettungs-Aufgaben |
+
+### 12.4 Lücken, die niemand füllt – und die wir besetzen
+
+1. **Flüssiger Multiplayer** in geteilten Laboren.
+2. **Echtes Bauen mit Logik** (Kabel, Sensoren, Kolben, Motoren) + Baupläne.
+3. **Crash-Test-Telemetrie** mit Zahlen (g-Kräfte, HIC, Vergleich von Versuchen) – das
+   Crash-Test-Thema existiert (Dummy Lab), die Wissenschaft dahinter nicht.
+4. **Sichtbare Physiologie** als Spielmechanik (Glibbermenge, Schock, Bewusstsein, Triage).
+5. **Active Ragdoll als Kern** (Abstützen, Schützen, Festhalten, Gleichgewicht).
+6. **Flüssigkeiten und Materialien** in 3D (der 2D-Titel mit Sand/Wasser hat die besten Likes).
+7. **Handy-zuerst-Steuerung.**
+8. **Faire Monetarisierung.**
+9. **Materialbewusster Klang.**
+
+### 12.5 Was wir zusätzlich übernehmen sollten (Grundlinie, die Spieler erwarten)
+
+- **Labor-Ereignisse** (gratis, nie hinter Bezahlschranke): Sturm-Ventilator, Meteoritenschauer
+  aus der Decke (Fantasie-Labor-Anlage), Schwerkraft-Ausfall, Stromausfall, Überflutung.
+  Im geteilten Server pro Labor, im Solo-Labor frei auslösbar.
+- **Einfache Befehle an Dummies** aus einer festen Liste (Folgen, Stehenbleiben, Hinsetzen,
+  Hände hoch, Laufen zu …) – **kein** KI-Chat (wäre 18+, siehe 01 §5).
+- **Zurückspulen** im Solo-Labor: aus dem Replay-Puffer einen Zeitpunkt wählen und den Zustand
+  dort wiederherstellen (Positionen + Geschwindigkeiten + Vitalwerte-Schnappschüsse alle 0,5 s).
+
+### 12.6 Was das für die Strategie heißt
+
+- **Zeitfenster:** Der Boom ist jetzt. Unser Vorteil ist Qualität und Bindung, nicht Tempo –
+  aber wir sollten nicht erst in 12 Monaten erscheinen. Siehe neue Option
+  „Früher Start“ in [10](10_ROADMAP_QA_MONETARISIERUNG.md#option-früher-start-empfohlen).
+- **Positionierung:** Nicht „noch ein realistischer Ragdoll“, sondern
+  *„Das Labor, in dem du Crash-Tests baust, misst und gemeinsam tüftelst“*. Der Titel braucht
+  keine Emojis und kein „[UPD]“ – ein klares Versprechen hebt sich in dieser Liste ab.
+- **Einstufung:** Ein Konkurrent mit (stilisierter) Zerlegung ist als *Mild* gelistet. Das ist ein
+  Hinweis, aber kein Beweis – Einstufungen beruhen auf Selbstauskunft. Unsere Fragebogen-Vorschau
+  (01) bleibt maßgeblich.
 
 ---
 
