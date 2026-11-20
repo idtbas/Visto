@@ -17,7 +17,7 @@ was es auf Roblox schon gibt.
 | Typischer Roblox-Klon | Wir |
 |-----------------------|-----|
 | R6/R15-Klötzchen mit Lücken an den Gelenken | **Ein durchgehender, verformbarer Körper** (Skinned Mesh, von der Physik gesteuert) |
-| Motor6D → BallSocket: schlaffer „Nudel“-Ragdoll ohne Muskeln | **Active Ragdoll** mit Muskeltonus, Gleichgewicht und 16 Reflexen |
+| Motor6D → BallSocket: schlaffer „Nudel“-Ragdoll ohne Muskeln | **Active Ragdoll** mit Muskeltonus, Gleichgewicht und 20 Reflexen |
 | Symmetrische Kegel-Gelenke (Knie biegt in alle Richtungen) | **Anatomische Gelenke**: Knie und Ellbogen als echte Scharniere mit medizinischen Bewegungsumfängen |
 | Fantasie-Schwerkraft, beliebige Massen | **Echte Einheiten**: 1 Stud = 0,28 m, Erdschwere, Massen- und Trägheitsverteilung aus der Biomechanik |
 | HP-Balken | **Crash-Test-Wissenschaft**: Kopfverletzungs-Kriterium (HIC), Brust-Eindrückung, Nacken-Kriterium, Oberschenkel-Kraft – echte Grenzwerte |
@@ -97,7 +97,48 @@ sieht **schwer und echt** aus; ein Klon-Ragdoll fällt wie ein Wäschesack.
 
 ### 2.6 Referenzwerte
 
-*(Wird mit den geprüften Daten aus der Biomechanik-Recherche gefüllt – siehe unten §13.)*
+**Segmentmassen und Trägheit** nach de Leva (1996, angepasstes Zatsiorsky-Seluyanov-Modell,
+erwachsener Mann). Unsere drei Rumpfsegmente entsprechen genau dessen Aufteilung in oberen,
+mittleren und unteren Rumpf – deshalb dieses Modell. Masse für einen 75-kg-Dummy.
+
+| Segment | Massenanteil | Masse (75 kg) | Schwerpunkt (Anteil der Länge ab) | Trägheitsradius sag. / quer / längs (Anteil der Länge) |
+|---------|------------:|-----:|------------------------|------------------------|
+| Kopf + Hals | 6,94 % | 5,2 kg | 0,598 ab Scheitel | 0,362 / 0,376 / 0,312 |
+| Brust (oberer Rumpf) | 15,96 % | 12,0 kg | 0,300 ab Brustbein-Oberkante | 0,716 / 0,454 / 0,659 |
+| Bauch (mittlerer Rumpf) | 16,33 % | 12,2 kg | 0,450 ab Schwertfortsatz | 0,482 / 0,383 / 0,468 |
+| Becken (unterer Rumpf) | 11,17 % | 8,4 kg | 0,612 ab Nabel | 0,615 / 0,551 / 0,587 |
+| Oberarm | 2,71 % | 2,0 kg | 0,577 ab Schulter | 0,285 / 0,269 / 0,158 |
+| Unterarm | 1,62 % | 1,2 kg | 0,457 ab Ellbogen | 0,276 / 0,265 / 0,121 |
+| Hand | 0,61 % | 0,46 kg | 0,790 ab Handgelenk | 0,628 / 0,513 / 0,401 |
+| Oberschenkel | 14,16 % | 10,6 kg | 0,410 ab Hüfte | 0,329 / 0,329 / 0,149 |
+| Unterschenkel | 4,33 % | 3,2 kg | 0,440 ab Knie | 0,251 / 0,246 / 0,102 |
+| Fuß | 1,37 % | 1,0 kg | 0,442 ab Ferse | 0,257 / 0,245 / 0,124 |
+
+Summe mit beiden Seiten: 100 %. Segmentlängen als Anteil der Körpergröße (ca., aus derselben
+Quelle, **noch zu prüfen**): Kopf+Hals 0,140, Oberarm 0,162, Unterarm 0,154, Oberschenkel
+0,243, Unterschenkel 0,249, Fuß 0,148. Hinweis: Das ältere Dempster/Winter-Modell gibt einen
+um ~40 % leichteren Oberschenkel und einen schwereren Rumpf an – die Modelle unterscheiden sich
+spürbar; wir nehmen de Leva und prüfen im Pendel-Test (§14), ob es *aussieht* wie echt.
+
+**Gelenkgrenzen** aus Normalwerten (WA DSHS, CDC-Messstudie Männer 20–44, AAOS) und unsere
+Umsetzung:
+
+| Gelenk | Normaler Bewegungsumfang | Umsetzung im Rig |
+|--------|--------------------------|------------------|
+| Nacken | Beugen 45–50°, Strecken 45–60°, seitlich 45°, Drehen 60–80° | BallSocket, Kegel 55°, Twist ±75° |
+| Oberer Rücken | (Anteil am Rumpf: Beugen 80–90°, Strecken 25°, seitlich 25–35°, Drehen 45°) | Kegel 22°, 8° nach vorn gekippt, Twist ±25° |
+| Unterer Rücken | (wie oben, zweiter Anteil) | Kegel 30°, 12° nach vorn gekippt, Twist ±20° |
+| Schulter | Beugen 150–180°, Strecken 50–60°, Abspreizen 150–180°, Anlegen 30°, Rotation innen 70° / außen 90° | Kegel 110°, nach vorn-außen gekippt, Twist −70° … +90° |
+| Ellbogen | 0–145° (CDC gemessen 144,6°) | **Hinge** 0° … 145° |
+| Unterarmdrehung | Pronation 77–80°, Supination 80–85° | als Twist am Handgelenk ±80° |
+| Handgelenk | Beugen 60–80°, Strecken 60–70°, radial 20°, ulnar 30° | Kegel 65°, Twist s. o. |
+| Hüfte | Beugen 100–130°, Strecken 17–30°, Abspreizen 40–45°, Anlegen 20–30°, Rotation ±45° | Kegel 75°, 45° nach vorn gekippt, Twist ±40° |
+| Knie | 0–135/150° (CDC gemessen 137,7°) | **Hinge** 0° … 140° |
+| Sprunggelenk | Heben 13–20°, Senken 40–55°, Einwärts 30–35°, Auswärts 15–20° | Kegel 35°, 15° Richtung Senken gekippt, Twist ±12° |
+
+Die Grenzen sind **weich gedacht**: Wird ein Gelenk mit Kraft über etwa das 1,2-Fache seines
+Umfangs gezwungen, entsteht Bänder-/Gelenkschaden bis hin zum Auskugeln (02 §5.8). Der Faktor
+1,2 ist eine Design-Annahme, kein Messwert.
 
 ---
 
@@ -128,12 +169,21 @@ rekonstruieren deshalb den **Stoßverlauf** aus dem Aufprall-Ereignis (Collision
 τ            = Kontaktdauer. Die Nachgiebigkeiten beider Partner addieren sich wie
                Federn in Reihe, deshalb dominiert immer der WEICHERE Partner:
                τ ≈ τ_Dummy-Segment + τ_Gegenstück
-               (Startwerte τ_Gegenstück: Beton/Stahl 1 ms, Holz 3 ms, Gummi 12 ms,
-                Schaumstoff 35 ms, Kissen 45 ms, Airbag 60 ms; τ_Kopf-Hülle 3 ms,
-                Helm-Polster +8 ms)                                          [s]
+               (kalibriert, siehe unten: τ_Kopf-Hülle 1,2 ms; τ_Gegenstück: Stahl 0,5 ms,
+                Beton 0,6 ms, Holz 2 ms, Gummimatte 10 ms, Schaumstoffblock 30 ms,
+                Kissen 40 ms, Airbag 60 ms, Schaumstoff-Grube 60 ms; Helm +8 ms)      [s]
 Puls         = Halbsinus mit Spitze  a_max = (π/2) × Δv / τ
 HIC          = numerisch über den rekonstruierten Puls (Fenster ≤ 15 ms)
 ```
+
+**Kalibrierung an echten Tests:**
+
+- *Hybrid-III-Kopf-Zulassungstest* (US-Norm, 49 CFR 572.32): Kopf fällt 376 mm auf eine
+  Stahlplatte und muss 225–275 g Spitze zeigen. Δv = √(2·g·0,376 m) = 2,72 m/s; bei 250 g folgt
+  τ = (π/2)·Δv / a_max ≈ **1,7 ms** → τ_Kopf-Hülle + τ_Stahl = 1,2 + 0,5 ms.
+- *Stunt-Sprung auf Schaumstoff* (Mertz & Gadd 1971): 17 m Fall, 49 g Spitze über ~100 ms ohne
+  Beschwerden. Δv ≈ 18,3 m/s → τ ≈ **60 ms** → Schaumstoff-Grube 60 ms.
+- Literatur: harter Kopfaufprall < 5 ms, gepolstert/mit Helm 8–15 ms – passt zu den Werten oben.
 
 **Das ist der Kern des „echt“-Gefühls im Schadensmodell:** Polsterung verlängert τ, senkt die
 Spitzenbeschleunigung und damit den HIC **dramatisch** – genau wie in echt. Derselbe Sturz auf
@@ -185,7 +235,7 @@ Bei Roblox-Klonen gibt es das praktisch nicht.
 ```
                  Zustandsmaschine (02 §4)   → Grundpose (Stehen, Liegen, Kriechen …)
                            +
-                 Reflex-Schicht (16 Reflexe) → Überlagerungen mit Priorität und Gewicht pro Gelenk
+                 Reflex-Schicht (20 Reflexe) → Überlagerungen mit Priorität und Gewicht pro Gelenk
                            +
                  IK-Ziele (Hände, Füße, Kopf) → analytische 2-Gelenk-IK → Gelenkwinkel
                            ↓
@@ -200,7 +250,7 @@ Der entscheidende Punkt: **Reflexe sind Absichten, keine Animationen.** Die Phys
 letzte Wort. Ein Dummy *will* sich abstützen – ob es klappt, hängt von Kraft, Winkel und Boden
 ab. Darum sieht jeder Sturz anders aus.
 
-### 4.2 Die 16 Reflexe
+### 4.2 Die 20 Reflexe
 
 | # | Reflex | Auslöser | Was passiert |
 |---|--------|----------|-------------|
@@ -220,6 +270,15 @@ ab. Darum sieht jeder Sturz anders aus.
 | 14 | **Atmen** | immer, wenn aktiv | Brust hebt sich, Rate aus Sauerstoff/Adrenalin (12–40/min), nach Anstrengung Keuchen |
 | 15 | **Gewichtsverlagerung** | Stehen im Ruhezustand | alle 3–8 s Gewicht wechseln, kleine Kopfbewegungen |
 | 16 | **Nach Partner schauen / helfen** (1.2) | anderer Dummy fällt in der Nähe | erschrocken hinschauen; mit „Helfer“-Pose: zum Verletzten gehen, ihn zur Medizin-Station ziehen |
+
+| 17 | **Hängen & Strampeln** | vom Greifer an einem Körperteil hochgehoben | Beine strampeln, freie Hand greift nach dem gehaltenen Arm bzw. nach oben, Kopf schaut zum Greifpunkt – macht jedes Hochheben lebendig |
+| 18 | **Wanken an der Kante** | Fußspitzen über einer Kante (Raycast vor den Füßen ins Leere) | Arme rudern, Oberkörper lehnt zurück, kleiner Schritt zurück – oder Absturz |
+| 19 | **Freier Fall** | Fallzeit > 0,6 s ohne Boden in Sicht | Arme und Beine rudern (Fahrrad-Bewegung), vor dem Aufprall Übergang zu Abstützen/Abrollen |
+| 20 | **Schwimmen/Strampeln** | Körper in Wasser-Becken | Kopf nach oben, Arme paddeln, Auftrieb nach Dichte; bei Bewusstlosigkeit treibt der Dummy |
+
+Die Liste deckt die wichtigsten Verhaltensgruppen ab, die Euphoria (GTA V) über seine
+Schnittstelle anbietet – Gleichgewicht, Stürze, Abstützen, Verletzung, Treffer-Reaktionen,
+Umgebung (Feuer, Strom, Wasser, Hängen) und Kopf-Blick – umgesetzt mit unseren eigenen Mitteln.
 
 Reflex 16 ist bewusst **liebenswert**: Dummies kümmern sich umeinander. Das ist original, passt
 zur Rahmung (01 §4) und erzeugt rührende, teilbare Momente.
@@ -358,7 +417,7 @@ durch den Raum – bei uns, wie in echt, nicht).
 |---------|:--------:|:------:|:---------------------:|
 | Skinned Mesh | ✔ alle | ✔ nahe 8 | Proxys mit Textur |
 | Jiggle-Knochen | ✔ nahe 6 | ✔ nahe 2 | – |
-| Reflexe | alle 16 | alle 16 | 1–5, 14 |
+| Reflexe | alle 20 | alle 20 | 1–5, 14, 17 |
 | Antizipation | 20 Hz | 10 Hz | 5 Hz |
 | FractureBend | ✔ | ✔ | – |
 | Hülsen, Einschuss-Details | ✔ | reduziert | – |
@@ -473,7 +532,104 @@ stabile AnimationConstraint, Juni 2026).
 
 ## 13. Geprüfte Referenzwerte
 
-*(Wird mit den geprüften biomechanischen Daten und Crash-Test-Grenzwerten gefüllt.)*
+Verifiziert in den Originaltexten, wo nicht anders vermerkt. Diese Tabelle ist die Quelle für
+`Config/InjuryConfig.luau`.
+
+### 13.1 Crash-Test-Grenzwerte (US-Norm FMVSS 208, 50.-Perzentil-Mann, Hybrid III)
+
+| Kriterium | Grenzwert | Bedeutung (Risiko) |
+|-----------|-----------|--------------------|
+| HIC15 (Fenster ≤ 15 ms) | 700 | ≈ 5 % Risiko AIS 4+ (Mertz 1997) |
+| HIC36 (Fenster ≤ 36 ms) | 1000 | – |
+| Brustbeschleunigung | 60 g (Spitzen darüber max. 3 ms) | ≈ 20 % AIS 4+ |
+| Brust-Eindrückung | 63 mm | 60 mm ≈ 45 % (Airbag) bzw. 70 % (Gurt) AIS 3+ |
+| Viscous Criterion VC | – (Euro NCAP 0,5 → 1,0 m/s) | 1,0 m/s ≈ 25 % AIS 4+ |
+| Oberschenkel-Axialkraft | 10,0 kN je Bein | Bruch dynamisch ab ~7,6 kN bei 30–50 ms Stößen (King 1973) |
+| Nij (Nacken) | ≤ 1,0; Achsenabschnitte Zug 6 806 N, Druck 6 160 N, Beugen 310 Nm, Strecken 135 Nm | Nij 1,0 (Zug-Strecken) ≈ 30 % AIS 2, 22 % AIS 3 |
+| Nacken-Kraftspitzen | Zug 4 170 N, Druck 4 000 N | – |
+| Tibia-Index TI = \|M\|/225 Nm + \|F\|/35,9 kN | Euro NCAP 0,4 (gut) → 1,3 (schlecht) | Schienbein-Druck 8 kN ≈ 10 % Bruchrisiko |
+| Knie-Verschiebung | 6 → 15 mm | Kreuzband-Versagen |
+
+### 13.2 Risikokurven für den Kopf
+
+NHTSA-Lognormalmodell: `P = Φ((ln HIC − μ) / σ)`
+
+| Schwere | μ | σ | P bei HIC 1000 |
+|---------|---:|---:|----:|
+| AIS 2+ | 6,96352 | 0,84664 | ≈ 47 % |
+| AIS 3+ | 7,45231 | 0,73998 | ≈ 23 % |
+| AIS 4+ | 7,65605 | 0,6058 | ≈ 11 % |
+
+Die Quelle führt die Kurven für HIC36; NHTSA nutzt sie (unbestätigt) auch mit HIC15 – wir setzen
+sie auf HIC15 an. **Gehirnerschütterung** trat in Football-Analysen (Viano 2005) meist ab etwa
+**HIC 250** auf → unsere Schwelle für „benommen“. Spielumsetzung: Pro Kopftreffer wird mit
+seeded Zufall gegen die drei Kurven gewürfelt → Schwerestufe nach der Tabelle in §3.3. Gleicher
+Aufprall, ähnliches – aber nicht identisches – Ergebnis.
+
+### 13.3 Bruchlasten (für die Gerüst-Schwellen in 02 §5.1)
+
+| Knochen | Last | Quelle |
+|---------|------|--------|
+| Oberschenkel | axial ~7,6 kN (30–50 ms), Biegung ~412 Nm dynamisch | King 1973; Kerrigan 2003 |
+| Unterschenkel / Oberschenkel (604 Beine, Fußgänger-Versuche) | Tibia 1,2–7,1 kN, Femur 1,3–8,4 kN, Biegung 100–500 Nm | NHTSA ESV 17 |
+| Schienbein | Biegung kritisch 225 Nm (Tibia-Index) | Mertz |
+| Oberarm | 2,5 kN Scherung, 230 Nm (vorläufig) | SWOV |
+| Unterarm | 108 Nm (proniert) / 126 Nm (supiniert) | SWOV |
+| Schädel seitlich | ~3,1 kN (Frau) / 3,9 kN (Mann) | Nahum |
+| Schädel Stirn | ~3,6–7,1 kN (Sekundärquelle) | Hodgson |
+| Rippen | kaum Brüche < 58 mm Eindrückung, häufig > 76 mm; 50 % Risiko bei 35 % Brust-Kompression (30-Jährige) | SAE 740589; Kent |
+
+Damit ersetzen wir die geschätzten Impuls-Schwellen aus 02 durch **Kräfte und Momente**:
+Segmentkraft `F ≈ m_eff · a_max` aus dem rekonstruierten Puls, Biegemoment
+`M ≈ F · Hebel` (Trefferabstand zum nächsten Gelenk). Bruch, wenn die Last die Tabellenwerte ×
+(0,5 + 0,5 × Gerüst-Integrität) übersteigt.
+
+### 13.4 Stürze, Polster und anhaltende G-Kräfte
+
+- Aufprallgeschwindigkeit `v = √(2gh)`; mittlere Verzögerung in g ≈ Fallhöhe / Bremsweg.
+  3 m Fall auf 3 cm „Gewebe“ ≈ 100 g, auf 30 cm Schaum ≈ 10 g.
+- Spielplatz-Normen: kritische Höhe auf Beton nur **~0,15 m** (200 g / HIC 1000), auf
+  Federboden > 3,35 m – ein schöner Aufgaben-Ansatz („Baue einen Boden, der 3 m übersteht“).
+- Kurze Pulse (~100 ms): Toleranz ~60 g (Mertz & Gadd).
+- **+Gz** (Blut Richtung Füße, z. B. Rakete nach oben): Bewusstlosigkeit ab **4,7 g** bei schnellem
+  Anstieg (Minimum aus 888 Zentrifugen-Fällen), typisch ~5 g untrainiert; Stufen: Grauschleier →
+  Tunnelblick → Schwarzsehen → Bewusstlos. **−Gz**: −2 bis −3 g. **Gx** (nach vorn): ~20 g für < 10 s,
+  10 g für 1 min, 6 g für 10 min.
+  → Ersetzt die G-Kraft-Zeile in 02 §3 („> 25 g über 0,5 s“ war zu großzügig): **+Gz ≥ 4,7 g für
+  ≥ 3 s** → Bewusstsein sinkt; Gx-Grenzen wie oben.
+
+### 13.5 Darstellung und Klang
+
+| Glühfarbe | Temperatur |
+|-----------|-----------|
+| erstes schwaches Glühen (Draper-Punkt) | ~525 °C |
+| sehr dunkles Rot | 594–704 °C |
+| Dunkelrot | 705–814 °C |
+| Kirschrot | 815–870 °C |
+| helles Kirschrot | 871–981 °C |
+| Orange | 982–1 092 °C |
+| Gelb | 1 093–1 258 °C |
+| Gelbweiß | 1 259–1 314 °C |
+| Weiß | ab 1 315 °C |
+
+Schallgeschwindigkeit in Luft: `c ≈ 331,3 + 0,606 · T` m/s (343 m/s bei 20 °C) – wir nutzen die
+**Umgebungstemperatur des Labors**, im Eis-Labor kommt der Knall also minimal später an. In
+Wasser 1 481 m/s, in Stahl ~5 900 m/s.
+
+### 13.6 Quellen
+
+- FMVSS 208 / 214: https://www.law.cornell.edu/cfr/text/49/571.208, https://www.law.cornell.edu/cfr/text/49/571.214
+- Hybrid-III-Kopf-Zulassung: https://www.law.cornell.edu/cfr/text/49/572.32
+- IIHS-Bewertungsgrundlagen (Risiken, Mertz & Gadd): https://www.iihs.org/media/0256acaf-ba77-4691-94fc-8553c75d650a/dr5MlQ/Ratings/Protocols/archive/measures_frontal_0609.pdf
+- Euro-NCAP-Grenzen (Global-NCAP-Kopie 2017): https://static1.squarespace.com/static/5fb4ea8933ae6c208c3dac41/t/604f5017b746234915afcd01/1615810586137/assessment-protocol-Adult.pdf
+- HIC-Risikokurven: https://biomedgrid.com/fulltext/volume5/head-injury-criterion-mini-review.000957.php
+- de Leva 1996 (Daten): https://raw.githubusercontent.com/BMClab/BMC/master/data/BSPmale_ZdeLeva.txt
+- Gelenk-Normalwerte: https://www.dshs.wa.gov/sites/default/files/forms/pdf/13-585a.pdf, https://archive.cdc.gov/www_cdc_gov/ncbddd/jointrom/index.html
+- Bruchlasten: https://www-nrd.nhtsa.dot.gov/pdf/esv/esv17/Proceed/00025.pdf, https://swov.nl/nl/publicatie/proposed-provisional-reference-values-humerus-evaluation-injury-potential
+- G-LOC: https://meridian-asma-published.prime-prod-local.pubfactory.com/downloadpdf/view/journals/amhp/90/11/article-p959.pdf
+- Glühfarben: https://en.wikipedia.org/wiki/Red_heat · Schall: https://en.wikipedia.org/wiki/Speed_of_sound
+- Euphoria-Verhaltenskatalog (GTA-V-API): https://docs.ragecoop.com/SHVDN/GTA.NaturalMotion.html
+- SIMBICON (Yin, Loken, van de Panne 2007): https://www.cs.ubc.ca/~van/papers/2007-siggraph-simbicon.pdf
 
 ---
 
@@ -482,6 +638,9 @@ stabile AnimationConstraint, Juni 2026).
 | Test | Methode | Ziel |
 |------|---------|------|
 | **Fallzeit** | Dummy aus 1 m, 2 m, 5 m fallen lassen, Zeit messen | ±5 % zur Physik (0,45 s / 0,64 s / 1,01 s) |
+| **Hybrid-III-Kopftest** | Kopf-Segment aus 376 mm auf Stahlplatte | Spitze 225–275 g (wie die echte Zulassung) |
+| **Stunt-Grube** | Dummy aus 17 m in Schaumstoff-Grube | ~49 g Spitze, ~100 ms, keine Verletzung |
+| **Spielplatz-Test** | Kopf aus 0,15 m auf Beton | ≈ 150 g (die Norm misst ~200 g mit hartem Prüfkopf ohne Hülle; unser Kopf hat eine Hülle wie der Hybrid III) |
 | **Pendel** | frei hängender Arm/Bein, Schwingdauer messen | ±10 % zu Werten aus den Trägheitsradien |
 | **Crash-Referenz** | Schlitten mit 50 km/h gegen starre Wand, Kopf-Verlauf vs. veröffentlichte Hybrid-III-Kurven | Form und Größenordnung stimmen |
 | **Polster-Test** | gleicher Sturz auf Beton/Gummi/Schaum | HIC sinkt deutlich und in sinnvoller Reihenfolge |

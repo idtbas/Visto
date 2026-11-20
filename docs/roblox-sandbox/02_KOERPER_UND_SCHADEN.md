@@ -18,45 +18,49 @@ Wir benutzen **keinen Humanoid** für NPC-Dummies. Ein Humanoid kämpft gegen di
 stehen, er setzt Zustände, er kostet CPU). Stattdessen: eigener Rig aus `MeshPart`s, verbunden mit
 `BallSocketConstraint`s, gesteuert von unserem eigenen „Muskel“-Controller.
 
-| # | Segment (intern) | Anzeige | Massenanteil | Enthält „Organ“ |
+| # | Segment (intern) | Anzeige | Massenanteil (de Leva 1996) | Enthält „Organ“ |
 |---|------------------|---------|-------------:|-----------------|
-| 1 | `Head` | Kopf | 8 % | **Steuerchip** (≈ Gehirn) |
-| 2 | `Chest` | Brust | 17 % | **Pumpe** (≈ Herz), **Luftbalg** (≈ Lunge) |
-| 3 | `Belly` | Bauch | 12 % | **Glibber-Tank** (≈ Leber/Bauchorgane) |
-| 4 | `Pelvis` | Becken | 12 % | – |
-| 5/6 | `UpperArm_L/R` | Oberarm | je 3 % | – |
-| 7/8 | `LowerArm_L/R` | Unterarm | je 2 % | – |
-| 9/10 | `Hand_L/R` | Hand | je 0,8 % | – (Greifpunkt) |
-| 11/12 | `UpperLeg_L/R` | Oberschenkel | je 10 % | – |
-| 13/14 | `LowerLeg_L/R` | Unterschenkel | je 4,5 % | – |
-| 15/16 | `Foot_L/R` | Fuß | je 1,5 % | – (Bodenkontakt) |
+| 1 | `Head` | Kopf + Hals | 6,94 % | **Steuerchip** (≈ Gehirn) |
+| 2 | `Chest` | Brust | 15,96 % | **Pumpe** (≈ Herz), **Luftbalg** (≈ Lunge) |
+| 3 | `Belly` | Bauch | 16,33 % | **Glibber-Tank** (≈ Leber/Bauchorgane) |
+| 4 | `Pelvis` | Becken | 11,17 % | – |
+| 5/6 | `UpperArm_L/R` | Oberarm | je 2,71 % | – |
+| 7/8 | `LowerArm_L/R` | Unterarm | je 1,62 % | – |
+| 9/10 | `Hand_L/R` | Hand | je 0,61 % | – (Greifpunkt) |
+| 11/12 | `UpperLeg_L/R` | Oberschenkel | je 14,16 % | – |
+| 13/14 | `LowerLeg_L/R` | Unterschenkel | je 4,33 % | – |
+| 15/16 | `Foot_L/R` | Fuß | je 1,37 % | – (Bodenkontakt) |
+
+Schwerpunktlagen und Trägheitsradien pro Segment: [11 §2.6](11_REALISMUS_UND_SPIELGEFUEHL.md#26-referenzwerte).
 
 Drei Rumpfsegmente (Brust/Bauch/Becken) statt zwei wie bei R15: Das gibt die typische weiche
 Wirbelsäulenkrümmung, die Ragdolls im Genre so lebendig wirken lässt.
 
-**Größe:** 6 Studs Gesamthöhe (≈ 1,70 m bei 0,28 m/Stud). **Masse:** über
-`CustomPhysicalProperties` mit Dichte so gewählt, dass der Dummy ≈ 70 „kg-Äquivalent“ wiegt und
-mit Kisten, Fässern und Autos glaubwürdig interagiert (Dichte-Tabelle in
-[04_SYSTEME](04_SYSTEME_UND_SIMULATION.md#1-materialsystem)).
+**Größe:** 6,25 Studs (= 1,75 m bei 0,28 m/Stud). **Masse:** 75 kg-Äquivalent; die Dichte
+jedes (unsichtbaren) Physik-Proxys wird so gesetzt, dass Masse **und** Trägheitsradius zur
+Tabelle passen (Prüf-Plugin, siehe 11 §2.3). Sichtbar ist ein durchgehendes Skinned Mesh (11 §5).
 
 ### Gelenke
 
-| Gelenk | Verbindet | Typ | Grenzen (Startwerte) |
+| Gelenk | Verbindet | Typ | Grenzen (aus medizinischen Normalwerten, 11 §2.6) |
 |--------|-----------|-----|----------------------|
-| Nacken | Head–Chest | BallSocket | UpperAngle 40°, Twist ±50° |
-| Oberer Rücken | Chest–Belly | BallSocket | UpperAngle 20°, Twist ±20° |
-| Unterer Rücken | Belly–Pelvis | BallSocket | UpperAngle 25°, Twist ±25° |
-| Schulter L/R | Chest–UpperArm | BallSocket | UpperAngle 100°, Twist ±70° |
-| Ellbogen L/R | UpperArm–LowerArm | BallSocket (scharnierartig) | UpperAngle 75°, Twist ±10°, asymmetrisch über Attachment-Ausrichtung |
-| Handgelenk L/R | LowerArm–Hand | BallSocket | UpperAngle 50°, Twist ±30° |
-| Hüfte L/R | Pelvis–UpperLeg | BallSocket | UpperAngle 85°, Twist ±35° |
-| Knie L/R | UpperLeg–LowerLeg | BallSocket (scharnierartig) | UpperAngle 70°, Twist ±5° |
-| Knöchel L/R | LowerLeg–Foot | BallSocket | UpperAngle 35°, Twist ±15° |
+| Nacken | Head–Chest | BallSocket | Kegel 55°, Twist ±75° |
+| Oberer Rücken | Chest–Belly | BallSocket | Kegel 22° (8° vorgekippt), Twist ±25° |
+| Unterer Rücken | Belly–Pelvis | BallSocket | Kegel 30° (12° vorgekippt), Twist ±20° |
+| Schulter L/R | Chest–UpperArm | BallSocket | Kegel 110° (vorn-außen gekippt), Twist −70° … +90° |
+| Ellbogen L/R | UpperArm–LowerArm | **HingeConstraint** | 0° … 145° |
+| Handgelenk L/R | LowerArm–Hand | BallSocket | Kegel 65°, Twist ±80° (enthält Unterarmdrehung) |
+| Hüfte L/R | Pelvis–UpperLeg | BallSocket | Kegel 75° (45° vorgekippt), Twist ±40° |
+| Knie L/R | UpperLeg–LowerLeg | **HingeConstraint** | 0° … 140° |
+| Knöchel L/R | LowerLeg–Foot | BallSocket | Kegel 35° (15° Richtung Senken), Twist ±12° |
 
-- `LimitsEnabled = true`, `TwistLimitsEnabled = true`, leichte `Restitution = 0` – sonst
-  „klappern“ Gelenke.
-- Knie und Ellbogen werden über die **Ausrichtung der Attachments** so gelegt, dass der
-  Kegel nur nach einer Seite aufgeht (Trick: Kegelmitte um halben Beugewinkel vorgedreht).
+- `LimitsEnabled = true`, `TwistLimitsEnabled = true`, `Restitution = 0` – sonst „klappern“
+  Gelenke.
+- Knie und Ellbogen sind **echte Scharniere** – sie können nicht zur Seite oder nach vorn
+  knicken (das sichtbarste „Fake“-Merkmal billiger Ragdolls). Die schrägen Kegel der Kugelgelenke
+  entstehen über die Ausrichtung der Attachments (Kegelmitte in die Mitte des echten Bereichs).
+- Muskeln an Scharnieren: dieselbe `AnimationConstraint` (sie wirkt zwischen den Attachments,
+  unabhängig vom Gelenktyp).
 - Nachbarsegmente bekommen `NoCollisionConstraint`s (Schulter–Brust, Hüfte–Becken usw.), damit
   sie nicht ineinander zittern. Nicht-Nachbarn (Hand–Kopf) **kollidieren**, damit sich der Körper
   nicht selbst durchdringt.
@@ -190,7 +194,7 @@ Ergänzende Zustände (aus der Genre-Analyse – genau diese Details machen die 
 | **Inneres Lecken** | Stich/Schuss in Rumpf, schwerer stumpfer Treffer am Bauch | goo sinkt unsichtbar, Segment-Muskeln schwächer, gelegentliches Zucken | Dichtmittel (Flüssigkeit), Reparatur-Gel |
 | **Luftbalg geplatzt** | Stich/Schuss in Brust mit Organtreffer | Sauerstoffaufnahme → 0 | Reparatur-Gel, Atem-Serum (überbrückt) |
 | **Untergetaucht** | Kopf unter Wasser-Pfütze/Becken (Raycast Kopf in Wasserzone) | Sauerstoffaufnahme → 0 | auftauchen, Atem-Serum |
-| **G-Kraft** | Beschleunigung des Kopfes > 25 g über 0,5 s (Schleuder, Rakete) | Bewusstsein sinkt; > 60 g Schaden | abklingen |
+| **G-Kraft** | anhaltende Beschleunigung: Richtung Füße ≥ 4,7 g für ≥ 3 s, Richtung Kopf ≥ 2,5 g, nach vorn/hinten nach Zeit-Grenzen (11 §13.4) | Grauschleier → Tunnelblick → bewusstlos (LED-Gesicht zeigt es) | abklingen |
 | **Taubheit** | Schmerzstiller-Serum | Schmerz wird ignoriert, keine Krümm-Reaktion | klingt ab |
 | **Krampf** | Chip-Schaden > 40 % | 3–6 s steife Gelenke + Zucken, Pumpe kann stoppen | Reparatur-Gel, Neustart |
 | **Wirbel gebrochen** | Bruch des Bauch- oder Brust-Gerüsts | Dummy kann nicht mehr stehen, nur kriechen | Reparatur |
@@ -358,6 +362,12 @@ Wunde Typ "Crack", wenn Hülle in einem Ereignis um > 0,15 fällt (leakRate 0,01
 | Brust/Bauch/Becken | 1600 |
 | Oberarm / Unterarm / Hand | 650 / 550 / 400 |
 | Oberschenkel / Unterschenkel / Fuß | 1200 / 900 / 500 |
+
+> **Wichtig:** Diese Impuls-Schwellen sind nur noch die **Rückfallebene** (Δv-Messung ohne
+> Kontaktdaten). Primär gelten die Crash-Test-Kriterien und Bruchlasten aus
+> [11 §3 und §13](11_REALISMUS_UND_SPIELGEFUEHL.md#13-geprüfte-referenzwerte): Kopf über HIC mit
+> Risikokurven (benommen ab ~250), Brust über Beschleunigung/Eindrückung, Nacken über Nij,
+> Knochen über Kräfte und Biegemomente aus dem rekonstruierten Stoß.
 
 **Quetschen:** Wenn ein Segment über ≥ 0,3 s zwischen zwei Objekten eingeklemmt ist
 (Kontakt auf gegenüberliegenden Seiten, gemessen über `GetPartsInPart` + Normalenvergleich) und

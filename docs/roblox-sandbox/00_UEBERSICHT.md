@@ -43,7 +43,7 @@ Replay, zwei Sprachen).
 5. **Gemeinsam basteln.** Labore im geteilten Server, Solo-Labor mit Freunden.
 6. **Sicher für Jüngere.** Glibber statt Blut, kein Gore, keine Folter-Motive, keine Lootboxen.
 7. **Krass echt – messbar.** Echte Einheiten und Biomechanik, Crash-Test-Kriterien als
-   Schadensmodell, 16 Reflexe, durchgehender Körper, echte Ballistik, Klang aus Materialpaaren.
+   Schadensmodell, 20 Reflexe, durchgehender Körper, echte Ballistik, Klang aus Materialpaaren.
    Wir holen den „Wow“-Effekt aus Physik und Leben statt aus Blut – genau dort, wo die
    Roblox-Klone nichts machen ([11](11_REALISMUS_UND_SPIELGEFUEHL.md)).
 

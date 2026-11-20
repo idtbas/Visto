@@ -37,7 +37,7 @@ Ein kleines, aber **komplett poliertes** Stück Spiel:
 
 - Körpermodell komplett (02) mit Stumpf-, Scharf-, Ballistik-, Explosionsschaden, Vitalwerten,
   Zuständen, Verhalten (ohne Gehen).
-- Realismus-Kern (11): Reflexe 1–5, 11, 14, 15 mit Antizipation, Muskeltonus, Jiggle-Knochen,
+- Realismus-Kern (11): Reflexe 1–5, 11, 14, 15, 17 mit Antizipation, Muskeltonus, Jiggle-Knochen,
   Materialpaar-Sounds mit Gleit-Schleifen, echte Ballistik mit Hülsen, Telemetrie-Reiter,
   Instant-Replay. **Die „ersten 60 Sekunden“ (11 §11) sind Teil des Schnitts.**
 - **Blindtest** (11 §14) gegen die 3 stärksten Konkurrenten: ≥ 75 % „am echtesten“ – sonst wird
