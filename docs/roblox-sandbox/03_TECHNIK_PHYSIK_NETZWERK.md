@@ -224,6 +224,7 @@ Spieler teilen wollen (Aufnahme über die Roblox-eigene Aufnahmefunktion).
 
 | Effekt | v1.0 | später |
 |--------|------|--------|
+| **Dummy-Körper** | **Ein Skinned Mesh pro Dummy**, Knochen folgen den unsichtbaren Physik-Proxys (Client, parallel, LOD); Jiggle-Knochen für Sekundärbewegung (Details [11 §5](11_REALISMUS_UND_SPIELGEFUEHL.md#5-säule-4--ein-durchgehender-körper)) | – |
 | Wunden/Risse | Gepoolte flache MeshParts (Riss-Textur in Glibberfarbe), am Segment verschweißt, max. 6 pro Segment | `EditableImage` pro Dummy zum „Einmalen“ von Rissen, danach mit `CreateDataModelContentAsync` zu statischem Content backen (spart Budget). Achtung: Freischaltung der Mesh/Image-APIs verlangt laut Doku einen alters- und ID-verifizierten Besitzer |
 | Dellen | Textur-Stufen | `EditableMesh` (max. 60 000 Vertices) + Backen |
 | Hüllen-Verschleiß | 4 Textur-Stufen je Segment | Roblox „Material Layering“ (Roadmap Mitte 2027) |

@@ -386,7 +386,10 @@ Energie an einem Gelenk (Schwert, Kreissäge) → Gelenk-Überlastung (siehe 5.8
 
 ### 5.3 Ballistisch (Projektile)
 
-Kugeln sind **Hitscan mit Durchdringung** (Raycast-Kette), keine physikalischen Teile:
+Kugeln sind keine physikalischen Teile, sondern **schrittweise Raycasts mit echter Flugbahn**
+(Mündungsgeschwindigkeit, Schwerkraft, Luftwiderstand; pro Physikschritt ein Bahnstück, siehe
+[11 §6](11_REALISMUS_UND_SPIELGEFUEHL.md#6-säule-5--trefferwirkung-die-man-spürt)). Trifft ein
+Bahnstück etwas, läuft ab dort die Durchdringungs-Kette:
 
 ```
 E = Mündungsenergie (Waffe/Kaliber)

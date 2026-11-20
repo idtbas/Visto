@@ -270,7 +270,8 @@ Verbindung → Constraint weg, kurzer „Schnapp“-Sound, bei Seilen schnalzen 
 Server. In geteilten Servern bekommt jedes Labor stattdessen das Item **Schwerkraft-Feld**
 (Zone mit `VectorForce` auf alle Baugruppen darin).
 
-**Schwerkraft-Standard:** Roblox' Voreinstellung (196,2 Studs/s²) ist bei 0,28 m/Stud etwa
-5,6-mal Erdschwere – Ragdolls wirken dadurch schwer und „schnappig“. Wir testen im Prototyp
-drei Werte (196,2 / 100 / 50) mit Spielern und legen danach „Lab-Standard“ fest. Alle
-Schadens-Schwellen werden **danach** kalibriert (sie hängen an Geschwindigkeiten).
+**Schwerkraft-Standard: Erde, 35,04 Studs/s²** (= 9,81 m/s² bei 0,28 m/Stud). Roblox'
+Voreinstellung (196,2) ist ≈ 5,6-mal zu stark und lässt Ragdolls puppenhaft wirken. Weil alle
+Schadensformeln intern in SI-Einheiten rechnen (siehe
+[11 §2](11_REALISMUS_UND_SPIELGEFUEHL.md#2-säule-1--echte-einheiten-echte-biomechanik)), gelten
+die Grenzwerte bei jeder Schwerkraft-Einstellung physikalisch korrekt weiter.

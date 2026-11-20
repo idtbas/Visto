@@ -27,7 +27,9 @@ Ziel: die riskantesten Annahmen **früh** beweisen oder verwerfen.
 | Labor-Host-Ownership + Ziehen mit eigenem Greifer | flüssig bei 150 ms Ping für den Host; Zuschauer sehen ruckelfrei |
 | Notfall-Simulator (Ownership-Wechsel zum Server) | Wechsel ohne sichtbare Sprünge |
 | Performance-Messung | 30 Dummies + 300 Teile auf Referenz-PC ≥ 60 FPS; 8 Dummies + 100 Teile auf 3-GB-Handy ≥ 30 FPS – **danach Budgets festlegen** |
-| Schwerkraft-Test (196,2 / 100 / 50) mit 5 Testspielern | „Lab-Standard“ festgelegt |
+| Echte Einheiten: Erdschwere (35,04 Studs/s²), Massen/Trägheit nach Tabelle, Knie/Ellbogen als Scharnier | Fall- und Pendel-Tests aus 11 §14 innerhalb der Toleranz; Kamera vermittelt den Maßstab glaubwürdig (5 Testspieler) |
+| **Skinned Mesh über Physik-Proxys** (11 §5) | 30 Dummies mit Knochen-Update auf PC ≥ 60 FPS, 8 auf Handy ≥ 30 FPS; keine sichtbaren Lücken oder Verzögerung zur Physik |
+| Crash-Puls-Rekonstruktion + HIC (11 §3) | gleicher Sturz auf Beton/Gummi/Schaum liefert deutlich fallende HIC-Werte |
 
 ## Phase 2 – Vertikaler Schnitt (6 Wochen · Team: 4)
 
@@ -35,6 +37,11 @@ Ein kleines, aber **komplett poliertes** Stück Spiel:
 
 - Körpermodell komplett (02) mit Stumpf-, Scharf-, Ballistik-, Explosionsschaden, Vitalwerten,
   Zuständen, Verhalten (ohne Gehen).
+- Realismus-Kern (11): Reflexe 1–5, 11, 14, 15 mit Antizipation, Muskeltonus, Jiggle-Knochen,
+  Materialpaar-Sounds mit Gleit-Schleifen, echte Ballistik mit Hülsen, Telemetrie-Reiter,
+  Instant-Replay. **Die „ersten 60 Sekunden“ (11 §11) sind Teil des Schnitts.**
+- **Blindtest** (11 §14) gegen die 3 stärksten Konkurrenten: ≥ 75 % „am echtesten“ – sonst wird
+  nachgebessert, bevor Phase 3 beginnt.
 - 25 Items quer durch alle Kategorien, Glibber-Optik, LED-Gesicht, Scanner + Inspektor.
 - Werkzeuge 1–9, Kontextmenü (PC + Touch), Spawn-Menü, Rückgängig.
 - Speichern/Laden eines Bauplans.

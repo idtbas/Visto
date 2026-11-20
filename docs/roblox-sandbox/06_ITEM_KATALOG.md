@@ -195,6 +195,23 @@ im Spawn-Menü, also keine bezahlte Zufallsmechanik).
 
 ---
 
+## Crash-Test & Schutz (Realismus-Kern, siehe [11](11_REALISMUS_UND_SPIELGEFUEHL.md))
+
+| Item | Funktion | Phase |
+|------|----------|:-----:|
+| **Hochgeschwindigkeits-Kamera** | Stativ-Kamera mit Replay im Crash-Test-Look: Bildzähler, ms-Zeitstempel, Messraster, mehrere Kameras = Schnitt | 1.0 |
+| **Telemetrie-Rechner** | zeigt Kopfbeschleunigung, HIC, Brust, Nacken, Oberschenkel-Kraft nach jedem Ereignis, Vergleich zweier Versuche | 1.0 |
+| Beschleunigungs-Sensor | Signal-Ausgang ab einstellbarem g-Wert (z. B. löst Airbag aus) | 1.0 |
+| **Airbag** | bläst sich in 30 ms auf (am Signal), sehr lange Kontaktdauer → senkt HIC | 1.0 |
+| Sicherheitsgurt | Schweißen mit „Gurtlose“: gibt kontrolliert nach (Feder mit Grenze) | 1.0 |
+| Helm | +8 ms Kontaktdauer am Kopf, eigene Haltbarkeit | 1.0 |
+| Knie- / Ellbogenschoner | Polster an Gelenken | 1.0 |
+| Crash-Barriere (verformbar) | Wabenblock, der sich beim Aufprall zusammenschiebt (Prismatic mit abnehmender Kraft) | 1.1 |
+| Fallturm-Plattform | Plattform, die auf Signal aus einstellbarer Höhe fallen lässt | 1.1 |
+| Kalibrier-Gewichte | genormte Massen (1/5/20/100 kg) für eigene Versuche | 1.0 |
+
+---
+
 ## Bauteile
 
 Kiste (Holz/Metall, S/M/L), Platte, Brett, Balken, Stahlträger, Stange, Rohr, Kugel, Zylinder,

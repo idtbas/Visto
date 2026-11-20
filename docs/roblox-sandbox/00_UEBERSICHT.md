@@ -42,6 +42,10 @@ Replay, zwei Sprachen).
 4. **Heilen ist so spannend wie Zerstören.** Scanner, Seren, Defibrillator, Rettungs-Aufgaben.
 5. **Gemeinsam basteln.** Labore im geteilten Server, Solo-Labor mit Freunden.
 6. **Sicher für Jüngere.** Glibber statt Blut, kein Gore, keine Folter-Motive, keine Lootboxen.
+7. **Krass echt – messbar.** Echte Einheiten und Biomechanik, Crash-Test-Kriterien als
+   Schadensmodell, 16 Reflexe, durchgehender Körper, echte Ballistik, Klang aus Materialpaaren.
+   Wir holen den „Wow“-Effekt aus Physik und Leben statt aus Blut – genau dort, wo die
+   Roblox-Klone nichts machen ([11](11_REALISMUS_UND_SPIELGEFUEHL.md)).
 
 ## Was übernommen wird – und was sich ändert
 
@@ -66,7 +70,8 @@ Replay, zwei Sprachen).
 | Entscheidung | Gewählt | Kapitel |
 |--------------|---------|---------|
 | Ziel-Einstufung | Mild, höchstens Moderate → erreichbar ab 9 Jahren (nach Roblox-Prüfphase) | [01](01_JUGENDSCHUTZ_UND_RICHTLINIEN.md) |
-| NPC-Rig | Eigener 16-Segment-Rig, kein Humanoid, BallSocket + nicht-kinematische AnimationConstraint als Muskel | [02](02_KOERPER_UND_SCHADEN.md), [03](03_TECHNIK_PHYSIK_NETZWERK.md) |
+| NPC-Rig | Eigener 16-Segment-Rig, kein Humanoid, anatomische Gelenke (Scharniere an Knie/Ellbogen), nicht-kinematische AnimationConstraint als Muskel, sichtbar als ein durchgehendes Skinned Mesh | [02](02_KOERPER_UND_SCHADEN.md), [11](11_REALISMUS_UND_SPIELGEFUEHL.md) |
+| Einheiten & Schaden | Intern SI-Einheiten, Erdschwere; Kopf/Brust/Nacken/Bein-Schäden aus echten Crash-Test-Kriterien (HIC, Nij …) | [11 §2–3](11_REALISMUS_UND_SPIELGEFUEHL.md) |
 | Aufprall-Erkennung | Collision Summaries (seit 10/2026), Δv-Messung als Rückfall | [02 §5.1](02_KOERPER_UND_SCHADEN.md#51-stumpf-aufprall-quetschen) |
 | Netzwerk | **Labor-Host-Simulation**: der Besitzer simuliert sein Labor, Server ist Schiedsrichter/Speicher; Server übernimmt bei schwachen Geräten | [03 §3](03_TECHNIK_PHYSIK_NETZWERK.md#3-netzwerk-und-autorität) |
 | Server Authority | **Nicht** verwendet (Fehlvorhersagen bei vielen Ragdolls) | [03 §1](03_TECHNIK_PHYSIK_NETZWERK.md#1-engine-grundeinstellungen) |
@@ -92,6 +97,7 @@ Replay, zwei Sprachen).
 | 08 | [Art & Audio](08_ART_UND_AUDIO.md) | Stil, Modell-Richtlinien, Zustands-Optik, VFX, Sound |
 | 09 | [Code-Architektur](09_CODE_ARCHITEKTUR.md) | Rojo-Struktur, Item-Definitionen, Kern-Algorithmen in Luau, Treffer-Ablauf |
 | 10 | [Roadmap, QA, Geld, Risiken](10_ROADMAP_QA_MONETARISIERUNG.md) | Phasen mit Abnahmekriterien, Launch inkl. Roblox-Prüfphase, Tests, Kennzahlen, Monetarisierung, Risiken |
+| 11 | [**Realismus & Spielgefühl**](11_REALISMUS_UND_SPIELGEFUEHL.md) | Abstand zu den Klonen, echte Biomechanik, Crash-Test-Schadensmodell, Reflexe, Skinned Mesh, Ballistik, Klang, Kamera, Welt mit Gedächtnis, Wettbewerbsanalyse, Messtests |
 
 ## Die ersten drei Schritte
 

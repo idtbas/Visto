@@ -33,7 +33,10 @@ lab-sandbox/
 │  │  ├─ Sim/                      -- läuft auf Host (Client ODER Server)
 │  │  │  ├─ LabSim.luau            -- startet/stoppt alle Systeme für ein Labor
 │  │  │  ├─ Body/  (Rig, Muscles, Balance, Behaviour, Vitals, Damage, JointFailure)
+│  │  │  ├─ Behaviour/ (Reflexes/*.luau, Anticipation, PoseMixer, TwoBoneIK)   -- 11 §4
 │  │  │  ├─ Impact/ (CollisionSummarySource, DeltaVSource, ImpactRouter)
+│  │  │  ├─ Telemetry.luau         -- Puls-Rekonstruktion, HIC, Nij, Kräfte    -- 11 §3
+│  │  │  ├─ Projectiles.luau       -- schrittweise Raycasts, Fall, Widerstand  -- 11 §6
 │  │  │  ├─ Ballistics.luau
 │  │  │  ├─ Explosions.luau
 │  │  │  ├─ Thermal.luau · Fire.luau
@@ -42,6 +45,9 @@ lab-sandbox/
 │  │  │  ├─ BreakMonitor.luau
 │  │  │  └─ Components/ (Gun, Blade, Container, Syringe, Motor, Piston, Sensor, …)
 │  │  ├─ Pure/                     -- Roblox-frei, getestet
+│  │  │  ├─ Units.luau             -- einzige Stelle für Stud ↔ Meter
+│  │  │  ├─ InjuryCriteria.luau    -- HIC-Fenster, Risikokurven (getestet gegen Referenzwerte)
+│  │  │  ├─ HeightfieldFlow.luau   -- Flüssigkeits-Automat (11 §9)
 │  │  │  ├─ DamageMath.luau · VitalsMath.luau · Penetration.luau
 │  │  │  ├─ UnionFind.luau · SignalGraph.luau
 │  │  │  ├─ BlueprintCodec.luau · Quantize.luau
@@ -271,7 +277,85 @@ end
 return GooColor
 ```
 
-### 3.6 Netzwerk-Schicht
+### 3.6 Kopfverletzungs-Kriterium (HIC) aus einem rekonstruierten Stoß
+
+```lua
+--!strict
+--!native
+-- Pure/InjuryCriteria.luau  (Roblox-frei, mit Referenzwerten getestet)
+local G = 9.81
+local InjuryCriteria = {}
+
+-- Halbsinus-Puls: Spitzenbeschleunigung aus Aufprallgeschwindigkeit dv [m/s] und Kontaktdauer tau [s]
+function InjuryCriteria.halfSinePulse(dv: number, tau: number, dt: number): { number }
+    local peak = (math.pi / 2) * dv / tau            -- m/s²  (Fläche des Pulses = dv)
+    local n = math.max(2, math.ceil(tau / dt))
+    local a = table.create(n + 1, 0)
+    for i = 0, n do
+        a[i + 1] = peak * math.sin(math.pi * i / n) / G   -- in g
+    end
+    return a
+end
+
+-- HIC = max über Fenster [t1,t2] (Länge ≤ maxWindow) von (t2−t1) · (mittlere Beschl. in g)^2,5
+function InjuryCriteria.hic(a: { number }, dt: number, maxWindow: number): number
+    local n = #a
+    local cum = table.create(n + 1, 0)               -- Trapez-Integral, cum[i] = ∫ bis Stützstelle i
+    for i = 2, n do
+        cum[i] = cum[i - 1] + 0.5 * (a[i - 1] + a[i]) * dt
+    end
+    local best, maxSteps = 0, math.floor(maxWindow / dt)
+    for i = 1, n - 1 do
+        for j = i + 1, math.min(n, i + maxSteps) do
+            local T = (j - i) * dt
+            local avg = (cum[j] - cum[i]) / T
+            local v = T * avg ^ 2.5
+            if v > best then best = v end
+        end
+    end
+    return best
+end
+
+return InjuryCriteria
+-- Aufruf: hic(halfSinePulse(dv, tauKopf + tauGegenstück, 0.00025), 0.00025, 0.015)  -- HIC15
+-- Kosten: ≤ 60 ms Puls → 240 Stützstellen → ≤ 14 000 Fenster; nur für Kopf-Ereignisse über v_min.
+```
+
+### 3.7 Zwei-Gelenk-IK für Reflexe (Hand zur Wunde, Abstützen)
+
+```lua
+--!strict
+-- Behaviour/TwoBoneIK.luau: liefert die Beugung des mittleren Gelenks (Ellbogen/Knie)
+-- und die Zielrichtung des oberen Segments – daraus baut der PoseMixer die Gelenkziele.
+local TwoBoneIK = {}
+
+function TwoBoneIK.solve(rootPos: Vector3, target: Vector3, lenUpper: number, lenLower: number,
+                         poleDir: Vector3): (Vector3, number)
+    local toTarget = target - rootPos
+    local d = math.clamp(toTarget.Magnitude, math.abs(lenUpper - lenLower) + 1e-3,
+                         lenUpper + lenLower - 1e-3)
+    -- Kosinussatz: Winkel am Wurzelgelenk zwischen Zielrichtung und Oberarm
+    local cosRoot = (lenUpper ^ 2 + d ^ 2 - lenLower ^ 2) / (2 * lenUpper * d)
+    local rootAngle = math.acos(math.clamp(cosRoot, -1, 1))
+    -- Innenwinkel am Mittelgelenk → Beugung = π − Innenwinkel
+    local cosMid = (lenUpper ^ 2 + lenLower ^ 2 - d ^ 2) / (2 * lenUpper * lenLower)
+    local bend = math.pi - math.acos(math.clamp(cosMid, -1, 1))
+    -- Oberarm-Richtung: Zielrichtung um rootAngle Richtung Pol-Vektor gedreht
+    local dir = toTarget.Unit
+    local side = (poleDir - dir * poleDir:Dot(dir))
+    side = if side.Magnitude > 1e-4 then side.Unit else dir:Cross(Vector3.yAxis).Unit
+    local upperDir = dir * math.cos(rootAngle) + side * math.sin(rootAngle)
+    return upperDir, bend
+end
+
+return TwoBoneIK
+```
+
+Der Beugewinkel wird anschließend auf die **anatomischen Grenzen** des Gelenks begrenzt (Knie
+und Ellbogen beugen nur in eine Richtung) – ein unerreichbares Ziel führt dann zu einer
+natürlichen, gestreckten Haltung statt zu verdrehten Gliedern.
+
+### 3.8 Netzwerk-Schicht
 
 ```lua
 -- Net.luau (Auszug): jede Nachricht hat ein Schema, ein Rate-Limit und einen Handler.
